@@ -9,6 +9,22 @@
 - **Written by the team.** `HACKATHON.md`, `experiments/`, `gate/` (request gate, benchmark, tests, and the live hack demo, written with Claude), `site/` (including the shared page theme `site/theme.css`, copied from the 3D console's design), `.github/workflows/pages.yml` and this section. `output/visualizations/Smart-RoboWard-replay.html` is now rebuilt by the team from `site/replay-template.html`, with the same A01/U02 timelines as the AI-generated fragment `shared-lift-replay.html`. Reproduce the benchmark with `node gate/run.cjs`, run the tests with `node --test gate/`, and rebuild the pages with `node site/build-site.cjs`, `node gate/build-page.cjs` and `node gate/build-hacker.cjs`.
 - **Not included.** The organizer's brief image (it carries third-party logos and has no redistribution licence). Read the brief and rules on the [event page](https://www.bayern-innovativ.de/events-termine/detail/events-termine/healthcare-hackathon-bayern-hacken-bis-der-arzt-kommt-november2026).
 
+## Ward safety control room
+
+Open [ward-safety/index.html](ward-safety/index.html) in any modern browser. It runs offline from that one file. Pick a **Simulation round**, press **To decision**, and watch whether the lift adapter allows, holds or denies RX-01's call for the Ward B delivery.
+
+| Round | Expected decision | What to try next |
+| --- | --- | --- |
+| Verified floor mapping | Allow, 1 forwarded call, 1 cabin entry | **Play** to the ward, then **Scan at Ward B** |
+| Unverified map revision | Hold, 0 calls | **Verify floor mapping**, then play on |
+| Wrong-floor request | Deny, 0 calls | No recovery at the lift. Restart the round |
+| Patient transfer priority | Hold, 0 calls | **Clear patient priority**, or **Offer porter handoff** and accept it |
+| Wi-Fi handover | Hold, 0 calls | **Restore facilities feed** |
+
+**Trust study** shows the held-out results of 10,000 simulated missions and a route heatmap. A dashed grey lane was never observed. A blue lane was observed rarely. **Workflow review** replays a policy change, parcel custody checks and a two-vendor lift queue.
+
+The control room was written by the team with Claude. It reuses the imported fleet engine and clinic map. Every number comes from local simulation with fictional data. Rebuild with `node ward-safety/build.cjs` (needs Python 3 for the map and policy replay). The plan and current status are in [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md).
+
 ## Try a delivery and a security alert
 
 1. Select **RX-01**, choose **Ward B**, and click **Dispatch**. Select **Follow robot** for a close-up. Drag to rotate, right-drag to pan, and scroll or pinch to zoom. Use the floor selector or **Full screen** for a different view. With the canvas focused, the arrow keys rotate, +/− zoom and Home resets the view.
@@ -45,7 +61,7 @@ Run these commands from the repository root. Python 3.9+ builds the 3D console a
 
 ```sh
 python clinic3d/build_model.py
-node --test clinic3d/fleet.test.cjs
+node --test clinic3d/fleet.test.cjs ward-safety/*.test.cjs gate/*.test.cjs
 python output/simulation/replay.py --case A01
 python output/simulation/replay.py --case U02
 ```

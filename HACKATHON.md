@@ -38,6 +38,7 @@ Result summary (measured, synthetic, author-written rows): full stack 10/10 bloc
 ## Reuse vs on-site (license check required before use)
 - **Clinic simulator (disclose to jury):** `clinic3d/` and `output/` (3D fleet console, scenario fixtures, Python replay runner) were generated earlier with an AI coding assistant (commit author "Codex") and imported into this repo on 2026-11-27. Third-party: Three.js (MIT, `clinic3d/vendor/`), Open-RMF map files (Apache-2.0, `output/simulation/open-rmf/LICENSE`). We have **not** independently re-run its results; its numbers are `unverified` until we do.
 - Reused: Node.js standard library only (crypto, node:test, fs). No packages installed.
+- Built on site (2026-11-27), ward safety control room: `ward-safety/` (lift admission controller, workflows, 10,000-mission study, offline page `ward-safety/index.html`), written with Claude on `feature/ward-safety-console`. Plan and status: `IMPLEMENTATION-PLAN.md`.
 - Built on site (2026-11-27): `gate/gate.cjs` (allowlist, tokens, policy, minimization, breaker, audit chain, simulated robot), `gate/run.cjs` (benchmark), `gate/*.test.cjs`, results page `site/gate-results.html`, and `site/hacker-demo.html`: the unchanged 3D fleet console with the live attack demo injected (`gate/build-hacker.cjs`; browser copy of the gate; tests assert it answers exactly like the Node gate). Added by teammates / another session after my last edit; I have read the build notes and run the tests but not watched the demo in a browser.
 
 ## Integration heartbeat

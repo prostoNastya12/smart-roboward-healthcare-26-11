@@ -33,6 +33,7 @@ jobs:
              output/visualizations/Clinic-World.glb \
              output/visualizations/Clinic-World-3D.png \
              output/visualizations/Smart-RoboWard-replay.html _site/
+          cp ward-safety/index.html _site/ward-safety.html
           touch _site/.nojekyll
           ls -la _site
 
