@@ -1,6 +1,6 @@
 # Smart RoboWard implementation plan
 
-**Status on 27 November 2026, 22:30 CET · Submission 28 November 2026, 11:00 CET · IFOHRA Challenge 9**
+**Status on 27 November 2026, 22:45 CET · Submission 28 November 2026, 11:00 CET · IFOHRA Challenge 9**
 
 This page says what exists, what is left before the deadline, and what comes after the hackathon. Every result below comes from local simulation with fictional data.
 
@@ -24,10 +24,14 @@ A hospital robot asks a shared lift for a floor. Smart RoboWard answers three qu
 | Policy preview, custody ledger, two-vendor lift queue | Done | `ward-safety/workflows.test.cjs` |
 | 10,000-mission study | Done | Advisory detects 90/100 equipment holds and 96/100 wrong destinations at 1.39 false alerts per 100 benign missions. Baseline detects 0/100 and 96/100. `ward-safety/study-summary.json` |
 | Control room page | **Done on 27 November.** All five rounds, recovery actions, porter handoff, both floors, heatmap and workflow tables were exercised in a browser | `ward-safety/build.test.cjs` |
-| Landing page and Pages workflow link to the control room | Done on the feature branch | `site/index-template.html`, `.github/workflows/pages.yml` |
-| Branch integration | `master` (up to `b4f48e2`) is merged into `feature/ward-safety-console` | 39 Node tests pass. Python replay matches 20/20 cases |
-| Merge to `master` and live site | **Open.** Needs teammate review. A push to `master` deploys the public site | Pull request |
-| Pitch, slides, fallback video | **Open** | None yet |
+| Request gate in front of the control room | Done. The nurse's order passes `gate/gate.cjs` before dispatch. A forged order is refused and the source isolated after five tries | Browser check |
+| Landing page, shared header and Pages workflow link to the control room | Done on the feature branch | `site/ward-safety.html` |
+| Branch integration | `master` (up to `c7e6a88`) is merged into `feature/ward-safety-console` | 39 Node tests pass. Python replay matches 20/20 cases |
+| Pull request into `master` | **Open, waiting for review.** Merging deploys the public site | [Pull request 1](https://github.com/prostoNastya12/smart-roboward-healthcare-26-11/pull/1) |
+| Dry run from a local copy of the published site | Done. Hack demo: 194 attacks, 194 stopped, 0 through. Control room: all five rounds | Not yet repeated on the presentation laptop |
+| Slides and talk track | Done. Seven slides, layout audit clean at three screen sizes | `presentation/demo.html`, `presentation/SCRIPT.md` |
+| Fallback video | Done. 76 seconds, narrated, recorded from the real pages | `presentation/media/smart-roboward-demo-v1.mp4` |
+| German jury summary | Done | `docs/Zusammenfassung-DE.md` |
 
 ## Before the deadline
 
@@ -35,12 +39,11 @@ Work in this order. Each step has one owner and a check.
 
 | # | Task | Owner | Done when | Latest |
 | --- | --- | --- | --- | --- |
-| 1 | Review and merge the feature-branch pull request into `master` | Teammate who owns the repository | Pages deploy is green and `ward-safety.html` opens from the live landing page | 28 Nov 08:00 |
-| 2 | Cold-start dry run on the presentation laptop, offline | Claude-proficient manager | Hack demo and all five control-room rounds run from a fresh browser with Wi-Fi off | 28 Nov 08:30 |
-| 3 | Agree the three-minute demo script below and who clicks | Product manager | Timed once at or under three minutes | 28 Nov 09:00 |
-| 4 | Slides from measured numbers only, each labelled "simulated" | Product manager, data scientist | Every number traces to `results.json` or `study-summary.json` | 28 Nov 09:45 |
-| 5 | Record the offline fallback video of the same script | Robotics developer | One file plays without a network | 28 Nov 10:15 |
-| 6 | Re-read README claims and disclosure, then submit | Whole team | Submission confirmed by the organizers | 28 Nov 10:45 |
+| 1 | Review and merge pull request 1 into `master` | Teammate who owns the repository | Pages deploy is green and `ward-safety.html` opens from the live landing page | 28 Nov 08:00 |
+| 2 | Repeat the dry run on the presentation laptop with Wi-Fi off | Claude-proficient manager | Slides, video, hack demo and all five rounds run from a fresh browser | 28 Nov 08:30 |
+| 3 | Watch the fallback video once with sound and rehearse the talk track | Product manager | Timed at or under the pitch slot. Pace and voice judged by a person | 28 Nov 09:15 |
+| 4 | Confirm the pitch length and deadline with the organizers, add team names to slide 7 if wanted | Product manager | Answer written into `HACKATHON.md` | 28 Nov 09:30 |
+| 5 | Re-read README claims and disclosure, then submit | Whole team | Submission confirmed by the organizers | 28 Nov 10:45 |
 
 ### Three-minute demo script
 
@@ -50,12 +53,6 @@ Work in this order. Each step has one owner and a check.
 4. **Authenticated but wrong (20 s).** Round *Wrong-floor request*. Deny, zero calls. A valid identity alone is too little.
 5. **Patients first (30 s).** Round *Patient transfer priority*. Hold. Offer and accept the porter handoff. The ward scans once and custody is visible throughout.
 6. **Evidence (15 s).** Trust study. 10,000 simulated missions, 90/100 equipment holds caught where a fixed threshold caught none, and the heatmap separates "never observed" from "rarely used".
-
-### Nice to have if time remains
-
-- Show the gate's verdict inside the control room's service path, so one screen covers request and lift decisions.
-- Add the control room to the shared site theme header so navigation matches the other pages.
-- A German one-page summary for the jury.
 
 ## Open decisions
 

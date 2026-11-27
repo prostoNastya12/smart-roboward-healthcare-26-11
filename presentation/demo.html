@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Smart RoboWard - Demo</title>
+<style>
+  :root { --bg:#0e2b25; --fg:#f6fbf3; --muted:#b4c8ba; --accent:#c1de94; --card:#153a32; --line:#2c5247; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: #000; overflow: hidden; }
+  #stage { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px;
+    transform-origin: center center; overflow: hidden; background: var(--bg); color: var(--fg);
+    font: 400 32px/1.35 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .slide { position: absolute; inset: 0; padding: 96px 120px; display: none;
+    flex-direction: column; justify-content: center; gap: 56px; }
+  .slide.active { display: flex; animation: fade .25s ease-out; }
+  @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
+  .slide > * { min-width: 0; }
+  .kicker { font-size: 26px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+  h1 { font-size: 112px; line-height: 1.2; font-weight: 700; letter-spacing: -.02em; text-wrap: balance; }
+  h2 { font-size: 76px; line-height: 1.2; font-weight: 700; letter-spacing: -.015em; text-wrap: balance; }
+  .lead { font-size: 40px; color: var(--muted); max-width: 1300px; }
+  .row { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 40px; }
+  .card { min-width: 0; background: var(--card); border: 1px solid var(--line); border-radius: 24px;
+    padding: 44px; display: flex; flex-direction: column; gap: 16px; overflow-wrap: anywhere; }
+  .card h3 { font-size: 38px; line-height: 1.15; }
+  .card p { font-size: 30px; color: var(--muted); }
+  .num { font-size: 150px; line-height: 1.2; font-weight: 700; color: var(--accent);
+    white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .label { font-size: 28px; color: var(--muted); }
+  .media { flex: 1 1 0; min-height: 0; display: flex; justify-content: center; }
+  .media video, .media img { height: 100%; max-width: 100%; aspect-ratio: 16 / 9; object-fit: contain;
+    border-radius: 20px; background: #000; }
+  #bar { position: absolute; left: 0; bottom: 0; height: 6px; width: 0; background: var(--accent); transition: width .2s; }
+  #clock { position: absolute; right: 32px; bottom: 24px; font-size: 24px; color: var(--muted);
+    font-variant-numeric: tabular-nums; display: none; }
+  .tag { font-size: 24px; color: var(--muted); }
+  .cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; }
+  .stat { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+  .stat .label b { color: var(--fg); font-weight: 600; }
+  .flow { width: 100%; height: 420px; }
+  .flow text { font: 600 30px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #f6fbf3; }
+  .flow .sub { font-weight: 400; font-size: 24px; fill: #b4c8ba; }
+  .flow .hot text { fill: #0e2b25; }
+  .flow .hot .sub { fill: #24493f; }
+</style>
+</head>
+<body>
+<div id="stage">
+
+  <section class="slide">
+    <div class="kicker">Healthcare Hackathon Bayern · IFOHRA Challenge 9</div>
+    <h1>Smart RoboWard</h1>
+    <p class="lead">A hacked delivery robot should never stop a hospital.</p>
+  </section>
+
+  <section class="slide">
+    <div class="kicker">The problem</div>
+    <h2>One lift request, three open questions</h2>
+    <div class="row">
+      <div class="card"><h3>Who is asking?</h3><p>Orders arrive over the network. Anyone can send one.</p></div>
+      <div class="card"><h3>Is this floor allowed?</h3><p>A genuine robot can still request the wrong floor.</p></div>
+      <div class="card"><h3>Who holds the parcel?</h3><p>When the trip stops, the ward needs to know.</p></div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="kicker">What we built</div>
+    <h2>Two gates and a fallback</h2>
+    <div class="row">
+      <div class="card"><h3>Request gate</h3><p>Signed single-use orders, ward rules, minimal data, a circuit breaker.</p></div>
+      <div class="card"><h3>Lift gate</h3><p>Allow, hold or deny each call for this trip.</p></div>
+      <div class="card"><h3>Human fallback</h3><p>A porter takes over. The ward scans exactly once.</p></div>
+    </div>
+  </section>
+
+  <section class="slide" style="padding:56px 120px; gap:28px">
+    <h2>Demo</h2>
+    <div class="media"><video src="media/smart-roboward-demo-v1.mp4" muted playsinline preload="auto" data-autoplay></video></div>
+  </section>
+
+  <section class="slide">
+    <div class="kicker">How it works</div>
+    <h2>Checked twice before anything moves</h2>
+    <svg class="flow" viewBox="0 0 1680 420" role="img" aria-label="Order passes the request gate, the robot fleet, the lift gate and the ward scan"><g class=""><rect x="0" y="120" width="296" height="180" rx="20" fill="#153a32" stroke="#2c5247" stroke-width="2"/><text x="148" y="200" text-anchor="middle">Nurse order</text><text class="sub" x="148" y="244" text-anchor="middle">task + destination</text></g><g class="hot"><rect x="346" y="120" width="296" height="180" rx="20" fill="#c1de94" stroke="#c1de94" stroke-width="2"/><text x="494" y="200" text-anchor="middle">Request gate</text><text class="sub" x="494" y="244" text-anchor="middle">4 checks</text></g><g class=""><rect x="692" y="120" width="296" height="180" rx="20" fill="#153a32" stroke="#2c5247" stroke-width="2"/><text x="840" y="200" text-anchor="middle">Robot fleet</text><text class="sub" x="840" y="244" text-anchor="middle">minimal payload</text></g><g class="hot"><rect x="1038" y="120" width="296" height="180" rx="20" fill="#c1de94" stroke="#c1de94" stroke-width="2"/><text x="1186" y="200" text-anchor="middle">Lift gate</text><text class="sub" x="1186" y="244" text-anchor="middle">allow · hold · deny</text></g><g class=""><rect x="1384" y="120" width="296" height="180" rx="20" fill="#153a32" stroke="#2c5247" stroke-width="2"/><text x="1532" y="200" text-anchor="middle">Ward scan</text><text class="sub" x="1532" y="244" text-anchor="middle">one receipt</text></g><path d="M300 210 H338" stroke="#b4c8ba" stroke-width="3"/><path d="M330 200 l12 10 l-12 10z" fill="#b4c8ba"/><path d="M646 210 H684" stroke="#b4c8ba" stroke-width="3"/><path d="M676 200 l12 10 l-12 10z" fill="#b4c8ba"/><path d="M992 210 H1030" stroke="#b4c8ba" stroke-width="3"/><path d="M1022 200 l12 10 l-12 10z" fill="#b4c8ba"/><path d="M1338 210 H1376" stroke="#b4c8ba" stroke-width="3"/><path d="M1368 200 l12 10 l-12 10z" fill="#b4c8ba"/><text class="sub" x="494" y="360" text-anchor="middle">forged or replayed: blocked</text><text class="sub" x="1186" y="360" text-anchor="middle">wrong floor or stale data: stopped</text><text class="sub" x="840" y="60" text-anchor="middle">Every decision is written to a tamper-evident log</text></svg>
+  </section>
+
+  <section class="slide">
+    <div class="kicker">Measured on simulated data</div>
+    <h2>What the tests show</h2>
+    <div class="cols">
+      <div class="stat"><div class="num">10/10</div><div class="label"><b>forged requests blocked</b><br>baseline blocked 1 of 10</div></div>
+      <div class="stat"><div class="num">100%</div><div class="label"><b>ward tasks kept during a flood</b><br>without containment: 51%</div></div>
+      <div class="stat"><div class="num">90/100</div><div class="label"><b>equipment holds detected</b><br>fixed threshold: 0 of 100</div></div>
+    </div>
+    <p class="tag">Fictional data, test rows written by the team. No hospital equipment was involved.</p>
+  </section>
+
+  <section class="slide">
+    <div class="kicker">What comes next</div>
+    <h2>From simulation to one real lift</h2>
+    <div class="row">
+      <div class="card"><h3>Supplier bench</h3><p>Replace the mock lift with a vendor interface.</p></div>
+      <div class="card"><h3>Independent test</h3><p>Outsiders write the attacks. We measure again.</p></div>
+      <div class="card"><h3>Supervised pilot</h3><p>One route, one lift, one hospital partner.</p></div>
+    </div>
+    <p class="tag">Code, tests and results: github.com/prostoNastya12/smart-roboward-healthcare-26-11</p>
+  </section>
+
+  <div id="bar" data-audit-skip></div>
+  <div id="clock" data-audit-skip>0:00</div>
+</div>
+
+<script>
+const stage = document.getElementById('stage');
+const slides = [...document.querySelectorAll('.slide')];
+const clock = document.getElementById('clock');
+let cur = 0, t0 = null;
+
+function fit() {
+  const s = Math.min(innerWidth / 1920, innerHeight / 1080);
+  stage.style.transform = `translate(-50%, -50%) scale(${s})`;
+}
+function go(i) {
+  cur = Math.max(0, Math.min(slides.length - 1, i));
+  slides.forEach((s, k) => {
+    const on = k === cur;
+    s.classList.toggle('active', on);
+    s.querySelectorAll('video').forEach(v => {
+      if (on && v.dataset.autoplay !== undefined) { v.currentTime = 0; v.play().catch(() => {}); }
+      else v.pause();
+    });
+  });
+  document.getElementById('bar').style.width = ((cur + 1) / slides.length * 100) + '%';
+  try { history.replaceState(null, '', '#' + (cur + 1)); } catch (e) {}
+}
+window.go = go;
+
+addEventListener('keydown', e => {
+  if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); if (t0 === null) t0 = Date.now(); go(cur + 1); }
+  else if (['ArrowLeft', 'PageUp'].includes(e.key)) go(cur - 1);
+  else if (e.key === 'f') document.documentElement.requestFullscreen?.();
+  else if (e.key === 'p') { const v = slides[cur].querySelector('video'); if (v) v.paused ? v.play() : v.pause(); }
+  else if (e.key === 'm') { const v = slides[cur].querySelector('video'); if (v) v.muted = !v.muted; }
+  else if (e.key === 't') clock.style.display = clock.style.display === 'block' ? 'none' : 'block';
+});
+setInterval(() => {
+  if (t0 === null) return;
+  const s = Math.floor((Date.now() - t0) / 1000);
+  clock.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}, 500);
+addEventListener('resize', fit);
+fit();
+go((parseInt(location.hash.slice(1)) || 1) - 1);
+
+// Layout audit. Returns [] when every slide is clean.
+window.runAudit = function () {
+  const issues = [], S = stage.getBoundingClientRect(), keep = cur;
+  const name = el => el.tagName.toLowerCase() +
+    (el.className && typeof el.className === 'string' ? '.' + el.className.trim().split(/\s+/).join('.') : '') +
+    ' "' + (el.textContent || '').trim().slice(0, 30) + '"';
+  slides.forEach((slide, i) => {
+    go(i);
+    const els = [slide, ...slide.querySelectorAll('*')].filter(e => !e.closest('[data-audit-skip]') && !(e.ownerSVGElement));
+    for (const el of els) {
+      const r = el.getBoundingClientRect();
+      if (!r.width || !r.height) continue;
+      if (r.left < S.left - 1 || r.top < S.top - 1 || r.right > S.right + 1 || r.bottom > S.bottom + 1)
+        issues.push({ slide: i + 1, type: 'off-stage', el: name(el) });
+      if (el.clientWidth && (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1))
+        issues.push({ slide: i + 1, type: 'content-overflow', el: name(el) });
+      const kids = [...el.children].filter(k => {
+        const cs = getComputedStyle(k);
+        return cs.position !== 'absolute' && cs.position !== 'fixed' && cs.display !== 'inline' &&
+          !k.closest('[data-audit-skip]') && k.getBoundingClientRect().width;
+      });
+      for (let a = 0; a < kids.length; a++) for (let b = a + 1; b < kids.length; b++) {
+        const A = kids[a].getBoundingClientRect(), B = kids[b].getBoundingClientRect();
+        if (Math.min(A.right, B.right) - Math.max(A.left, B.left) > 1 &&
+            Math.min(A.bottom, B.bottom) - Math.max(A.top, B.top) > 1)
+          issues.push({ slide: i + 1, type: 'overlap', el: name(kids[a]) + ' x ' + name(kids[b]) });
+      }
+    }
+    slide.querySelectorAll('video, img').forEach(m => {
+      const bad = m.tagName === 'IMG' ? (m.complete && !m.naturalWidth) : (!!m.error || m.networkState === 3);
+      if (bad) issues.push({ slide: i + 1, type: 'media-missing', el: m.getAttribute('src') });
+    });
+  });
+  go(keep);
+  return issues;
+};
+if (new URLSearchParams(location.search).has('audit'))
+  addEventListener('load', () => setTimeout(() => console.table(runAudit()), 600));
+</script>
+</body>
+</html>

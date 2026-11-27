@@ -23,7 +23,16 @@ Open [ward-safety/index.html](ward-safety/index.html) in any modern browser. It 
 
 **Trust study** shows the held-out results of 10,000 simulated missions and a route heatmap. A dashed grey lane was never observed. A blue lane was observed rarely. **Workflow review** replays a policy change, parcel custody checks and a two-vendor lift queue.
 
-The control room was written by the team with Claude. It reuses the imported fleet engine and clinic map. Every number comes from local simulation with fictional data. Rebuild with `node ward-safety/build.cjs` (needs Python 3 for the map and policy replay). The plan and current status are in [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md).
+The control room was written by the team with Claude. It reuses the imported fleet engine and clinic map. Every number comes from local simulation with fictional data. Rebuild with `node ward-safety/build.cjs` (needs Python 3 for the map and policy replay). The nurse's order passes the request gate from `gate/` before the robot is dispatched, and **Send a forged order** shows a refusal. The plan and current status are in [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md).
+
+## Pitch materials
+
+| File | Use |
+| --- | --- |
+| [presentation/demo.html](presentation/demo.html) | Seven slides in one offline file. Arrows to move, `f` fullscreen, `p` play or pause, `m` sound, `t` timer |
+| [presentation/SCRIPT.md](presentation/SCRIPT.md) | Talk track, about four minutes |
+| [presentation/media/smart-roboward-demo-v1.mp4](presentation/media/smart-roboward-demo-v1.mp4) | 76-second narrated fallback video, recorded from the real pages with a locally generated voice |
+| [docs/Zusammenfassung-DE.md](docs/Zusammenfassung-DE.md) | One-page German summary for the jury |
 
 ## Try a delivery and a security alert
 
@@ -53,7 +62,7 @@ The four team roles are product manager, robot developer, data scientist and a m
 
 The primary metric is **unauthorized requests stopped (%)**. Count each test case once.
 
-> **Status of these numbers: imported fixture replay, unverified.** The saved Python run reports **10 of 10** unauthorized cases stopped and **10 of 10** legitimate deliveries completed. Those counts come from replaying 20 scripted fixture cases and comparing them with expected outcomes that were written together with the fixtures. They show that the fixtures and the replay logic agree. They are **not** an independent security measurement, and the replay's checks are not a real authentication gate. The team has not yet independently measured any security method. The planned five-method benchmark is in [HACKATHON.md](HACKATHON.md) and [experiments/](experiments/). The three interactive sensor examples in the 3D console demonstrate how the operator sees and responds to an anomaly. All data is fictional and simulated.
+> **Status of these numbers: imported fixture replay, unverified.** The saved Python run reports **10 of 10** unauthorized cases stopped and **10 of 10** legitimate deliveries completed. Those counts come from replaying 20 scripted fixture cases and comparing them with expected outcomes that were written together with the fixtures. They show that the fixtures and the replay logic agree. They are **not** an independent security measurement, and the replay's checks are not a real authentication gate. The team has since measured its own five-method request gate with its own script on rows it wrote itself: [results](experiments/runs/latest/results.json), summarised in [HACKATHON.md](HACKATHON.md). That is a separate measurement from this fixture replay. The three interactive sensor examples in the 3D console demonstrate how the operator sees and responds to an anomaly. All data is fictional and simulated.
 
 ## Rebuild and run the tests
 
