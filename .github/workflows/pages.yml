@@ -1,0 +1,46 @@
+name: Deploy site to GitHub Pages
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      # Publish only the intended static files (no build step needed).
+      # shared-lift-replay.html is an HTML fragment, not a standalone page, so it is excluded.
+      - name: Stage site files
+        run: |
+          mkdir _site
+          cp site/index.html _site/
+          cp output/visualizations/Clinic-World.html \
+             output/visualizations/Clinic-World.glb \
+             output/visualizations/Clinic-World-3D.png \
+             output/visualizations/Smart-RoboWard-replay.html _site/
+          touch _site/.nojekyll
+          ls -la _site
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deployment
+        uses: actions/deploy-pages@v4
