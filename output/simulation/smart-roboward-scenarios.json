@@ -1,0 +1,2321 @@
+{
+  "title": "Smart RoboWard C09 simulation inputs",
+  "format_version": 1,
+  "description": "Independent, fictional safety and custody scenarios for a local hospital delivery controller. Published aggregate reference values and an open clinic map have separate provenance.",
+  "sources": {
+    "study": {
+      "title": "Li et al., Scientific Reports (2026), Application management and effectiveness analysis of intelligent logistics robots in hospital drug and specimen delivery scenarios",
+      "url": "https://doi.org/10.1038/s41598-026-49800-9",
+      "sections": "System configuration and robot design, Table 2 (routine delivery times), Table 3 (monthly fleet trip counts), and Data availability.",
+      "access": "Published aggregate values. Individual records restricted for privacy and hospital operational confidentiality; corresponding author Xiaomei Liu can consider requests for anonymized data."
+    },
+    "saite": {
+      "title": "SAITE / Qilu Hospital of Shandong University, Qingdao, July 2024",
+      "url": "https://www.saiterobot.com/dongtai/382.html",
+      "scope": "Manufacturer describes a digital twin connected to RIDS for live positions, operating states, and tasks. No SAITE maps, models or logs are used here."
+    },
+    "open_rmf": {
+      "title": "Open-RMF Clinic World, rmf_demos_maps",
+      "demo": "https://github.com/open-rmf/rmf_demos#clinic-world",
+      "map": "https://github.com/open-rmf/rmf_demos/tree/main/rmf_demos_maps/maps/clinic",
+      "license": "Apache-2.0",
+      "map_git_blob_sha1": "14a230a632df735e9e7510da21f047c58b4d6bcb",
+      "drawing_git_blob_sha1": "d70b19db0db3ab9df87c84a4cacfbde63066ec73"
+    }
+  },
+  "published_reference": {
+    "source": "study",
+    "robot_model": "R0033-A1",
+    "fleet_size": 10,
+    "wards_served": 22,
+    "dimensions_as_reported_mm": [
+      785,
+      540,
+      1430
+    ],
+    "mass_kg": 145,
+    "payload_limit_kg": 200,
+    "battery_voltage_v": 24,
+    "battery_capacity_ah": 30,
+    "approx_runtime_h": 7,
+    "fleet_trips_by_month": {
+      "2025-06": 10500,
+      "2025-07": 12565,
+      "2025-08": 13112,
+      "2025-09": 13658,
+      "2025-10": 14204,
+      "2025-11": 14751
+    },
+    "routine_delivery_time_minutes": {
+      "pharmacy_to_ward": {
+        "robot_mean": 21,
+        "robot_sd": 4.2,
+        "manual_mean": 31,
+        "manual_sd": 6.2
+      },
+      "ward_to_laboratory": {
+        "robot_mean": 23,
+        "robot_sd": 4.6,
+        "manual_mean": 38,
+        "manual_sd": 7.2
+      }
+    },
+    "interpretation": "Table 3 counts trips across the study fleet each month. Table 2 reports end-to-end routine delivery times by route. Use the monthly totals for workload and the route times for delivery-duration benchmarks. The scenarios below are fictional."
+  },
+  "demo_world": {
+    "source": "open_rmf",
+    "map_file": "open-rmf/clinic.building.yaml",
+    "drawing_file": "open-rmf/clinic.png",
+    "shared_lift_id": "lift_1",
+    "levels": [
+      "L1",
+      "L2"
+    ],
+    "station_aliases": {
+      "PHARMACY": {
+        "level": "L1",
+        "waypoint": "L1_left_treatment_1"
+      },
+      "WARD-A": {
+        "level": "L2",
+        "waypoint": "L2_left_nurse_center"
+      },
+      "WARD-B": {
+        "level": "L2",
+        "waypoint": "L2_right_nurse_center"
+      }
+    },
+    "note": "The station roles and alias labels are fictional. The geometry is the Open-RMF demo clinic, independent of the Chinese hospitals. L3 in U06 is deliberately outside the mapped service area."
+  },
+  "replay": {
+    "clock": "seconds from the start of each independent scenario",
+    "reset": "Reset all state between cases. Process events in list order, even at identical timestamps. Supply initial_state and events to the system under test; reserve expected for scoring.",
+    "authorization": "At the hospital controller, the device must be active, the independent pharmacy dispatch must match the requested task, robot, ward and floor, and the requester's assigned wards must include the destination. Check the mock permit and allowed payload fields before releasing any data or granting a trip.",
+    "permit": "verified is a synthetic fixture for the outcome of a trusted signature check. Accept from valid_from_s (inclusive) until expires_at_s (exclusive); consume only on a grant. Identity and permit fields belong to the envelope, outside the business payload.",
+    "allowed_business_payload_fields": [
+      "task_id",
+      "destination"
+    ],
+    "private_test_marker": "FICTIONAL_PRIVATE_MARKER",
+    "private_check": "The marker exists only in U09's candidate gateway input. Record its number of appearances in robot, lift and routine-log outputs.",
+    "rate_limit": {
+      "max_robot_requests": 5,
+      "window_s": 60,
+      "window": "(now-60, now], including the current request; counted per robot. The threshold is an example for this demo."
+    },
+    "lift": "Local example policy: allow a robot only when lift state is ready, its update is at most 10 seconds old, the path is clear and no urgent transfer is active. A temporary hold leaves its permit unused. An urgent physical call is controlled independently by facilities.",
+    "urgent_delay_measurement": "For A05 and U02, measure seconds from the urgent call to acceptance by the independent lift controller. Subtract the same interval in a run with robot lift requests suppressed and identical facilities inputs. The target is zero added seconds. The scripted transfer-finished event gives the end of the clinical transfer; actual acceptance must be observed at the controller.",
+    "custody": "Loading transfers custody to the robot. A porter offer leaves custody with the robot until acceptance. Arrival alone does not complete delivery. Only a ward scan closes it; count duplicate scans with the same receipt ID once.",
+    "scoring": "Count unauthorized cases blocked safely out of 10 (denied by the independent controller, zero robot grants and zero private-marker disclosures). Count authorized cases completed by robot with one ward receipt out of 10. A manual delivery in U02 preserves custody and does not add to authorized robot completions.",
+    "unit_of_assessment": "One case, including its retries, is one task. A01–A10 are legitimate; U01–U10 are unauthorized requests. All timestamps, authorizations, identifiers, and expected results in scenarios are synthetic. observed is null until your team runs the case."
+  },
+  "scenarios": [
+    {
+      "case_id": "A01",
+      "title": "Routine pharmacy delivery to Ward B",
+      "cohort": "authorized_delivery",
+      "task_id": "T42",
+      "parcel_id": "BOX-042",
+      "initial_state": {
+        "pharmacy_dispatch": {
+          "task_id": "T42",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "pickup": "PHARMACY",
+          "destination": "WARD-B",
+          "dropoff_floor": "L2"
+        },
+        "device_registry": {
+          "SIM-R1": "active",
+          "SIM-R2": "active",
+          "SIM-R3": "unregistered"
+        },
+        "requester": {
+          "id": "DISPATCH-1",
+          "role": "pharmacy_dispatch",
+          "allowed_destinations": [
+            "WARD-A",
+            "WARD-B"
+          ]
+        },
+        "demo_permit": {
+          "id": "PERMIT-T42",
+          "task_id": "T42",
+          "robot_id": "SIM-R1",
+          "destination": "WARD-B",
+          "verified": true,
+          "valid_from_s": 0,
+          "expires_at_s": 240,
+          "used_at_s": null
+        },
+        "prior_robot_request_times_s": [],
+        "parcel_holder": "PHARMACY",
+        "route_clear": true,
+        "urgent_transfer_active": false,
+        "lift_status": "unknown"
+      },
+      "events": [
+        {
+          "t_s": 0,
+          "source": "pharmacy_scanner",
+          "type": "parcel_loaded",
+          "robot_id": "SIM-R1",
+          "parcel_id": "BOX-042"
+        },
+        {
+          "t_s": 118,
+          "source": "facilities_lift_sensor",
+          "type": "lift_state",
+          "lift_id": "lift_1",
+          "state": "ready"
+        },
+        {
+          "t_s": 120,
+          "source": "hospital_gateway",
+          "type": "robot_lift_request",
+          "request_id": "T42-1",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "permit_id": "PERMIT-T42",
+          "requested_dropoff_floor": "L2",
+          "payload": {
+            "task_id": "T42",
+            "destination": "WARD-B"
+          }
+        },
+        {
+          "t_s": 1240,
+          "source": "ward_dock",
+          "type": "parcel_arrived",
+          "parcel_id": "BOX-042",
+          "destination": "WARD-B",
+          "carrier": "SIM-R1"
+        },
+        {
+          "t_s": 1260,
+          "source": "ward_scanner",
+          "type": "receipt_scan",
+          "receipt_id": "REC-T42",
+          "parcel_id": "BOX-042",
+          "destination": "WARD-B"
+        }
+      ],
+      "expected": {
+        "robot_decisions": [
+          {
+            "request_id": "T42-1",
+            "decision": "allow",
+            "reason": "authorized"
+          }
+        ],
+        "robot_lift_grants": 1,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 1,
+        "final_parcel_holder": "WARD-B",
+        "completed_by": "robot",
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "observed": null
+    },
+    {
+      "case_id": "A02",
+      "title": "Routine delivery by the second registered robot to Ward A",
+      "cohort": "authorized_delivery",
+      "task_id": "T43",
+      "parcel_id": "BOX-043",
+      "initial_state": {
+        "pharmacy_dispatch": {
+          "task_id": "T43",
+          "robot_id": "SIM-R2",
+          "requester_id": "DISPATCH-1",
+          "pickup": "PHARMACY",
+          "destination": "WARD-A",
+          "dropoff_floor": "L2"
+        },
+        "device_registry": {
+          "SIM-R1": "active",
+          "SIM-R2": "active",
+          "SIM-R3": "unregistered"
+        },
+        "requester": {
+          "id": "DISPATCH-1",
+          "role": "pharmacy_dispatch",
+          "allowed_destinations": [
+            "WARD-A",
+            "WARD-B"
+          ]
+        },
+        "demo_permit": {
+          "id": "PERMIT-T43",
+          "task_id": "T43",
+          "robot_id": "SIM-R2",
+          "destination": "WARD-A",
+          "verified": true,
+          "valid_from_s": 0,
+          "expires_at_s": 240,
+          "used_at_s": null
+        },
+        "prior_robot_request_times_s": [],
+        "parcel_holder": "PHARMACY",
+        "route_clear": true,
+        "urgent_transfer_active": false,
+        "lift_status": "unknown"
+      },
+      "events": [
+        {
+          "t_s": 0,
+          "source": "pharmacy_scanner",
+          "type": "parcel_loaded",
+          "robot_id": "SIM-R2",
+          "parcel_id": "BOX-043"
+        },
+        {
+          "t_s": 118,
+          "source": "facilities_lift_sensor",
+          "type": "lift_state",
+          "lift_id": "lift_1",
+          "state": "ready"
+        },
+        {
+          "t_s": 120,
+          "source": "hospital_gateway",
+          "type": "robot_lift_request",
+          "request_id": "T43-1",
+          "robot_id": "SIM-R2",
+          "requester_id": "DISPATCH-1",
+          "permit_id": "PERMIT-T43",
+          "requested_dropoff_floor": "L2",
+          "payload": {
+            "task_id": "T43",
+            "destination": "WARD-A"
+          }
+        },
+        {
+          "t_s": 1135,
+          "source": "ward_dock",
+          "type": "parcel_arrived",
+          "parcel_id": "BOX-043",
+          "destination": "WARD-A",
+          "carrier": "SIM-R2"
+        },
+        {
+          "t_s": 1155,
+          "source": "ward_scanner",
+          "type": "receipt_scan",
+          "receipt_id": "REC-T43",
+          "parcel_id": "BOX-043",
+          "destination": "WARD-A"
+        }
+      ],
+      "expected": {
+        "robot_decisions": [
+          {
+            "request_id": "T43-1",
+            "decision": "allow",
+            "reason": "authorized"
+          }
+        ],
+        "robot_lift_grants": 1,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 1,
+        "final_parcel_holder": "WARD-A",
+        "completed_by": "robot",
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "observed": null
+    },
+    {
+      "case_id": "A03",
+      "title": "Obstacle at the lift, then route cleared by a staff check",
+      "cohort": "authorized_delivery",
+      "task_id": "T44",
+      "parcel_id": "BOX-044",
+      "initial_state": {
+        "pharmacy_dispatch": {
+          "task_id": "T44",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "pickup": "PHARMACY",
+          "destination": "WARD-B",
+          "dropoff_floor": "L2"
+        },
+        "device_registry": {
+          "SIM-R1": "active",
+          "SIM-R2": "active",
+          "SIM-R3": "unregistered"
+        },
+        "requester": {
+          "id": "DISPATCH-1",
+          "role": "pharmacy_dispatch",
+          "allowed_destinations": [
+            "WARD-A",
+            "WARD-B"
+          ]
+        },
+        "demo_permit": {
+          "id": "PERMIT-T44",
+          "task_id": "T44",
+          "robot_id": "SIM-R1",
+          "destination": "WARD-B",
+          "verified": true,
+          "valid_from_s": 0,
+          "expires_at_s": 240,
+          "used_at_s": null
+        },
+        "prior_robot_request_times_s": [],
+        "parcel_holder": "PHARMACY",
+        "route_clear": true,
+        "urgent_transfer_active": false,
+        "lift_status": "unknown"
+      },
+      "events": [
+        {
+          "t_s": 0,
+          "source": "pharmacy_scanner",
+          "type": "parcel_loaded",
+          "robot_id": "SIM-R1",
+          "parcel_id": "BOX-044"
+        },
+        {
+          "t_s": 115,
+          "source": "mock_robot_sensor",
+          "type": "obstacle_present",
+          "location": "lift_1_lobby"
+        },
+        {
+          "t_s": 118,
+          "source": "facilities_lift_sensor",
+          "type": "lift_state",
+          "lift_id": "lift_1",
+          "state": "ready"
+        },
+        {
+          "t_s": 120,
+          "source": "hospital_gateway",
+          "type": "robot_lift_request",
+          "request_id": "T44-1",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "permit_id": "PERMIT-T44",
+          "requested_dropoff_floor": "L2",
+          "payload": {
+            "task_id": "T44",
+            "destination": "WARD-B"
+          }
+        },
+        {
+          "t_s": 151,
+          "source": "facilities",
+          "type": "route_verified_clear",
+          "location": "lift_1_lobby"
+        },
+        {
+          "t_s": 154,
+          "source": "facilities_lift_sensor",
+          "type": "lift_state",
+          "lift_id": "lift_1",
+          "state": "ready"
+        },
+        {
+          "t_s": 155,
+          "source": "hospital_gateway",
+          "type": "robot_lift_request",
+          "request_id": "T44-2",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "permit_id": "PERMIT-T44",
+          "requested_dropoff_floor": "L2",
+          "payload": {
+            "task_id": "T44",
+            "destination": "WARD-B"
+          }
+        },
+        {
+          "t_s": 1340,
+          "source": "ward_dock",
+          "type": "parcel_arrived",
+          "parcel_id": "BOX-044",
+          "destination": "WARD-B",
+          "carrier": "SIM-R1"
+        },
+        {
+          "t_s": 1360,
+          "source": "ward_scanner",
+          "type": "receipt_scan",
+          "receipt_id": "REC-T44",
+          "parcel_id": "BOX-044",
+          "destination": "WARD-B"
+        }
+      ],
+      "expected": {
+        "robot_decisions": [
+          {
+            "request_id": "T44-1",
+            "decision": "hold",
+            "reason": "route_obstructed"
+          },
+          {
+            "request_id": "T44-2",
+            "decision": "allow",
+            "reason": "authorized"
+          }
+        ],
+        "robot_lift_grants": 1,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 1,
+        "final_parcel_holder": "WARD-B",
+        "completed_by": "robot",
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "observed": null
+    },
+    {
+      "case_id": "A04",
+      "title": "Freshness boundary: last lift update exactly 10 seconds old",
+      "cohort": "authorized_delivery",
+      "task_id": "T45",
+      "parcel_id": "BOX-045",
+      "initial_state": {
+        "pharmacy_dispatch": {
+          "task_id": "T45",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "pickup": "PHARMACY",
+          "destination": "WARD-B",
+          "dropoff_floor": "L2"
+        },
+        "device_registry": {
+          "SIM-R1": "active",
+          "SIM-R2": "active",
+          "SIM-R3": "unregistered"
+        },
+        "requester": {
+          "id": "DISPATCH-1",
+          "role": "pharmacy_dispatch",
+          "allowed_destinations": [
+            "WARD-A",
+            "WARD-B"
+          ]
+        },
+        "demo_permit": {
+          "id": "PERMIT-T45",
+          "task_id": "T45",
+          "robot_id": "SIM-R1",
+          "destination": "WARD-B",
+          "verified": true,
+          "valid_from_s": 0,
+          "expires_at_s": 240,
+          "used_at_s": null
+        },
+        "prior_robot_request_times_s": [],
+        "parcel_holder": "PHARMACY",
+        "route_clear": true,
+        "urgent_transfer_active": false,
+        "lift_status": "unknown"
+      },
+      "events": [
+        {
+          "t_s": 0,
+          "source": "pharmacy_scanner",
+          "type": "parcel_loaded",
+          "robot_id": "SIM-R1",
+          "parcel_id": "BOX-045"
+        },
+        {
+          "t_s": 110,
+          "source": "facilities_lift_sensor",
+          "type": "lift_state",
+          "lift_id": "lift_1",
+          "state": "ready"
+        },
+        {
+          "t_s": 120,
+          "source": "hospital_gateway",
+          "type": "robot_lift_request",
+          "request_id": "T45-1",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "permit_id": "PERMIT-T45",
+          "requested_dropoff_floor": "L2",
+          "payload": {
+            "task_id": "T45",
+            "destination": "WARD-B"
+          }
+        },
+        {
+          "t_s": 1170,
+          "source": "ward_dock",
+          "type": "parcel_arrived",
+          "parcel_id": "BOX-045",
+          "destination": "WARD-B",
+          "carrier": "SIM-R1"
+        },
+        {
+          "t_s": 1190,
+          "source": "ward_scanner",
+          "type": "receipt_scan",
+          "receipt_id": "REC-T45",
+          "parcel_id": "BOX-045",
+          "destination": "WARD-B"
+        }
+      ],
+      "expected": {
+        "robot_decisions": [
+          {
+            "request_id": "T45-1",
+            "decision": "allow",
+            "reason": "authorized"
+          }
+        ],
+        "robot_lift_grants": 1,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 1,
+        "final_parcel_holder": "WARD-B",
+        "completed_by": "robot",
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "observed": null
+    },
+    {
+      "case_id": "A05",
+      "title": "Urgent patient transfer takes the lift before a legitimate robot",
+      "cohort": "authorized_delivery",
+      "task_id": "T46",
+      "parcel_id": "BOX-046",
+      "initial_state": {
+        "pharmacy_dispatch": {
+          "task_id": "T46",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "pickup": "PHARMACY",
+          "destination": "WARD-B",
+          "dropoff_floor": "L2"
+        },
+        "device_registry": {
+          "SIM-R1": "active",
+          "SIM-R2": "active",
+          "SIM-R3": "unregistered"
+        },
+        "requester": {
+          "id": "DISPATCH-1",
+          "role": "pharmacy_dispatch",
+          "allowed_destinations": [
+            "WARD-A",
+            "WARD-B"
+          ]
+        },
+        "demo_permit": {
+          "id": "PERMIT-T46",
+          "task_id": "T46",
+          "robot_id": "SIM-R1",
+          "destination": "WARD-B",
+          "verified": true,
+          "valid_from_s": 0,
+          "expires_at_s": 240,
+          "used_at_s": null
+        },
+        "prior_robot_request_times_s": [],
+        "parcel_holder": "PHARMACY",
+        "route_clear": true,
+        "urgent_transfer_active": false,
+        "lift_status": "unknown"
+      },
+      "events": [
+        {
+          "t_s": 0,
+          "source": "pharmacy_scanner",
+          "type": "parcel_loaded",
+          "robot_id": "SIM-R1",
+          "parcel_id": "BOX-046"
+        },
+        {
+          "t_s": 118,
+          "source": "facilities_lift_sensor",
+          "type": "lift_state",
+          "lift_id": "lift_1",
+          "state": "ready"
+        },
+        {
+          "t_s": 119,
+          "source": "physical_priority_button",
+          "type": "urgent_transfer_requested",
+          "call_id": "URG-T46",
+          "lift_id": "lift_1"
+        },
+        {
+          "t_s": 120,
+          "source": "hospital_gateway",
+          "type": "robot_lift_request",
+          "request_id": "T46-1",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "permit_id": "PERMIT-T46",
+          "requested_dropoff_floor": "L2",
+          "payload": {
+            "task_id": "T46",
+            "destination": "WARD-B"
+          }
+        },
+        {
+          "t_s": 150,
+          "source": "facilities",
+          "type": "urgent_transfer_finished",
+          "call_id": "URG-T46",
+          "lift_id": "lift_1"
+        },
+        {
+          "t_s": 154,
+          "source": "facilities_lift_sensor",
+          "type": "lift_state",
+          "lift_id": "lift_1",
+          "state": "ready"
+        },
+        {
+          "t_s": 155,
+          "source": "hospital_gateway",
+          "type": "robot_lift_request",
+          "request_id": "T46-2",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "permit_id": "PERMIT-T46",
+          "requested_dropoff_floor": "L2",
+          "payload": {
+            "task_id": "T46",
+            "destination": "WARD-B"
+          }
+        },
+        {
+          "t_s": 1420,
+          "source": "ward_dock",
+          "type": "parcel_arrived",
+          "parcel_id": "BOX-046",
+          "destination": "WARD-B",
+          "carrier": "SIM-R1"
+        },
+        {
+          "t_s": 1440,
+          "source": "ward_scanner",
+          "type": "receipt_scan",
+          "receipt_id": "REC-T46",
+          "parcel_id": "BOX-046",
+          "destination": "WARD-B"
+        }
+      ],
+      "expected": {
+        "robot_decisions": [
+          {
+            "request_id": "T46-1",
+            "decision": "hold",
+            "reason": "urgent_transfer_active"
+          },
+          {
+            "request_id": "T46-2",
+            "decision": "allow",
+            "reason": "authorized"
+          }
+        ],
+        "robot_lift_grants": 1,
+        "urgent_calls_served": 1,
+        "robot_caused_urgent_delay_s": 0,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 1,
+        "final_parcel_holder": "WARD-B",
+        "completed_by": "robot",
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "observed": null
+    },
+    {
+      "case_id": "A06",
+      "title": "The ward scanner repeats the same receipt",
+      "cohort": "authorized_delivery",
+      "task_id": "T47",
+      "parcel_id": "BOX-047",
+      "initial_state": {
+        "pharmacy_dispatch": {
+          "task_id": "T47",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "pickup": "PHARMACY",
+          "destination": "WARD-B",
+          "dropoff_floor": "L2"
+        },
+        "device_registry": {
+          "SIM-R1": "active",
+          "SIM-R2": "active",
+          "SIM-R3": "unregistered"
+        },
+        "requester": {
+          "id": "DISPATCH-1",
+          "role": "pharmacy_dispatch",
+          "allowed_destinations": [
+            "WARD-A",
+            "WARD-B"
+          ]
+        },
+        "demo_permit": {
+          "id": "PERMIT-T47",
+          "task_id": "T47",
+          "robot_id": "SIM-R1",
+          "destination": "WARD-B",
+          "verified": true,
+          "valid_from_s": 0,
+          "expires_at_s": 240,
+          "used_at_s": null
+        },
+        "prior_robot_request_times_s": [],
+        "parcel_holder": "PHARMACY",
+        "route_clear": true,
+        "urgent_transfer_active": false,
+        "lift_status": "unknown"
+      },
+      "events": [
+        {
+          "t_s": 0,
+          "source": "pharmacy_scanner",
+          "type": "parcel_loaded",
+          "robot_id": "SIM-R1",
+          "parcel_id": "BOX-047"
+        },
+        {
+          "t_s": 118,
+          "source": "facilities_lift_sensor",
+          "type": "lift_state",
+          "lift_id": "lift_1",
+          "state": "ready"
+        },
+        {
+          "t_s": 120,
+          "source": "hospital_gateway",
+          "type": "robot_lift_request",
+          "request_id": "T47-1",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "permit_id": "PERMIT-T47",
+          "requested_dropoff_floor": "L2",
+          "payload": {
+            "task_id": "T47",
+            "destination": "WARD-B"
+          }
+        },
+        {
+          "t_s": 1190,
+          "source": "ward_dock",
+          "type": "parcel_arrived",
+          "parcel_id": "BOX-047",
+          "destination": "WARD-B",
+          "carrier": "SIM-R1"
+        },
+        {
+          "t_s": 1210,
+          "source": "ward_scanner",
+          "type": "receipt_scan",
+          "receipt_id": "REC-T47",
+          "parcel_id": "BOX-047",
+          "destination": "WARD-B"
+        },
+        {
+          "t_s": 1213,
+          "source": "ward_scanner",
+          "type": "receipt_scan",
+          "receipt_id": "REC-T47",
+          "parcel_id": "BOX-047",
+          "destination": "WARD-B"
+        }
+      ],
+      "expected": {
+        "robot_decisions": [
+          {
+            "request_id": "T47-1",
+            "decision": "allow",
+            "reason": "authorized"
+          }
+        ],
+        "robot_lift_grants": 1,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 1,
+        "final_parcel_holder": "WARD-B",
+        "completed_by": "robot",
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "observed": null
+    },
+    {
+      "case_id": "A07",
+      "title": "Robot arrives before the ward accepts the parcel",
+      "cohort": "authorized_delivery",
+      "task_id": "T48",
+      "parcel_id": "BOX-048",
+      "initial_state": {
+        "pharmacy_dispatch": {
+          "task_id": "T48",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "pickup": "PHARMACY",
+          "destination": "WARD-B",
+          "dropoff_floor": "L2"
+        },
+        "device_registry": {
+          "SIM-R1": "active",
+          "SIM-R2": "active",
+          "SIM-R3": "unregistered"
+        },
+        "requester": {
+          "id": "DISPATCH-1",
+          "role": "pharmacy_dispatch",
+          "allowed_destinations": [
+            "WARD-A",
+            "WARD-B"
+          ]
+        },
+        "demo_permit": {
+          "id": "PERMIT-T48",
+          "task_id": "T48",
+          "robot_id": "SIM-R1",
+          "destination": "WARD-B",
+          "verified": true,
+          "valid_from_s": 0,
+          "expires_at_s": 240,
+          "used_at_s": null
+        },
+        "prior_robot_request_times_s": [],
+        "parcel_holder": "PHARMACY",
+        "route_clear": true,
+        "urgent_transfer_active": false,
+        "lift_status": "unknown"
+      },
+      "events": [
+        {
+          "t_s": 0,
+          "source": "pharmacy_scanner",
+          "type": "parcel_loaded",
+          "robot_id": "SIM-R1",
+          "parcel_id": "BOX-048"
+        },
+        {
+          "t_s": 118,
+          "source": "facilities_lift_sensor",
+          "type": "lift_state",
+          "lift_id": "lift_1",
+          "state": "ready"
+        },
+        {
+          "t_s": 120,
+          "source": "hospital_gateway",
+          "type": "robot_lift_request",
+          "request_id": "T48-1",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "permit_id": "PERMIT-T48",
+          "requested_dropoff_floor": "L2",
+          "payload": {
+            "task_id": "T48",
+            "destination": "WARD-B"
+          }
+        },
+        {
+          "t_s": 1240,
+          "source": "ward_dock",
+          "type": "parcel_arrived",
+          "parcel_id": "BOX-048",
+          "destination": "WARD-B",
+          "carrier": "SIM-R1"
+        },
+        {
+          "t_s": 1500,
+          "source": "ward_scanner",
+          "type": "receipt_scan",
+          "receipt_id": "REC-T48",
+          "parcel_id": "BOX-048",
+          "destination": "WARD-B"
+        }
+      ],
+      "expected": {
+        "robot_decisions": [
+          {
+            "request_id": "T48-1",
+            "decision": "allow",
+            "reason": "authorized"
+          }
+        ],
+        "robot_lift_grants": 1,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 1,
+        "final_parcel_holder": "WARD-B",
+        "completed_by": "robot",
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "observed": null
+    },
+    {
+      "case_id": "A08",
+      "title": "Lift maintenance ends and the same authorized trip retries",
+      "cohort": "authorized_delivery",
+      "task_id": "T49",
+      "parcel_id": "BOX-049",
+      "initial_state": {
+        "pharmacy_dispatch": {
+          "task_id": "T49",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "pickup": "PHARMACY",
+          "destination": "WARD-B",
+          "dropoff_floor": "L2"
+        },
+        "device_registry": {
+          "SIM-R1": "active",
+          "SIM-R2": "active",
+          "SIM-R3": "unregistered"
+        },
+        "requester": {
+          "id": "DISPATCH-1",
+          "role": "pharmacy_dispatch",
+          "allowed_destinations": [
+            "WARD-A",
+            "WARD-B"
+          ]
+        },
+        "demo_permit": {
+          "id": "PERMIT-T49",
+          "task_id": "T49",
+          "robot_id": "SIM-R1",
+          "destination": "WARD-B",
+          "verified": true,
+          "valid_from_s": 0,
+          "expires_at_s": 240,
+          "used_at_s": null
+        },
+        "prior_robot_request_times_s": [],
+        "parcel_holder": "PHARMACY",
+        "route_clear": true,
+        "urgent_transfer_active": false,
+        "lift_status": "unknown"
+      },
+      "events": [
+        {
+          "t_s": 0,
+          "source": "pharmacy_scanner",
+          "type": "parcel_loaded",
+          "robot_id": "SIM-R1",
+          "parcel_id": "BOX-049"
+        },
+        {
+          "t_s": 118,
+          "source": "facilities_lift_sensor",
+          "type": "lift_state",
+          "lift_id": "lift_1",
+          "state": "maintenance"
+        },
+        {
+          "t_s": 120,
+          "source": "hospital_gateway",
+          "type": "robot_lift_request",
+          "request_id": "T49-1",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "permit_id": "PERMIT-T49",
+          "requested_dropoff_floor": "L2",
+          "payload": {
+            "task_id": "T49",
+            "destination": "WARD-B"
+          }
+        },
+        {
+          "t_s": 154,
+          "source": "facilities_lift_sensor",
+          "type": "lift_state",
+          "lift_id": "lift_1",
+          "state": "ready"
+        },
+        {
+          "t_s": 155,
+          "source": "hospital_gateway",
+          "type": "robot_lift_request",
+          "request_id": "T49-2",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "permit_id": "PERMIT-T49",
+          "requested_dropoff_floor": "L2",
+          "payload": {
+            "task_id": "T49",
+            "destination": "WARD-B"
+          }
+        },
+        {
+          "t_s": 1540,
+          "source": "ward_dock",
+          "type": "parcel_arrived",
+          "parcel_id": "BOX-049",
+          "destination": "WARD-B",
+          "carrier": "SIM-R1"
+        },
+        {
+          "t_s": 1560,
+          "source": "ward_scanner",
+          "type": "receipt_scan",
+          "receipt_id": "REC-T49",
+          "parcel_id": "BOX-049",
+          "destination": "WARD-B"
+        }
+      ],
+      "expected": {
+        "robot_decisions": [
+          {
+            "request_id": "T49-1",
+            "decision": "hold",
+            "reason": "lift_unavailable"
+          },
+          {
+            "request_id": "T49-2",
+            "decision": "allow",
+            "reason": "authorized"
+          }
+        ],
+        "robot_lift_grants": 1,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 1,
+        "final_parcel_holder": "WARD-B",
+        "completed_by": "robot",
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "observed": null
+    },
+    {
+      "case_id": "A09",
+      "title": "Stale lift reading, followed by a fresh reading",
+      "cohort": "authorized_delivery",
+      "task_id": "T50",
+      "parcel_id": "BOX-050",
+      "initial_state": {
+        "pharmacy_dispatch": {
+          "task_id": "T50",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "pickup": "PHARMACY",
+          "destination": "WARD-B",
+          "dropoff_floor": "L2"
+        },
+        "device_registry": {
+          "SIM-R1": "active",
+          "SIM-R2": "active",
+          "SIM-R3": "unregistered"
+        },
+        "requester": {
+          "id": "DISPATCH-1",
+          "role": "pharmacy_dispatch",
+          "allowed_destinations": [
+            "WARD-A",
+            "WARD-B"
+          ]
+        },
+        "demo_permit": {
+          "id": "PERMIT-T50",
+          "task_id": "T50",
+          "robot_id": "SIM-R1",
+          "destination": "WARD-B",
+          "verified": true,
+          "valid_from_s": 0,
+          "expires_at_s": 240,
+          "used_at_s": null
+        },
+        "prior_robot_request_times_s": [],
+        "parcel_holder": "PHARMACY",
+        "route_clear": true,
+        "urgent_transfer_active": false,
+        "lift_status": "unknown"
+      },
+      "events": [
+        {
+          "t_s": 0,
+          "source": "pharmacy_scanner",
+          "type": "parcel_loaded",
+          "robot_id": "SIM-R1",
+          "parcel_id": "BOX-050"
+        },
+        {
+          "t_s": 109,
+          "source": "facilities_lift_sensor",
+          "type": "lift_state",
+          "lift_id": "lift_1",
+          "state": "ready"
+        },
+        {
+          "t_s": 120,
+          "source": "hospital_gateway",
+          "type": "robot_lift_request",
+          "request_id": "T50-1",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "permit_id": "PERMIT-T50",
+          "requested_dropoff_floor": "L2",
+          "payload": {
+            "task_id": "T50",
+            "destination": "WARD-B"
+          }
+        },
+        {
+          "t_s": 154,
+          "source": "facilities_lift_sensor",
+          "type": "lift_state",
+          "lift_id": "lift_1",
+          "state": "ready"
+        },
+        {
+          "t_s": 155,
+          "source": "hospital_gateway",
+          "type": "robot_lift_request",
+          "request_id": "T50-2",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "permit_id": "PERMIT-T50",
+          "requested_dropoff_floor": "L2",
+          "payload": {
+            "task_id": "T50",
+            "destination": "WARD-B"
+          }
+        },
+        {
+          "t_s": 1315,
+          "source": "ward_dock",
+          "type": "parcel_arrived",
+          "parcel_id": "BOX-050",
+          "destination": "WARD-B",
+          "carrier": "SIM-R1"
+        },
+        {
+          "t_s": 1335,
+          "source": "ward_scanner",
+          "type": "receipt_scan",
+          "receipt_id": "REC-T50",
+          "parcel_id": "BOX-050",
+          "destination": "WARD-B"
+        }
+      ],
+      "expected": {
+        "robot_decisions": [
+          {
+            "request_id": "T50-1",
+            "decision": "hold",
+            "reason": "stale_lift_update"
+          },
+          {
+            "request_id": "T50-2",
+            "decision": "allow",
+            "reason": "authorized"
+          }
+        ],
+        "robot_lift_grants": 1,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 1,
+        "final_parcel_holder": "WARD-B",
+        "completed_by": "robot",
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "observed": null
+    },
+    {
+      "case_id": "A10",
+      "title": "Newly registered replacement completes its assigned trip",
+      "cohort": "authorized_delivery",
+      "task_id": "T51",
+      "parcel_id": "BOX-051",
+      "initial_state": {
+        "pharmacy_dispatch": {
+          "task_id": "T51",
+          "robot_id": "SIM-R3",
+          "requester_id": "DISPATCH-1",
+          "pickup": "PHARMACY",
+          "destination": "WARD-B",
+          "dropoff_floor": "L2"
+        },
+        "device_registry": {
+          "SIM-R1": "revoked",
+          "SIM-R2": "active",
+          "SIM-R3": "active"
+        },
+        "requester": {
+          "id": "DISPATCH-1",
+          "role": "pharmacy_dispatch",
+          "allowed_destinations": [
+            "WARD-A",
+            "WARD-B"
+          ]
+        },
+        "demo_permit": {
+          "id": "PERMIT-T51",
+          "task_id": "T51",
+          "robot_id": "SIM-R3",
+          "destination": "WARD-B",
+          "verified": true,
+          "valid_from_s": 0,
+          "expires_at_s": 240,
+          "used_at_s": null
+        },
+        "prior_robot_request_times_s": [],
+        "parcel_holder": "PHARMACY",
+        "route_clear": true,
+        "urgent_transfer_active": false,
+        "lift_status": "unknown"
+      },
+      "events": [
+        {
+          "t_s": 0,
+          "source": "pharmacy_scanner",
+          "type": "parcel_loaded",
+          "robot_id": "SIM-R3",
+          "parcel_id": "BOX-051"
+        },
+        {
+          "t_s": 118,
+          "source": "facilities_lift_sensor",
+          "type": "lift_state",
+          "lift_id": "lift_1",
+          "state": "ready"
+        },
+        {
+          "t_s": 120,
+          "source": "hospital_gateway",
+          "type": "robot_lift_request",
+          "request_id": "T51-1",
+          "robot_id": "SIM-R3",
+          "requester_id": "DISPATCH-1",
+          "permit_id": "PERMIT-T51",
+          "requested_dropoff_floor": "L2",
+          "payload": {
+            "task_id": "T51",
+            "destination": "WARD-B"
+          }
+        },
+        {
+          "t_s": 1100,
+          "source": "ward_dock",
+          "type": "parcel_arrived",
+          "parcel_id": "BOX-051",
+          "destination": "WARD-B",
+          "carrier": "SIM-R3"
+        },
+        {
+          "t_s": 1120,
+          "source": "ward_scanner",
+          "type": "receipt_scan",
+          "receipt_id": "REC-T51",
+          "parcel_id": "BOX-051",
+          "destination": "WARD-B"
+        }
+      ],
+      "expected": {
+        "robot_decisions": [
+          {
+            "request_id": "T51-1",
+            "decision": "allow",
+            "reason": "authorized"
+          }
+        ],
+        "robot_lift_grants": 1,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 1,
+        "final_parcel_holder": "WARD-B",
+        "completed_by": "robot",
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "observed": null
+    },
+    {
+      "case_id": "U01",
+      "title": "Destination on the request differs from the assigned ward",
+      "cohort": "unauthorized_request",
+      "task_id": "T52",
+      "parcel_id": "BOX-052",
+      "initial_state": {
+        "pharmacy_dispatch": {
+          "task_id": "T52",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "pickup": "PHARMACY",
+          "destination": "WARD-B",
+          "dropoff_floor": "L2"
+        },
+        "device_registry": {
+          "SIM-R1": "active",
+          "SIM-R2": "active",
+          "SIM-R3": "unregistered"
+        },
+        "requester": {
+          "id": "DISPATCH-1",
+          "role": "pharmacy_dispatch",
+          "allowed_destinations": [
+            "WARD-A",
+            "WARD-B"
+          ]
+        },
+        "demo_permit": {
+          "id": "PERMIT-T52",
+          "task_id": "T52",
+          "robot_id": "SIM-R1",
+          "destination": "WARD-B",
+          "verified": true,
+          "valid_from_s": 0,
+          "expires_at_s": 240,
+          "used_at_s": null
+        },
+        "prior_robot_request_times_s": [],
+        "parcel_holder": "PHARMACY",
+        "route_clear": true,
+        "urgent_transfer_active": false,
+        "lift_status": "unknown"
+      },
+      "events": [
+        {
+          "t_s": 0,
+          "source": "pharmacy_scanner",
+          "type": "parcel_loaded",
+          "robot_id": "SIM-R1",
+          "parcel_id": "BOX-052"
+        },
+        {
+          "t_s": 118,
+          "source": "facilities_lift_sensor",
+          "type": "lift_state",
+          "lift_id": "lift_1",
+          "state": "ready"
+        },
+        {
+          "t_s": 120,
+          "source": "hospital_gateway",
+          "type": "robot_lift_request",
+          "request_id": "T52-1",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "permit_id": "PERMIT-T52",
+          "requested_dropoff_floor": "L2",
+          "payload": {
+            "task_id": "T52",
+            "destination": "WARD-A"
+          }
+        }
+      ],
+      "expected": {
+        "robot_decisions": [
+          {
+            "request_id": "T52-1",
+            "decision": "deny",
+            "reason": "destination_mismatch"
+          }
+        ],
+        "robot_lift_grants": 0,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 0,
+        "final_parcel_holder": "SIM-R1",
+        "completed_by": null,
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "observed": null
+    },
+    {
+      "case_id": "U02",
+      "title": "Robot revoked at the lift; urgent patient call and manual parcel handover",
+      "cohort": "unauthorized_request",
+      "task_id": "T53",
+      "parcel_id": "BOX-053",
+      "initial_state": {
+        "pharmacy_dispatch": {
+          "task_id": "T53",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "pickup": "PHARMACY",
+          "destination": "WARD-B",
+          "dropoff_floor": "L2"
+        },
+        "device_registry": {
+          "SIM-R1": "active",
+          "SIM-R2": "active",
+          "SIM-R3": "unregistered"
+        },
+        "requester": {
+          "id": "DISPATCH-1",
+          "role": "pharmacy_dispatch",
+          "allowed_destinations": [
+            "WARD-A",
+            "WARD-B"
+          ]
+        },
+        "demo_permit": {
+          "id": "PERMIT-T53",
+          "task_id": "T53",
+          "robot_id": "SIM-R1",
+          "destination": "WARD-B",
+          "verified": true,
+          "valid_from_s": 0,
+          "expires_at_s": 240,
+          "used_at_s": null
+        },
+        "prior_robot_request_times_s": [],
+        "parcel_holder": "PHARMACY",
+        "route_clear": true,
+        "urgent_transfer_active": false,
+        "lift_status": "unknown"
+      },
+      "events": [
+        {
+          "t_s": 0,
+          "source": "pharmacy_scanner",
+          "type": "parcel_loaded",
+          "robot_id": "SIM-R1",
+          "parcel_id": "BOX-053"
+        },
+        {
+          "t_s": 118,
+          "source": "facilities_lift_sensor",
+          "type": "lift_state",
+          "lift_id": "lift_1",
+          "state": "ready"
+        },
+        {
+          "t_s": 119,
+          "source": "hospital_registry",
+          "type": "device_revoked",
+          "robot_id": "SIM-R1"
+        },
+        {
+          "t_s": 119,
+          "source": "physical_priority_button",
+          "type": "urgent_transfer_requested",
+          "call_id": "URG-T53",
+          "lift_id": "lift_1"
+        },
+        {
+          "t_s": 120,
+          "source": "hospital_gateway",
+          "type": "robot_lift_request",
+          "request_id": "T53-1",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "permit_id": "PERMIT-T53",
+          "requested_dropoff_floor": "L2",
+          "payload": {
+            "task_id": "T53",
+            "destination": "WARD-B"
+          }
+        },
+        {
+          "t_s": 128,
+          "source": "logistics",
+          "type": "porter_handoff_offered",
+          "parcel_id": "BOX-053",
+          "porter_id": "SIM-PORTER"
+        },
+        {
+          "t_s": 150,
+          "source": "facilities",
+          "type": "urgent_transfer_finished",
+          "call_id": "URG-T53",
+          "lift_id": "lift_1"
+        },
+        {
+          "t_s": 160,
+          "source": "porter_scanner",
+          "type": "porter_handoff_accepted",
+          "parcel_id": "BOX-053",
+          "porter_id": "SIM-PORTER"
+        },
+        {
+          "t_s": 900,
+          "source": "ward_dock",
+          "type": "parcel_arrived",
+          "parcel_id": "BOX-053",
+          "destination": "WARD-B",
+          "carrier": "SIM-PORTER"
+        },
+        {
+          "t_s": 920,
+          "source": "ward_scanner",
+          "type": "receipt_scan",
+          "receipt_id": "REC-T53",
+          "parcel_id": "BOX-053",
+          "destination": "WARD-B"
+        }
+      ],
+      "expected": {
+        "robot_decisions": [
+          {
+            "request_id": "T53-1",
+            "decision": "deny",
+            "reason": "robot_revoked"
+          }
+        ],
+        "robot_lift_grants": 0,
+        "urgent_calls_served": 1,
+        "robot_caused_urgent_delay_s": 0,
+        "accepted_porter_handoffs": 1,
+        "distinct_ward_receipts": 1,
+        "final_parcel_holder": "WARD-B",
+        "completed_by": "porter",
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "observed": null
+    },
+    {
+      "case_id": "U03",
+      "title": "Permit reaches expiry exactly when the lift request arrives",
+      "cohort": "unauthorized_request",
+      "task_id": "T54",
+      "parcel_id": "BOX-054",
+      "initial_state": {
+        "pharmacy_dispatch": {
+          "task_id": "T54",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "pickup": "PHARMACY",
+          "destination": "WARD-B",
+          "dropoff_floor": "L2"
+        },
+        "device_registry": {
+          "SIM-R1": "active",
+          "SIM-R2": "active",
+          "SIM-R3": "unregistered"
+        },
+        "requester": {
+          "id": "DISPATCH-1",
+          "role": "pharmacy_dispatch",
+          "allowed_destinations": [
+            "WARD-A",
+            "WARD-B"
+          ]
+        },
+        "demo_permit": {
+          "id": "PERMIT-T54",
+          "task_id": "T54",
+          "robot_id": "SIM-R1",
+          "destination": "WARD-B",
+          "verified": true,
+          "valid_from_s": 0,
+          "expires_at_s": 120,
+          "used_at_s": null
+        },
+        "prior_robot_request_times_s": [],
+        "parcel_holder": "PHARMACY",
+        "route_clear": true,
+        "urgent_transfer_active": false,
+        "lift_status": "unknown"
+      },
+      "events": [
+        {
+          "t_s": 0,
+          "source": "pharmacy_scanner",
+          "type": "parcel_loaded",
+          "robot_id": "SIM-R1",
+          "parcel_id": "BOX-054"
+        },
+        {
+          "t_s": 118,
+          "source": "facilities_lift_sensor",
+          "type": "lift_state",
+          "lift_id": "lift_1",
+          "state": "ready"
+        },
+        {
+          "t_s": 120,
+          "source": "hospital_gateway",
+          "type": "robot_lift_request",
+          "request_id": "T54-1",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "permit_id": "PERMIT-T54",
+          "requested_dropoff_floor": "L2",
+          "payload": {
+            "task_id": "T54",
+            "destination": "WARD-B"
+          }
+        }
+      ],
+      "expected": {
+        "robot_decisions": [
+          {
+            "request_id": "T54-1",
+            "decision": "deny",
+            "reason": "permit_expired"
+          }
+        ],
+        "robot_lift_grants": 0,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 0,
+        "final_parcel_holder": "SIM-R1",
+        "completed_by": null,
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "observed": null
+    },
+    {
+      "case_id": "U04",
+      "title": "Permit has already been consumed",
+      "cohort": "unauthorized_request",
+      "task_id": "T55",
+      "parcel_id": "BOX-055",
+      "initial_state": {
+        "pharmacy_dispatch": {
+          "task_id": "T55",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "pickup": "PHARMACY",
+          "destination": "WARD-B",
+          "dropoff_floor": "L2"
+        },
+        "device_registry": {
+          "SIM-R1": "active",
+          "SIM-R2": "active",
+          "SIM-R3": "unregistered"
+        },
+        "requester": {
+          "id": "DISPATCH-1",
+          "role": "pharmacy_dispatch",
+          "allowed_destinations": [
+            "WARD-A",
+            "WARD-B"
+          ]
+        },
+        "demo_permit": {
+          "id": "PERMIT-T55",
+          "task_id": "T55",
+          "robot_id": "SIM-R1",
+          "destination": "WARD-B",
+          "verified": true,
+          "valid_from_s": 0,
+          "expires_at_s": 240,
+          "used_at_s": 60
+        },
+        "prior_robot_request_times_s": [],
+        "parcel_holder": "PHARMACY",
+        "route_clear": true,
+        "urgent_transfer_active": false,
+        "lift_status": "unknown"
+      },
+      "events": [
+        {
+          "t_s": 0,
+          "source": "pharmacy_scanner",
+          "type": "parcel_loaded",
+          "robot_id": "SIM-R1",
+          "parcel_id": "BOX-055"
+        },
+        {
+          "t_s": 118,
+          "source": "facilities_lift_sensor",
+          "type": "lift_state",
+          "lift_id": "lift_1",
+          "state": "ready"
+        },
+        {
+          "t_s": 120,
+          "source": "hospital_gateway",
+          "type": "robot_lift_request",
+          "request_id": "T55-1",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "permit_id": "PERMIT-T55",
+          "requested_dropoff_floor": "L2",
+          "payload": {
+            "task_id": "T55",
+            "destination": "WARD-B"
+          }
+        }
+      ],
+      "expected": {
+        "robot_decisions": [
+          {
+            "request_id": "T55-1",
+            "decision": "deny",
+            "reason": "permit_used"
+          }
+        ],
+        "robot_lift_grants": 0,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 0,
+        "final_parcel_holder": "SIM-R1",
+        "completed_by": null,
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "observed": null
+    },
+    {
+      "case_id": "U05",
+      "title": "Test attestation of permit authenticity is false",
+      "cohort": "unauthorized_request",
+      "task_id": "T56",
+      "parcel_id": "BOX-056",
+      "initial_state": {
+        "pharmacy_dispatch": {
+          "task_id": "T56",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "pickup": "PHARMACY",
+          "destination": "WARD-B",
+          "dropoff_floor": "L2"
+        },
+        "device_registry": {
+          "SIM-R1": "active",
+          "SIM-R2": "active",
+          "SIM-R3": "unregistered"
+        },
+        "requester": {
+          "id": "DISPATCH-1",
+          "role": "pharmacy_dispatch",
+          "allowed_destinations": [
+            "WARD-A",
+            "WARD-B"
+          ]
+        },
+        "demo_permit": {
+          "id": "PERMIT-T56",
+          "task_id": "T56",
+          "robot_id": "SIM-R1",
+          "destination": "WARD-B",
+          "verified": false,
+          "valid_from_s": 0,
+          "expires_at_s": 240,
+          "used_at_s": null
+        },
+        "prior_robot_request_times_s": [],
+        "parcel_holder": "PHARMACY",
+        "route_clear": true,
+        "urgent_transfer_active": false,
+        "lift_status": "unknown"
+      },
+      "events": [
+        {
+          "t_s": 0,
+          "source": "pharmacy_scanner",
+          "type": "parcel_loaded",
+          "robot_id": "SIM-R1",
+          "parcel_id": "BOX-056"
+        },
+        {
+          "t_s": 118,
+          "source": "facilities_lift_sensor",
+          "type": "lift_state",
+          "lift_id": "lift_1",
+          "state": "ready"
+        },
+        {
+          "t_s": 120,
+          "source": "hospital_gateway",
+          "type": "robot_lift_request",
+          "request_id": "T56-1",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "permit_id": "PERMIT-T56",
+          "requested_dropoff_floor": "L2",
+          "payload": {
+            "task_id": "T56",
+            "destination": "WARD-B"
+          }
+        }
+      ],
+      "expected": {
+        "robot_decisions": [
+          {
+            "request_id": "T56-1",
+            "decision": "deny",
+            "reason": "permit_unverified"
+          }
+        ],
+        "robot_lift_grants": 0,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 0,
+        "final_parcel_holder": "SIM-R1",
+        "completed_by": null,
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "observed": null
+    },
+    {
+      "case_id": "U06",
+      "title": "Lift drop-off requested on an unassigned floor",
+      "cohort": "unauthorized_request",
+      "task_id": "T57",
+      "parcel_id": "BOX-057",
+      "initial_state": {
+        "pharmacy_dispatch": {
+          "task_id": "T57",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "pickup": "PHARMACY",
+          "destination": "WARD-B",
+          "dropoff_floor": "L2"
+        },
+        "device_registry": {
+          "SIM-R1": "active",
+          "SIM-R2": "active",
+          "SIM-R3": "unregistered"
+        },
+        "requester": {
+          "id": "DISPATCH-1",
+          "role": "pharmacy_dispatch",
+          "allowed_destinations": [
+            "WARD-A",
+            "WARD-B"
+          ]
+        },
+        "demo_permit": {
+          "id": "PERMIT-T57",
+          "task_id": "T57",
+          "robot_id": "SIM-R1",
+          "destination": "WARD-B",
+          "verified": true,
+          "valid_from_s": 0,
+          "expires_at_s": 240,
+          "used_at_s": null
+        },
+        "prior_robot_request_times_s": [],
+        "parcel_holder": "PHARMACY",
+        "route_clear": true,
+        "urgent_transfer_active": false,
+        "lift_status": "unknown"
+      },
+      "events": [
+        {
+          "t_s": 0,
+          "source": "pharmacy_scanner",
+          "type": "parcel_loaded",
+          "robot_id": "SIM-R1",
+          "parcel_id": "BOX-057"
+        },
+        {
+          "t_s": 118,
+          "source": "facilities_lift_sensor",
+          "type": "lift_state",
+          "lift_id": "lift_1",
+          "state": "ready"
+        },
+        {
+          "t_s": 120,
+          "source": "hospital_gateway",
+          "type": "robot_lift_request",
+          "request_id": "T57-1",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "permit_id": "PERMIT-T57",
+          "requested_dropoff_floor": "L3",
+          "payload": {
+            "task_id": "T57",
+            "destination": "WARD-B"
+          }
+        }
+      ],
+      "expected": {
+        "robot_decisions": [
+          {
+            "request_id": "T57-1",
+            "decision": "deny",
+            "reason": "floor_mismatch"
+          }
+        ],
+        "robot_lift_grants": 0,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 0,
+        "final_parcel_holder": "SIM-R1",
+        "completed_by": null,
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "observed": null
+    },
+    {
+      "case_id": "U07",
+      "title": "Requester is assigned to Ward A only",
+      "cohort": "unauthorized_request",
+      "task_id": "T58",
+      "parcel_id": "BOX-058",
+      "initial_state": {
+        "pharmacy_dispatch": {
+          "task_id": "T58",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "pickup": "PHARMACY",
+          "destination": "WARD-B",
+          "dropoff_floor": "L2"
+        },
+        "device_registry": {
+          "SIM-R1": "active",
+          "SIM-R2": "active",
+          "SIM-R3": "unregistered"
+        },
+        "requester": {
+          "id": "DISPATCH-1",
+          "role": "pharmacy_dispatch",
+          "allowed_destinations": [
+            "WARD-A"
+          ]
+        },
+        "demo_permit": {
+          "id": "PERMIT-T58",
+          "task_id": "T58",
+          "robot_id": "SIM-R1",
+          "destination": "WARD-B",
+          "verified": true,
+          "valid_from_s": 0,
+          "expires_at_s": 240,
+          "used_at_s": null
+        },
+        "prior_robot_request_times_s": [],
+        "parcel_holder": "PHARMACY",
+        "route_clear": true,
+        "urgent_transfer_active": false,
+        "lift_status": "unknown"
+      },
+      "events": [
+        {
+          "t_s": 0,
+          "source": "pharmacy_scanner",
+          "type": "parcel_loaded",
+          "robot_id": "SIM-R1",
+          "parcel_id": "BOX-058"
+        },
+        {
+          "t_s": 118,
+          "source": "facilities_lift_sensor",
+          "type": "lift_state",
+          "lift_id": "lift_1",
+          "state": "ready"
+        },
+        {
+          "t_s": 120,
+          "source": "hospital_gateway",
+          "type": "robot_lift_request",
+          "request_id": "T58-1",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "permit_id": "PERMIT-T58",
+          "requested_dropoff_floor": "L2",
+          "payload": {
+            "task_id": "T58",
+            "destination": "WARD-B"
+          }
+        }
+      ],
+      "expected": {
+        "robot_decisions": [
+          {
+            "request_id": "T58-1",
+            "decision": "deny",
+            "reason": "requester_ward_not_allowed"
+          }
+        ],
+        "robot_lift_grants": 0,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 0,
+        "final_parcel_holder": "SIM-R1",
+        "completed_by": null,
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "observed": null
+    },
+    {
+      "case_id": "U08",
+      "title": "No independent pharmacy dispatch matches this task",
+      "cohort": "unauthorized_request",
+      "task_id": "T59",
+      "parcel_id": "BOX-059",
+      "initial_state": {
+        "pharmacy_dispatch": null,
+        "device_registry": {
+          "SIM-R1": "active",
+          "SIM-R2": "active",
+          "SIM-R3": "unregistered"
+        },
+        "requester": {
+          "id": "DISPATCH-1",
+          "role": "pharmacy_dispatch",
+          "allowed_destinations": [
+            "WARD-A",
+            "WARD-B"
+          ]
+        },
+        "demo_permit": {
+          "id": "PERMIT-T59",
+          "task_id": "T59",
+          "robot_id": "SIM-R1",
+          "destination": "WARD-B",
+          "verified": true,
+          "valid_from_s": 0,
+          "expires_at_s": 240,
+          "used_at_s": null
+        },
+        "prior_robot_request_times_s": [],
+        "parcel_holder": "PHARMACY",
+        "route_clear": true,
+        "urgent_transfer_active": false,
+        "lift_status": "unknown"
+      },
+      "events": [
+        {
+          "t_s": 0,
+          "source": "pharmacy_scanner",
+          "type": "parcel_loaded",
+          "robot_id": "SIM-R1",
+          "parcel_id": "BOX-059"
+        },
+        {
+          "t_s": 118,
+          "source": "facilities_lift_sensor",
+          "type": "lift_state",
+          "lift_id": "lift_1",
+          "state": "ready"
+        },
+        {
+          "t_s": 120,
+          "source": "hospital_gateway",
+          "type": "robot_lift_request",
+          "request_id": "T59-1",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "permit_id": "PERMIT-T59",
+          "requested_dropoff_floor": "L2",
+          "payload": {
+            "task_id": "T59",
+            "destination": "WARD-B"
+          }
+        }
+      ],
+      "expected": {
+        "robot_decisions": [
+          {
+            "request_id": "T59-1",
+            "decision": "deny",
+            "reason": "no_dispatch"
+          }
+        ],
+        "robot_lift_grants": 0,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 0,
+        "final_parcel_holder": "SIM-R1",
+        "completed_by": null,
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "observed": null
+    },
+    {
+      "case_id": "U09",
+      "title": "Additional fictional private field reaches the dispatch gateway",
+      "cohort": "unauthorized_request",
+      "task_id": "T60",
+      "parcel_id": "BOX-060",
+      "initial_state": {
+        "pharmacy_dispatch": {
+          "task_id": "T60",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "pickup": "PHARMACY",
+          "destination": "WARD-B",
+          "dropoff_floor": "L2"
+        },
+        "device_registry": {
+          "SIM-R1": "active",
+          "SIM-R2": "active",
+          "SIM-R3": "unregistered"
+        },
+        "requester": {
+          "id": "DISPATCH-1",
+          "role": "pharmacy_dispatch",
+          "allowed_destinations": [
+            "WARD-A",
+            "WARD-B"
+          ]
+        },
+        "demo_permit": {
+          "id": "PERMIT-T60",
+          "task_id": "T60",
+          "robot_id": "SIM-R1",
+          "destination": "WARD-B",
+          "verified": true,
+          "valid_from_s": 0,
+          "expires_at_s": 240,
+          "used_at_s": null
+        },
+        "prior_robot_request_times_s": [],
+        "parcel_holder": "PHARMACY",
+        "route_clear": true,
+        "urgent_transfer_active": false,
+        "lift_status": "unknown"
+      },
+      "events": [
+        {
+          "t_s": 0,
+          "source": "pharmacy_scanner",
+          "type": "parcel_loaded",
+          "robot_id": "SIM-R1",
+          "parcel_id": "BOX-060"
+        },
+        {
+          "t_s": 118,
+          "source": "facilities_lift_sensor",
+          "type": "lift_state",
+          "lift_id": "lift_1",
+          "state": "ready"
+        },
+        {
+          "t_s": 120,
+          "source": "hospital_gateway",
+          "type": "robot_lift_request",
+          "request_id": "T60-1",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "permit_id": "PERMIT-T60",
+          "requested_dropoff_floor": "L2",
+          "payload": {
+            "task_id": "T60",
+            "destination": "WARD-B",
+            "patient_name": "FICTIONAL_PRIVATE_MARKER"
+          }
+        }
+      ],
+      "expected": {
+        "robot_decisions": [
+          {
+            "request_id": "T60-1",
+            "decision": "deny",
+            "reason": "extra_payload_field"
+          }
+        ],
+        "robot_lift_grants": 0,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 0,
+        "final_parcel_holder": "SIM-R1",
+        "completed_by": null,
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "observed": null
+    },
+    {
+      "case_id": "U10",
+      "title": "The robot reaches the synthetic request limit",
+      "cohort": "unauthorized_request",
+      "task_id": "T61",
+      "parcel_id": "BOX-061",
+      "initial_state": {
+        "pharmacy_dispatch": {
+          "task_id": "T61",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "pickup": "PHARMACY",
+          "destination": "WARD-B",
+          "dropoff_floor": "L2"
+        },
+        "device_registry": {
+          "SIM-R1": "active",
+          "SIM-R2": "active",
+          "SIM-R3": "unregistered"
+        },
+        "requester": {
+          "id": "DISPATCH-1",
+          "role": "pharmacy_dispatch",
+          "allowed_destinations": [
+            "WARD-A",
+            "WARD-B"
+          ]
+        },
+        "demo_permit": {
+          "id": "PERMIT-T61",
+          "task_id": "T61",
+          "robot_id": "SIM-R1",
+          "destination": "WARD-B",
+          "verified": true,
+          "valid_from_s": 0,
+          "expires_at_s": 240,
+          "used_at_s": null
+        },
+        "prior_robot_request_times_s": [
+          66,
+          74,
+          85,
+          101,
+          110
+        ],
+        "parcel_holder": "PHARMACY",
+        "route_clear": true,
+        "urgent_transfer_active": false,
+        "lift_status": "unknown"
+      },
+      "events": [
+        {
+          "t_s": 0,
+          "source": "pharmacy_scanner",
+          "type": "parcel_loaded",
+          "robot_id": "SIM-R1",
+          "parcel_id": "BOX-061"
+        },
+        {
+          "t_s": 118,
+          "source": "facilities_lift_sensor",
+          "type": "lift_state",
+          "lift_id": "lift_1",
+          "state": "ready"
+        },
+        {
+          "t_s": 120,
+          "source": "hospital_gateway",
+          "type": "robot_lift_request",
+          "request_id": "T61-1",
+          "robot_id": "SIM-R1",
+          "requester_id": "DISPATCH-1",
+          "permit_id": "PERMIT-T61",
+          "requested_dropoff_floor": "L2",
+          "payload": {
+            "task_id": "T61",
+            "destination": "WARD-B"
+          }
+        }
+      ],
+      "expected": {
+        "robot_decisions": [
+          {
+            "request_id": "T61-1",
+            "decision": "deny",
+            "reason": "rate_limit"
+          }
+        ],
+        "robot_lift_grants": 0,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 0,
+        "final_parcel_holder": "SIM-R1",
+        "completed_by": null,
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "observed": null
+    }
+  ]
+}

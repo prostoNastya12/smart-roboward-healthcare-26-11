@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smart RoboWard | 3D Fleet Control</title>
+<style>
+  :root{color-scheme:light;--ink:#17292d;--muted:#496066;--line:#c6d2ce;--green:#006a5a;--paper:#f2f5f1}
+  *{box-sizing:border-box}
+  body{margin:0;color:var(--ink);background:var(--paper);font:16px/1.45 Inter,"Segoe UI",sans-serif}
+  main{max-width:1380px;margin:0 auto;padding:clamp(15px,3.4vw,48px)}
+  header,.toolbar,.foot,.status,.mode{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  header{justify-content:space-between;padding-bottom:16px;border-bottom:1px solid var(--line)}
+  h1{font-size:clamp(30px,4.1vw,56px);letter-spacing:-.055em;line-height:1.05;margin:0}
+  h2{font-size:18px;margin:0}p{margin:.35rem 0}
+  .by,.muted,.foot{color:var(--muted)}.by{font-size:14px;margin-bottom:4px}
+  a{color:var(--green);text-underline-offset:3px}
+  button,select{border:1px solid #91a4a0;background:white;border-radius:6px;color:var(--ink);font:inherit;padding:.5rem .8rem}
+  button{cursor:pointer}button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid #2565b1;outline-offset:3px}
+  .mode{gap:5px}.mode button[aria-pressed=true],#play{background:var(--ink);color:white;border-color:var(--ink)}
+  .toolbar{margin:18px 0}.toolbar label{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.toolbar input{accent-color:var(--green)}
+  .legend{display:flex;align-items:center;flex-wrap:wrap;gap:13px;font-size:14px;color:var(--muted);margin-inline-start:auto}
+  .legend span{display:inline-flex;gap:6px;align-items:center}.legend i{display:inline-block}
+  .key-robot{width:12px;height:12px;border-radius:50%;background:#113d79}.key-route{width:19px;height:3px;background:var(--green)}.key-parcel{width:10px;height:10px;background:#712770}
+  .media-pane{margin:0}.media-pane img{width:auto;max-width:100%;height:auto;max-height:70vh;display:block;margin:0 auto;background:white}
+  .media-stage{background:#fff;border:1px solid var(--line);border-radius:9px;padding:clamp(5px,1.3vw,18px)}
+  .media-pane figcaption,.caption{font-size:14px;color:var(--muted);margin:8px 0 0}
+  .maps{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .floor{margin:0;border:1px solid var(--line);border-radius:8px;background:#fff;overflow:hidden}
+  .floor figcaption{display:flex;align-items:baseline;gap:10px;border-bottom:1px solid #dde4e1;padding:9px 14px}
+  .floor figcaption span{font-size:14px;color:var(--muted)}
+  canvas{display:block;width:100%;aspect-ratio:1.38}
+  .controls{display:flex;align-items:center;gap:13px;margin-top:13px;flex-wrap:wrap}
+  .controls input{flex:1;min-width:120px;accent-color:var(--green)}
+  .status{justify-content:space-between;margin-top:12px;gap:7px}
+  .status strong{font-size:18px;font-weight:600}.status output{font-variant-numeric:tabular-nums;color:var(--muted)}
+  .foot{font-size:13px;border-top:1px solid var(--line);margin-top:20px;padding-top:12px;gap:16px}
+  #clinic-view{margin-top:18px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff}
+  .model-bar,.model-help{display:flex;align-items:center;justify-content:space-between;gap:8px 16px;flex-wrap:wrap;padding:9px 14px}
+  .model-bar{border-bottom:1px solid var(--line)}
+  .model-bar label,.model-actions,.model-help .zoom-buttons{display:flex;align-items:center;gap:7px}
+  .model-actions{flex-wrap:wrap}
+  #model-frame{position:relative;height:clamp(315px,65vh,780px);background:#e4eae6}
+  #model-canvas{display:block;width:100%;height:100%;aspect-ratio:auto;touch-action:none;cursor:grab}
+  #model-canvas:active{cursor:grabbing}#model-canvas:focus-visible{outline:3px solid #2565b1;outline-offset:-4px}
+  .model-help{font-size:14px;color:var(--muted);border-top:1px solid var(--line)}
+  .zoom-buttons button{padding:.26rem .6rem;min-width:36px;font-size:18px;line-height:1.2}
+  #model-message{position:absolute;left:14px;right:14px;bottom:10px;margin:0 auto;max-width:630px;background:white;padding:12px;border-radius:6px;text-align:center}
+  #clinic-view:fullscreen,#clinic-view.expanded{width:100%;height:100%;margin:0;display:flex;flex-direction:column;background:#fff;border:0;border-radius:0}
+  #clinic-view.expanded{position:fixed;inset:0;z-index:1000}
+  #clinic-view:fullscreen #model-frame,#clinic-view.expanded #model-frame{flex:1;min-height:0}
+  .model-credit{font-size:13px;color:var(--muted);margin:7px 0 0}
+  details pre{white-space:pre-wrap;font-size:12px}.foot details{max-width:100%}
+  [hidden]{display:none!important}
+  @media(max-width:740px){.maps{grid-template-columns:1fr}.toolbar{gap:9px}.media-pane img{max-height:68vh}.floor canvas{aspect-ratio:1.5}.mode button{font-size:15px}}
+</style>
+</head>
+<body><main>
+<header class="app-head"><div class="brand"><i class="brand-mark" aria-hidden="true"></i>Smart RoboWard</div>
+  <nav class="mode" aria-label="Visualization">
+    <button type="button" id="model-mode" aria-controls="model-panel" aria-pressed="true">Fleet console</button>
+    <button type="button" id="route-mode" aria-controls="route" aria-pressed="false">Case replay</button>
+    <button type="button" id="demo-mode" aria-controls="demo" aria-pressed="false">Open-RMF demo</button>
+  </nav>
+  <div class="sim-bar"><span><i class="sim-ind" aria-hidden="true"></i>Local simulation</span><time class="mono" id="fleet-clock">00:00</time><label class="sr-only" for="fleet-speed">Simulation speed</label><select id="fleet-speed"><option value="1">1×</option><option value="2" selected>2×</option><option value="4">4×</option></select></div>
+</header>
+<!-- fleet-panel -->
+<section id="demo" hidden aria-label="Open-RMF recordings">
+  <div class="toolbar"><label>View <select id="media-choice">
+    <option value="overview">Clinic overview</option><option value="lift">Robot taking the lift</option>
+    <option value="fleet">Two robot fleets</option></select></label>
+    <a id="original" href="https://github.com/open-rmf/rmf_demos/blob/media/clinic.png" target="_blank" rel="noopener noreferrer">Open original on GitHub</a>
+  </div>
+  <figure class="media-pane"><div class="media-stage">
+    <img id="official-image" alt="Open-RMF Clinic World in Traffic Editor, Gazebo and RViz">
+    <p id="media-error" hidden role="status">The recording needs an internet connection. The Smart RoboWard route opens offline.</p>
+  </div><figcaption id="media-caption"></figcaption></figure>
+</section>
+<section id="route" hidden aria-label="Smart RoboWard route on the Clinic World map">
+  <div class="toolbar"><label>Delivery <select id="case-choice"><option value="A01">A01 · Routine delivery</option><option value="U02">U02 · Urgent patient transfer</option></select></label>
+    <label><input type="checkbox" id="zoom"> Zoom to route</label>
+    <div class="legend" aria-label="Map symbols"><span><i class="key-robot" aria-hidden="true"></i>Robot</span><span><i class="key-route" aria-hidden="true"></i>Robot route</span><span id="parcel-key" hidden><i class="key-parcel" aria-hidden="true"></i>Parcel at ward</span></div>
+  </div>
+  <div class="maps">
+    <figure class="floor"><figcaption><h2>Floor 1</h2><span>Pharmacy and shared lift</span></figcaption><canvas id="map-l1" role="img" aria-label="Floor 1 route from the pharmacy to lift 1"></canvas></figure>
+    <figure class="floor"><figcaption><h2>Floor 2</h2><span>Shared lift and Ward B</span></figcaption><canvas id="map-l2" role="img" aria-label="Floor 2 route from lift 1 to the Ward B nurse station"></canvas></figure>
+  </div>
+  <div class="controls"><button id="play" type="button">Play route</button>
+    <input id="position" type="range" min="0" step="0.001" value="0" aria-label="Route playback position">
+  </div>
+  <div class="status" aria-live="polite"><strong id="action"></strong><output id="clock"></output></div>
+  <p class="caption" id="holder"></p>
+  <p class="caption">The plans and robot lanes come from Open-RMF. The pharmacy and Ward B are demo labels. Movement between events is illustrated.</p>
+</section>
+<footer class="foot"><a href="https://github.com/open-rmf/rmf_demos#clinic-world" target="_blank" rel="noopener noreferrer">Clinic World documentation</a>
+  <a href="https://github.com/open-rmf/rmf_demos/tree/main/rmf_demos_maps/maps/clinic" target="_blank" rel="noopener noreferrer">Source map</a>
+  <details><summary>Map license</summary><pre>{{MAP_LICENSE}}</pre></details>
+</footer>
+<img id="floor-drawing" hidden alt="" src="data:image/png;base64,{{MAP_PNG_BASE64}}">
+<script type="application/json" id="clinic-data">{"width":2326,"height":1939,"mapGitBlob":"14a230a632df735e9e7510da21f047c58b4d6bcb","drawingGitBlob":"d70b19db0db3ab9df87c84a4cacfbde63066ec73","routes":{"L1":[[375.127,505.417],[491.752,501.971],[577.26,431.925],[796.952,430.722],[1149.483,428.791],[1224.912,428.378],[1368.681,427.591],[1524.204,426.739],[1599.272,426.328],[1598.871,388.003],[1600.0,276.0]],"L2":[[1600.0,276.0],[1602.01,399.353],[1521.424,399.253],[1512.116,635.98],[1507.683,756.646]]},"vertexIds":{"L1":[384,393,394,396,444,416,399,401,405,404,370],"L2":[281,291,292,293,294]},"cases":{"A01":{"actions":[{"t_s":0,"event":"parcel_loaded","action":"Pharmacy loaded the parcel","parcel_holder":"SIM-R1"},{"t_s":118,"event":"lift_state","action":"Lift reported ready","parcel_holder":"SIM-R1"},{"t_s":120,"event":"robot_lift_request","action":"ALLOW robot trip (authorized)","parcel_holder":"SIM-R1"},{"t_s":1240,"event":"parcel_arrived","action":"Parcel arrived. Awaiting the ward scan","parcel_holder":"SIM-R1"},{"t_s":1260,"event":"receipt_scan","action":"Ward scan closed the delivery","parcel_holder":"WARD-B"}],"decision":"allow"},"U02":{"actions":[{"t_s":0,"event":"parcel_loaded","action":"Pharmacy loaded the parcel","parcel_holder":"SIM-R1"},{"t_s":118,"event":"lift_state","action":"Lift reported ready","parcel_holder":"SIM-R1"},{"t_s":119,"event":"device_revoked","action":"Hospital revoked the robot's permission","parcel_holder":"SIM-R1"},{"t_s":119,"event":"urgent_transfer_requested","action":"Lift accepted the urgent patient call","parcel_holder":"SIM-R1"},{"t_s":120,"event":"robot_lift_request","action":"DENY robot trip (robot revoked)","parcel_holder":"SIM-R1"},{"t_s":128,"event":"porter_handoff_offered","action":"Handoff offered. The robot still holds the parcel","parcel_holder":"SIM-R1"},{"t_s":150,"event":"urgent_transfer_finished","action":"Facilities confirmed the urgent transfer finished","parcel_holder":"SIM-R1"},{"t_s":160,"event":"porter_handoff_accepted","action":"Porter accepted custody","parcel_holder":"SIM-PORTER"},{"t_s":900,"event":"parcel_arrived","action":"Parcel arrived. Awaiting the ward scan","parcel_holder":"SIM-PORTER"},{"t_s":920,"event":"receipt_scan","action":"Ward scan closed the delivery","parcel_holder":"WARD-B"}],"decision":"deny"}}}</script>
+<!-- clinic-3d-assets:start -->
+<!-- clinic-3d-assets:end -->
+<script>
+"use strict";
+const el = id => document.getElementById(id);
+const data = JSON.parse(el("clinic-data").textContent);
+const media = {
+  overview: ["clinic.png","Open-RMF Clinic World in three tools","Floor 1 in Traffic Editor (upper left), the 3D clinic in Gazebo (lower left), and both floors in RViz (right)."],
+  lift: ["robot_taking_lift.gif","Open-RMF animation of a robot using a clinic lift","Open-RMF’s recorded lift demonstration."],
+  fleet: ["clinic.gif","Two robot fleets operating in Open-RMF Clinic World","Open-RMF’s recorded multi-fleet demonstration in the two-floor clinic."]
+};
+function loadMedia() {
+  const [file,alt,caption] = media[el("media-choice").value];
+  el("official-image").alt = alt;
+  el("media-caption").textContent = caption;
+  el("media-error").hidden = true;
+  el("official-image").hidden = false;
+  el("original").href = "https://github.com/open-rmf/rmf_demos/blob/media/" + file;
+  el("official-image").src = "https://raw.githubusercontent.com/open-rmf/rmf_demos/media/" + file;
+}
+el("official-image").addEventListener("error", () => {el("official-image").hidden = true; el("media-error").hidden = false;});
+el("media-choice").addEventListener("change",loadMedia);
+
+const colours = {route:"#006655",lift:"#965200",robot:"#113d79",parcel:"#712770",ink:"#17292d"};
+const owners = {"SIM-R1":"Robot","SIM-PORTER":"Porter","WARD-B":"Ward B"};
+const path1 = data.routes.L1, path2 = data.routes.L2;
+const approach = path1.slice(0,-1);
+const entrance = path1.slice(-2);
+const length = (a,b) => Math.hypot(b[0]-a[0],b[1]-a[1]);
+function along(points,ratio) {
+  const lengths = points.slice(1).map((p,i)=>length(p,points[i]));
+  let remaining = ratio * lengths.reduce((sum,n)=>sum+n,0);
+  for(let i=0;i<lengths.length;i++) {
+    if(remaining<=lengths[i] && lengths[i]>0) {
+      const k = remaining/lengths[i];
+      return [points[i][0]+(points[i+1][0]-points[i][0])*k, points[i][1]+(points[i+1][1]-points[i][1])*k];
+    }
+    remaining-=lengths[i];
+  }
+  return points[points.length-1];
+}
+let frames=[],position=0,playing=false,clockStart=0,animationId=0,lastStatus="";
+function makeFrames(id) {
+  const result=data.cases[id];
+  const list=[];
+  for(const row of result.actions) {
+    let site="lobby";
+    if(row.event==="parcel_loaded") site="pharmacy";
+    if(["parcel_arrived","receipt_scan"].includes(row.event) && result.decision==="allow") site="ward";
+    list.push({...row,site});
+    if(row.event==="robot_lift_request" && result.decision==="allow") {
+      list.push({action:"Robot enters lift 1",site:"lift1",parcel_holder:row.parcel_holder});
+      list.push({action:"Robot reaches floor 2 in lift 1",site:"lift2",parcel_holder:row.parcel_holder});
+    }
+  }
+  return list;
+}
+function robotPosition(site,next,mix) {
+  const lobby=approach[approach.length-1],ward=path2[path2.length-1];
+  if(site==="pharmacy") return ["L1",along(approach,next==="lobby"?mix:0)];
+  if(site==="lobby") return ["L1",next==="lift1"?along(entrance,mix):lobby];
+  if(site==="lift1") return next==="lift2" && mix>=0.5?["L2",path2[0]]:["L1",path1[path1.length-1]];
+  if(site==="lift2") return ["L2",along(path2,next==="ward"?mix:0)];
+  return ["L2",ward];
+}
+function mapFloor(level,f,next,mix) {
+  const canvas=el(level==="L1"?"map-l1":"map-l2");
+  const rect=canvas.getBoundingClientRect();
+  if(!rect.width || !rect.height) return;
+  const w=rect.width,h=rect.height,ratio=Math.min(window.devicePixelRatio||1,2);
+  if(canvas.width!==Math.round(w*ratio) || canvas.height!==Math.round(h*ratio)) {
+    canvas.width=Math.round(w*ratio);canvas.height=Math.round(h*ratio);
+  }
+  const ctx=canvas.getContext("2d");
+  ctx.setTransform(ratio,0,0,ratio,0,0);
+  ctx.fillStyle="white";ctx.fillRect(0,0,w,h);
+  const full=[0,0,data.width,data.height];
+  const box=el("zoom").checked ? (level==="L1"?[190,152,1620,660]:[1200,145,655,775]) : full;
+  const scale=Math.min(w/box[2],h/box[3]);
+  const dx=(w-box[2]*scale)/2-box[0]*scale,dy=(h-box[3]*scale)/2-box[1]*scale;
+  const xy=p=>[dx+p[0]*scale,dy+p[1]*scale];
+  const drawing=el("floor-drawing");
+  if(drawing.complete && drawing.naturalWidth) {
+    ctx.globalAlpha=.66;ctx.drawImage(drawing,dx,dy,data.width*scale,data.height*scale);ctx.globalAlpha=1;
+  }
+  function stroke(points) {
+    if(!points.length) return;
+    ctx.beginPath();points.forEach((p,i)=>{const [x,y]=xy(p);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});
+    ctx.lineCap="round";ctx.lineJoin="round";
+    ctx.strokeStyle="#fff";ctx.lineWidth=6;ctx.stroke();
+    ctx.strokeStyle=colours.route;ctx.lineWidth=3;ctx.stroke();
+  }
+  function pin(point,kind,label,yOffset) {
+    const [x,y]=xy(point);
+    ctx.save();ctx.lineWidth=2;ctx.strokeStyle="#fff";
+    ctx.fillStyle=kind==="lift"?colours.lift:colours.route;
+    ctx.beginPath();
+    if(kind==="lift")ctx.rect(x-4,y-4,8,8);else ctx.arc(x,y,5,0,Math.PI*2);
+    ctx.fill();ctx.stroke();
+    ctx.font='600 12px "Segoe UI",sans-serif';
+    const width=ctx.measureText(label).width+12;
+    const lx=Math.max(2,Math.min(w-width-2,x-width/2)),ly=Math.max(2,Math.min(h-22,y+yOffset));
+    ctx.fillStyle="#fff";ctx.fillRect(lx,ly,width,19);ctx.fillStyle=colours.ink;
+    ctx.textBaseline="middle";ctx.fillText(label,lx+6,ly+10);ctx.restore();
+  }
+  const stopped=data.cases[el("case-choice").value].decision==="deny";
+  if(level==="L1") {stroke(stopped?approach:path1);pin(path1[0],"station","Pharmacy",9);pin(path1[path1.length-1],"lift","Lift 1",-25);}
+  else {if(!stopped)stroke(path2);pin(path2[0],"lift","Lift 1",-25);pin(path2[path2.length-1],"station","Ward B",10);}
+  const [robotFloor,point]=robotPosition(f.site,next.site,mix);
+  if(robotFloor===level) {
+    const [x,y]=xy(point);
+    ctx.beginPath();ctx.arc(x,y,8,0,Math.PI*2);ctx.fillStyle=colours.robot;ctx.fill();ctx.strokeStyle="white";ctx.lineWidth=2;ctx.stroke();
+    ctx.beginPath();ctx.arc(x,y,2,0,Math.PI*2);ctx.fillStyle="white";ctx.fill();
+  }
+  if(level==="L2" && stopped && ["parcel_arrived","receipt_scan"].includes(f.event)) {
+    const [x,y]=xy(path2[path2.length-1]);ctx.fillStyle=colours.parcel;ctx.fillRect(x-5,y-5,10,10);ctx.strokeStyle="white";ctx.lineWidth=2;ctx.strokeRect(x-5,y-5,10,10);
+  }
+}
+function paint() {
+  if(!frames.length || el("route").hidden) return;
+  const index=Math.min(Math.floor(position),frames.length-1), f=frames[index],next=frames[Math.min(index+1,frames.length-1)];
+  mapFloor("L1",f,next,position-index);mapFloor("L2",f,next,position-index);
+  const key=el("case-choice").value+"-"+index;
+  if(lastStatus!==key) {
+    const time=f.t_s===undefined?"Illustrated lift movement":Math.floor(f.t_s/60)+" min "+String(f.t_s%60).padStart(2,"0")+" s · scenario time";
+    el("action").textContent=f.action;el("clock").textContent=time;
+    const holder=owners[f.parcel_holder]||f.parcel_holder;
+    el("holder").textContent="Parcel holder · "+holder+(holder==="Porter" && f.event!=="parcel_arrived"?"  |  Porter’s route is untracked.":"");
+    el("position").setAttribute("aria-valuetext",f.action+". Parcel holder "+holder);
+    el("parcel-key").hidden=el("case-choice").value!=="U02" || !["parcel_arrived","receipt_scan"].includes(f.event);
+    lastStatus=key;
+  }
+  el("position").value=position;
+}
+function pause() {
+  playing=false;cancelAnimationFrame(animationId);el("play").textContent=position>=frames.length-1?"Replay route":"Play route";
+}
+function animate(now) {
+  if(!playing) return;
+  position=Math.min(frames.length-1,(now-clockStart)/2400);
+  paint();
+  if(position>=frames.length-1) pause();else animationId=requestAnimationFrame(animate);
+}
+function resetCase() {
+  frames=makeFrames(el("case-choice").value);position=0;lastStatus="";el("position").max=frames.length-1;pause();paint();
+}
+function showView(view) {
+  if(view!=="route") pause();
+  document.title=view==="model-panel"?"Smart RoboWard | 3D Fleet Control":"Clinic World | Smart RoboWard";
+  for(const [panel,button] of [["model-panel","model-mode"],["demo","demo-mode"],["route","route-mode"]]){
+    const active=panel===view;
+    el(panel).hidden=!active;
+    el(button).setAttribute("aria-pressed",String(active));
+  }
+  if(view==="route") paint();
+  if(view==="demo" && !el("official-image").getAttribute("src"))loadMedia();
+  window.dispatchEvent(new CustomEvent("clinic3d:visibility",{detail:view==="model-panel"}));
+}
+el("play").addEventListener("click",()=>{
+  if(playing){pause();return;}
+  if(position>=frames.length-1)position=0;
+  playing=true;clockStart=performance.now()-position*2400;el("play").textContent="Pause";animationId=requestAnimationFrame(animate);
+});
+el("position").addEventListener("input",()=>{position=Number(el("position").value);pause();paint();});
+el("model-mode").addEventListener("click",()=>showView("model-panel"));
+el("demo-mode").addEventListener("click",()=>showView("demo"));
+el("route-mode").addEventListener("click",()=>showView("route"));
+el("case-choice").addEventListener("change",resetCase);
+el("zoom").addEventListener("change",paint);el("floor-drawing").addEventListener("load",paint);
+new ResizeObserver(paint).observe(el("map-l1"));new ResizeObserver(paint).observe(el("map-l2"));
+document.addEventListener("visibilitychange",()=>{if(document.hidden)pause();});
+resetCase();showView(location.hash==="#route"?"route":location.hash==="#demo"?"demo":"model-panel");
+</script>
+</main></body></html>

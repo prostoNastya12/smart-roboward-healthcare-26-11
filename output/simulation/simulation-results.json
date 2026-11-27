@@ -1,0 +1,2155 @@
+{
+  "scope": "Offline reference policy replay. Arrival and transfer-finished times are scripted. Priority calls are acknowledged in the same tick. Device identity, permit verification, scanners and lift sensors are simulated. No robot, lift, or 3D engine is connected.",
+  "input_sha256": "2f3d6851772fa7850829348e7ccbaeadadfc07e6b0b665a284cf19ba33e36ea4",
+  "summary": {
+    "unauthorized_stopped": 10,
+    "unauthorized_tested": 10,
+    "legitimate_completed": 10,
+    "legitimate_tested": 10,
+    "matching_cases": 20,
+    "cases": 20,
+    "events": 100
+  },
+  "cases": [
+    {
+      "case_id": "A01",
+      "title": "Routine pharmacy delivery to Ward B",
+      "cohort": "authorized_delivery",
+      "observed": {
+        "robot_decisions": [
+          {
+            "request_id": "T42-1",
+            "decision": "allow",
+            "reason": "authorized"
+          }
+        ],
+        "robot_lift_grants": 1,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 1,
+        "final_parcel_holder": "WARD-B",
+        "completed_by": "robot",
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "matches_expected": true,
+      "differences": {},
+      "timeline": [
+        {
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "ALLOW robot trip (authorized)",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 1240,
+          "event": "parcel_arrived",
+          "action": "Parcel arrived. Awaiting the ward scan",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 1260,
+          "event": "receipt_scan",
+          "action": "Ward scan closed the delivery",
+          "parcel_holder": "WARD-B"
+        }
+      ],
+      "downstream_outputs": [
+        {
+          "channel": "routine_log",
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "channel": "robot",
+          "request_id": "T42-1",
+          "decision": "allow",
+          "reason": "authorized"
+        },
+        {
+          "t_s": 120,
+          "channel": "lift",
+          "type": "grant",
+          "task_id": "T42",
+          "destination": "WARD-B",
+          "floor": "L2"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "ALLOW robot trip (authorized)",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 1240,
+          "event": "parcel_arrived",
+          "action": "Parcel arrived. Awaiting the ward scan",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 1260,
+          "event": "receipt_scan",
+          "action": "Ward scan closed the delivery",
+          "parcel_holder": "WARD-B"
+        }
+      ]
+    },
+    {
+      "case_id": "A02",
+      "title": "Routine delivery by the second registered robot to Ward A",
+      "cohort": "authorized_delivery",
+      "observed": {
+        "robot_decisions": [
+          {
+            "request_id": "T43-1",
+            "decision": "allow",
+            "reason": "authorized"
+          }
+        ],
+        "robot_lift_grants": 1,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 1,
+        "final_parcel_holder": "WARD-A",
+        "completed_by": "robot",
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "matches_expected": true,
+      "differences": {},
+      "timeline": [
+        {
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R2"
+        },
+        {
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R2"
+        },
+        {
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "ALLOW robot trip (authorized)",
+          "parcel_holder": "SIM-R2"
+        },
+        {
+          "t_s": 1135,
+          "event": "parcel_arrived",
+          "action": "Parcel arrived. Awaiting the ward scan",
+          "parcel_holder": "SIM-R2"
+        },
+        {
+          "t_s": 1155,
+          "event": "receipt_scan",
+          "action": "Ward scan closed the delivery",
+          "parcel_holder": "WARD-A"
+        }
+      ],
+      "downstream_outputs": [
+        {
+          "channel": "routine_log",
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R2"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R2"
+        },
+        {
+          "t_s": 120,
+          "channel": "robot",
+          "request_id": "T43-1",
+          "decision": "allow",
+          "reason": "authorized"
+        },
+        {
+          "t_s": 120,
+          "channel": "lift",
+          "type": "grant",
+          "task_id": "T43",
+          "destination": "WARD-A",
+          "floor": "L2"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "ALLOW robot trip (authorized)",
+          "parcel_holder": "SIM-R2"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 1135,
+          "event": "parcel_arrived",
+          "action": "Parcel arrived. Awaiting the ward scan",
+          "parcel_holder": "SIM-R2"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 1155,
+          "event": "receipt_scan",
+          "action": "Ward scan closed the delivery",
+          "parcel_holder": "WARD-A"
+        }
+      ]
+    },
+    {
+      "case_id": "A03",
+      "title": "Obstacle at the lift, then route cleared by a staff check",
+      "cohort": "authorized_delivery",
+      "observed": {
+        "robot_decisions": [
+          {
+            "request_id": "T44-1",
+            "decision": "hold",
+            "reason": "route_obstructed"
+          },
+          {
+            "request_id": "T44-2",
+            "decision": "allow",
+            "reason": "authorized"
+          }
+        ],
+        "robot_lift_grants": 1,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 1,
+        "final_parcel_holder": "WARD-B",
+        "completed_by": "robot",
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "matches_expected": true,
+      "differences": {},
+      "timeline": [
+        {
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 115,
+          "event": "obstacle_present",
+          "action": "Sensor reported an obstacle",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "HOLD robot trip (route obstructed)",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 151,
+          "event": "route_verified_clear",
+          "action": "Facilities cleared the route",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 154,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 155,
+          "event": "robot_lift_request",
+          "action": "ALLOW robot trip (authorized)",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 1340,
+          "event": "parcel_arrived",
+          "action": "Parcel arrived. Awaiting the ward scan",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 1360,
+          "event": "receipt_scan",
+          "action": "Ward scan closed the delivery",
+          "parcel_holder": "WARD-B"
+        }
+      ],
+      "downstream_outputs": [
+        {
+          "channel": "routine_log",
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 115,
+          "event": "obstacle_present",
+          "action": "Sensor reported an obstacle",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "channel": "robot",
+          "request_id": "T44-1",
+          "decision": "hold",
+          "reason": "route_obstructed"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "HOLD robot trip (route obstructed)",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 151,
+          "event": "route_verified_clear",
+          "action": "Facilities cleared the route",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 154,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 155,
+          "channel": "robot",
+          "request_id": "T44-2",
+          "decision": "allow",
+          "reason": "authorized"
+        },
+        {
+          "t_s": 155,
+          "channel": "lift",
+          "type": "grant",
+          "task_id": "T44",
+          "destination": "WARD-B",
+          "floor": "L2"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 155,
+          "event": "robot_lift_request",
+          "action": "ALLOW robot trip (authorized)",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 1340,
+          "event": "parcel_arrived",
+          "action": "Parcel arrived. Awaiting the ward scan",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 1360,
+          "event": "receipt_scan",
+          "action": "Ward scan closed the delivery",
+          "parcel_holder": "WARD-B"
+        }
+      ]
+    },
+    {
+      "case_id": "A04",
+      "title": "Freshness boundary: last lift update exactly 10 seconds old",
+      "cohort": "authorized_delivery",
+      "observed": {
+        "robot_decisions": [
+          {
+            "request_id": "T45-1",
+            "decision": "allow",
+            "reason": "authorized"
+          }
+        ],
+        "robot_lift_grants": 1,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 1,
+        "final_parcel_holder": "WARD-B",
+        "completed_by": "robot",
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "matches_expected": true,
+      "differences": {},
+      "timeline": [
+        {
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 110,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "ALLOW robot trip (authorized)",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 1170,
+          "event": "parcel_arrived",
+          "action": "Parcel arrived. Awaiting the ward scan",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 1190,
+          "event": "receipt_scan",
+          "action": "Ward scan closed the delivery",
+          "parcel_holder": "WARD-B"
+        }
+      ],
+      "downstream_outputs": [
+        {
+          "channel": "routine_log",
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 110,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "channel": "robot",
+          "request_id": "T45-1",
+          "decision": "allow",
+          "reason": "authorized"
+        },
+        {
+          "t_s": 120,
+          "channel": "lift",
+          "type": "grant",
+          "task_id": "T45",
+          "destination": "WARD-B",
+          "floor": "L2"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "ALLOW robot trip (authorized)",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 1170,
+          "event": "parcel_arrived",
+          "action": "Parcel arrived. Awaiting the ward scan",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 1190,
+          "event": "receipt_scan",
+          "action": "Ward scan closed the delivery",
+          "parcel_holder": "WARD-B"
+        }
+      ]
+    },
+    {
+      "case_id": "A05",
+      "title": "Urgent patient transfer takes the lift before a legitimate robot",
+      "cohort": "authorized_delivery",
+      "observed": {
+        "robot_decisions": [
+          {
+            "request_id": "T46-1",
+            "decision": "hold",
+            "reason": "urgent_transfer_active"
+          },
+          {
+            "request_id": "T46-2",
+            "decision": "allow",
+            "reason": "authorized"
+          }
+        ],
+        "robot_lift_grants": 1,
+        "urgent_calls_served": 1,
+        "robot_caused_urgent_delay_s": 0,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 1,
+        "final_parcel_holder": "WARD-B",
+        "completed_by": "robot",
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "matches_expected": true,
+      "differences": {},
+      "timeline": [
+        {
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 119,
+          "event": "urgent_transfer_requested",
+          "action": "Lift accepted the urgent patient call",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "HOLD robot trip (urgent transfer active)",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 150,
+          "event": "urgent_transfer_finished",
+          "action": "Facilities confirmed the urgent transfer finished",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 154,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 155,
+          "event": "robot_lift_request",
+          "action": "ALLOW robot trip (authorized)",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 1420,
+          "event": "parcel_arrived",
+          "action": "Parcel arrived. Awaiting the ward scan",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 1440,
+          "event": "receipt_scan",
+          "action": "Ward scan closed the delivery",
+          "parcel_holder": "WARD-B"
+        }
+      ],
+      "downstream_outputs": [
+        {
+          "channel": "routine_log",
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 119,
+          "channel": "lift",
+          "type": "priority_accepted",
+          "call_id": "URG-T46"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 119,
+          "event": "urgent_transfer_requested",
+          "action": "Lift accepted the urgent patient call",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "channel": "robot",
+          "request_id": "T46-1",
+          "decision": "hold",
+          "reason": "urgent_transfer_active"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "HOLD robot trip (urgent transfer active)",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 150,
+          "event": "urgent_transfer_finished",
+          "action": "Facilities confirmed the urgent transfer finished",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 154,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 155,
+          "channel": "robot",
+          "request_id": "T46-2",
+          "decision": "allow",
+          "reason": "authorized"
+        },
+        {
+          "t_s": 155,
+          "channel": "lift",
+          "type": "grant",
+          "task_id": "T46",
+          "destination": "WARD-B",
+          "floor": "L2"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 155,
+          "event": "robot_lift_request",
+          "action": "ALLOW robot trip (authorized)",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 1420,
+          "event": "parcel_arrived",
+          "action": "Parcel arrived. Awaiting the ward scan",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 1440,
+          "event": "receipt_scan",
+          "action": "Ward scan closed the delivery",
+          "parcel_holder": "WARD-B"
+        }
+      ]
+    },
+    {
+      "case_id": "A06",
+      "title": "The ward scanner repeats the same receipt",
+      "cohort": "authorized_delivery",
+      "observed": {
+        "robot_decisions": [
+          {
+            "request_id": "T47-1",
+            "decision": "allow",
+            "reason": "authorized"
+          }
+        ],
+        "robot_lift_grants": 1,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 1,
+        "final_parcel_holder": "WARD-B",
+        "completed_by": "robot",
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "matches_expected": true,
+      "differences": {},
+      "timeline": [
+        {
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "ALLOW robot trip (authorized)",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 1190,
+          "event": "parcel_arrived",
+          "action": "Parcel arrived. Awaiting the ward scan",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 1210,
+          "event": "receipt_scan",
+          "action": "Ward scan closed the delivery",
+          "parcel_holder": "WARD-B"
+        },
+        {
+          "t_s": 1213,
+          "event": "receipt_scan",
+          "action": "Duplicate ward receipt ignored",
+          "parcel_holder": "WARD-B"
+        }
+      ],
+      "downstream_outputs": [
+        {
+          "channel": "routine_log",
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "channel": "robot",
+          "request_id": "T47-1",
+          "decision": "allow",
+          "reason": "authorized"
+        },
+        {
+          "t_s": 120,
+          "channel": "lift",
+          "type": "grant",
+          "task_id": "T47",
+          "destination": "WARD-B",
+          "floor": "L2"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "ALLOW robot trip (authorized)",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 1190,
+          "event": "parcel_arrived",
+          "action": "Parcel arrived. Awaiting the ward scan",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 1210,
+          "event": "receipt_scan",
+          "action": "Ward scan closed the delivery",
+          "parcel_holder": "WARD-B"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 1213,
+          "event": "receipt_scan",
+          "action": "Duplicate ward receipt ignored",
+          "parcel_holder": "WARD-B"
+        }
+      ]
+    },
+    {
+      "case_id": "A07",
+      "title": "Robot arrives before the ward accepts the parcel",
+      "cohort": "authorized_delivery",
+      "observed": {
+        "robot_decisions": [
+          {
+            "request_id": "T48-1",
+            "decision": "allow",
+            "reason": "authorized"
+          }
+        ],
+        "robot_lift_grants": 1,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 1,
+        "final_parcel_holder": "WARD-B",
+        "completed_by": "robot",
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "matches_expected": true,
+      "differences": {},
+      "timeline": [
+        {
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "ALLOW robot trip (authorized)",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 1240,
+          "event": "parcel_arrived",
+          "action": "Parcel arrived. Awaiting the ward scan",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 1500,
+          "event": "receipt_scan",
+          "action": "Ward scan closed the delivery",
+          "parcel_holder": "WARD-B"
+        }
+      ],
+      "downstream_outputs": [
+        {
+          "channel": "routine_log",
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "channel": "robot",
+          "request_id": "T48-1",
+          "decision": "allow",
+          "reason": "authorized"
+        },
+        {
+          "t_s": 120,
+          "channel": "lift",
+          "type": "grant",
+          "task_id": "T48",
+          "destination": "WARD-B",
+          "floor": "L2"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "ALLOW robot trip (authorized)",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 1240,
+          "event": "parcel_arrived",
+          "action": "Parcel arrived. Awaiting the ward scan",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 1500,
+          "event": "receipt_scan",
+          "action": "Ward scan closed the delivery",
+          "parcel_holder": "WARD-B"
+        }
+      ]
+    },
+    {
+      "case_id": "A08",
+      "title": "Lift maintenance ends and the same authorized trip retries",
+      "cohort": "authorized_delivery",
+      "observed": {
+        "robot_decisions": [
+          {
+            "request_id": "T49-1",
+            "decision": "hold",
+            "reason": "lift_unavailable"
+          },
+          {
+            "request_id": "T49-2",
+            "decision": "allow",
+            "reason": "authorized"
+          }
+        ],
+        "robot_lift_grants": 1,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 1,
+        "final_parcel_holder": "WARD-B",
+        "completed_by": "robot",
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "matches_expected": true,
+      "differences": {},
+      "timeline": [
+        {
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported maintenance",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "HOLD robot trip (lift unavailable)",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 154,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 155,
+          "event": "robot_lift_request",
+          "action": "ALLOW robot trip (authorized)",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 1540,
+          "event": "parcel_arrived",
+          "action": "Parcel arrived. Awaiting the ward scan",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 1560,
+          "event": "receipt_scan",
+          "action": "Ward scan closed the delivery",
+          "parcel_holder": "WARD-B"
+        }
+      ],
+      "downstream_outputs": [
+        {
+          "channel": "routine_log",
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported maintenance",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "channel": "robot",
+          "request_id": "T49-1",
+          "decision": "hold",
+          "reason": "lift_unavailable"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "HOLD robot trip (lift unavailable)",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 154,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 155,
+          "channel": "robot",
+          "request_id": "T49-2",
+          "decision": "allow",
+          "reason": "authorized"
+        },
+        {
+          "t_s": 155,
+          "channel": "lift",
+          "type": "grant",
+          "task_id": "T49",
+          "destination": "WARD-B",
+          "floor": "L2"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 155,
+          "event": "robot_lift_request",
+          "action": "ALLOW robot trip (authorized)",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 1540,
+          "event": "parcel_arrived",
+          "action": "Parcel arrived. Awaiting the ward scan",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 1560,
+          "event": "receipt_scan",
+          "action": "Ward scan closed the delivery",
+          "parcel_holder": "WARD-B"
+        }
+      ]
+    },
+    {
+      "case_id": "A09",
+      "title": "Stale lift reading, followed by a fresh reading",
+      "cohort": "authorized_delivery",
+      "observed": {
+        "robot_decisions": [
+          {
+            "request_id": "T50-1",
+            "decision": "hold",
+            "reason": "stale_lift_update"
+          },
+          {
+            "request_id": "T50-2",
+            "decision": "allow",
+            "reason": "authorized"
+          }
+        ],
+        "robot_lift_grants": 1,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 1,
+        "final_parcel_holder": "WARD-B",
+        "completed_by": "robot",
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "matches_expected": true,
+      "differences": {},
+      "timeline": [
+        {
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 109,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "HOLD robot trip (stale lift update)",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 154,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 155,
+          "event": "robot_lift_request",
+          "action": "ALLOW robot trip (authorized)",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 1315,
+          "event": "parcel_arrived",
+          "action": "Parcel arrived. Awaiting the ward scan",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 1335,
+          "event": "receipt_scan",
+          "action": "Ward scan closed the delivery",
+          "parcel_holder": "WARD-B"
+        }
+      ],
+      "downstream_outputs": [
+        {
+          "channel": "routine_log",
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 109,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "channel": "robot",
+          "request_id": "T50-1",
+          "decision": "hold",
+          "reason": "stale_lift_update"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "HOLD robot trip (stale lift update)",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 154,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 155,
+          "channel": "robot",
+          "request_id": "T50-2",
+          "decision": "allow",
+          "reason": "authorized"
+        },
+        {
+          "t_s": 155,
+          "channel": "lift",
+          "type": "grant",
+          "task_id": "T50",
+          "destination": "WARD-B",
+          "floor": "L2"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 155,
+          "event": "robot_lift_request",
+          "action": "ALLOW robot trip (authorized)",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 1315,
+          "event": "parcel_arrived",
+          "action": "Parcel arrived. Awaiting the ward scan",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 1335,
+          "event": "receipt_scan",
+          "action": "Ward scan closed the delivery",
+          "parcel_holder": "WARD-B"
+        }
+      ]
+    },
+    {
+      "case_id": "A10",
+      "title": "Newly registered replacement completes its assigned trip",
+      "cohort": "authorized_delivery",
+      "observed": {
+        "robot_decisions": [
+          {
+            "request_id": "T51-1",
+            "decision": "allow",
+            "reason": "authorized"
+          }
+        ],
+        "robot_lift_grants": 1,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 1,
+        "final_parcel_holder": "WARD-B",
+        "completed_by": "robot",
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "matches_expected": true,
+      "differences": {},
+      "timeline": [
+        {
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R3"
+        },
+        {
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R3"
+        },
+        {
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "ALLOW robot trip (authorized)",
+          "parcel_holder": "SIM-R3"
+        },
+        {
+          "t_s": 1100,
+          "event": "parcel_arrived",
+          "action": "Parcel arrived. Awaiting the ward scan",
+          "parcel_holder": "SIM-R3"
+        },
+        {
+          "t_s": 1120,
+          "event": "receipt_scan",
+          "action": "Ward scan closed the delivery",
+          "parcel_holder": "WARD-B"
+        }
+      ],
+      "downstream_outputs": [
+        {
+          "channel": "routine_log",
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R3"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R3"
+        },
+        {
+          "t_s": 120,
+          "channel": "robot",
+          "request_id": "T51-1",
+          "decision": "allow",
+          "reason": "authorized"
+        },
+        {
+          "t_s": 120,
+          "channel": "lift",
+          "type": "grant",
+          "task_id": "T51",
+          "destination": "WARD-B",
+          "floor": "L2"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "ALLOW robot trip (authorized)",
+          "parcel_holder": "SIM-R3"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 1100,
+          "event": "parcel_arrived",
+          "action": "Parcel arrived. Awaiting the ward scan",
+          "parcel_holder": "SIM-R3"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 1120,
+          "event": "receipt_scan",
+          "action": "Ward scan closed the delivery",
+          "parcel_holder": "WARD-B"
+        }
+      ]
+    },
+    {
+      "case_id": "U01",
+      "title": "Destination on the request differs from the assigned ward",
+      "cohort": "unauthorized_request",
+      "observed": {
+        "robot_decisions": [
+          {
+            "request_id": "T52-1",
+            "decision": "deny",
+            "reason": "destination_mismatch"
+          }
+        ],
+        "robot_lift_grants": 0,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 0,
+        "final_parcel_holder": "SIM-R1",
+        "completed_by": null,
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "matches_expected": true,
+      "differences": {},
+      "timeline": [
+        {
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "DENY robot trip (destination mismatch)",
+          "parcel_holder": "SIM-R1"
+        }
+      ],
+      "downstream_outputs": [
+        {
+          "channel": "routine_log",
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "channel": "robot",
+          "request_id": "T52-1",
+          "decision": "deny",
+          "reason": "destination_mismatch"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "DENY robot trip (destination mismatch)",
+          "parcel_holder": "SIM-R1"
+        }
+      ]
+    },
+    {
+      "case_id": "U02",
+      "title": "Robot revoked at the lift; urgent patient call and manual parcel handover",
+      "cohort": "unauthorized_request",
+      "observed": {
+        "robot_decisions": [
+          {
+            "request_id": "T53-1",
+            "decision": "deny",
+            "reason": "robot_revoked"
+          }
+        ],
+        "robot_lift_grants": 0,
+        "urgent_calls_served": 1,
+        "robot_caused_urgent_delay_s": 0,
+        "accepted_porter_handoffs": 1,
+        "distinct_ward_receipts": 1,
+        "final_parcel_holder": "WARD-B",
+        "completed_by": "porter",
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "matches_expected": true,
+      "differences": {},
+      "timeline": [
+        {
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 119,
+          "event": "device_revoked",
+          "action": "Hospital revoked the robot's permission",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 119,
+          "event": "urgent_transfer_requested",
+          "action": "Lift accepted the urgent patient call",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "DENY robot trip (robot revoked)",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 128,
+          "event": "porter_handoff_offered",
+          "action": "Handoff offered. The robot still holds the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 150,
+          "event": "urgent_transfer_finished",
+          "action": "Facilities confirmed the urgent transfer finished",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 160,
+          "event": "porter_handoff_accepted",
+          "action": "Porter accepted custody",
+          "parcel_holder": "SIM-PORTER"
+        },
+        {
+          "t_s": 900,
+          "event": "parcel_arrived",
+          "action": "Parcel arrived. Awaiting the ward scan",
+          "parcel_holder": "SIM-PORTER"
+        },
+        {
+          "t_s": 920,
+          "event": "receipt_scan",
+          "action": "Ward scan closed the delivery",
+          "parcel_holder": "WARD-B"
+        }
+      ],
+      "downstream_outputs": [
+        {
+          "channel": "routine_log",
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 119,
+          "event": "device_revoked",
+          "action": "Hospital revoked the robot's permission",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 119,
+          "channel": "lift",
+          "type": "priority_accepted",
+          "call_id": "URG-T53"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 119,
+          "event": "urgent_transfer_requested",
+          "action": "Lift accepted the urgent patient call",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "channel": "robot",
+          "request_id": "T53-1",
+          "decision": "deny",
+          "reason": "robot_revoked"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "DENY robot trip (robot revoked)",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 128,
+          "event": "porter_handoff_offered",
+          "action": "Handoff offered. The robot still holds the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 150,
+          "event": "urgent_transfer_finished",
+          "action": "Facilities confirmed the urgent transfer finished",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 160,
+          "event": "porter_handoff_accepted",
+          "action": "Porter accepted custody",
+          "parcel_holder": "SIM-PORTER"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 900,
+          "event": "parcel_arrived",
+          "action": "Parcel arrived. Awaiting the ward scan",
+          "parcel_holder": "SIM-PORTER"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 920,
+          "event": "receipt_scan",
+          "action": "Ward scan closed the delivery",
+          "parcel_holder": "WARD-B"
+        }
+      ]
+    },
+    {
+      "case_id": "U03",
+      "title": "Permit reaches expiry exactly when the lift request arrives",
+      "cohort": "unauthorized_request",
+      "observed": {
+        "robot_decisions": [
+          {
+            "request_id": "T54-1",
+            "decision": "deny",
+            "reason": "permit_expired"
+          }
+        ],
+        "robot_lift_grants": 0,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 0,
+        "final_parcel_holder": "SIM-R1",
+        "completed_by": null,
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "matches_expected": true,
+      "differences": {},
+      "timeline": [
+        {
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "DENY robot trip (permit expired)",
+          "parcel_holder": "SIM-R1"
+        }
+      ],
+      "downstream_outputs": [
+        {
+          "channel": "routine_log",
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "channel": "robot",
+          "request_id": "T54-1",
+          "decision": "deny",
+          "reason": "permit_expired"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "DENY robot trip (permit expired)",
+          "parcel_holder": "SIM-R1"
+        }
+      ]
+    },
+    {
+      "case_id": "U04",
+      "title": "Permit has already been consumed",
+      "cohort": "unauthorized_request",
+      "observed": {
+        "robot_decisions": [
+          {
+            "request_id": "T55-1",
+            "decision": "deny",
+            "reason": "permit_used"
+          }
+        ],
+        "robot_lift_grants": 0,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 0,
+        "final_parcel_holder": "SIM-R1",
+        "completed_by": null,
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "matches_expected": true,
+      "differences": {},
+      "timeline": [
+        {
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "DENY robot trip (permit used)",
+          "parcel_holder": "SIM-R1"
+        }
+      ],
+      "downstream_outputs": [
+        {
+          "channel": "routine_log",
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "channel": "robot",
+          "request_id": "T55-1",
+          "decision": "deny",
+          "reason": "permit_used"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "DENY robot trip (permit used)",
+          "parcel_holder": "SIM-R1"
+        }
+      ]
+    },
+    {
+      "case_id": "U05",
+      "title": "Test attestation of permit authenticity is false",
+      "cohort": "unauthorized_request",
+      "observed": {
+        "robot_decisions": [
+          {
+            "request_id": "T56-1",
+            "decision": "deny",
+            "reason": "permit_unverified"
+          }
+        ],
+        "robot_lift_grants": 0,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 0,
+        "final_parcel_holder": "SIM-R1",
+        "completed_by": null,
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "matches_expected": true,
+      "differences": {},
+      "timeline": [
+        {
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "DENY robot trip (permit unverified)",
+          "parcel_holder": "SIM-R1"
+        }
+      ],
+      "downstream_outputs": [
+        {
+          "channel": "routine_log",
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "channel": "robot",
+          "request_id": "T56-1",
+          "decision": "deny",
+          "reason": "permit_unverified"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "DENY robot trip (permit unverified)",
+          "parcel_holder": "SIM-R1"
+        }
+      ]
+    },
+    {
+      "case_id": "U06",
+      "title": "Lift drop-off requested on an unassigned floor",
+      "cohort": "unauthorized_request",
+      "observed": {
+        "robot_decisions": [
+          {
+            "request_id": "T57-1",
+            "decision": "deny",
+            "reason": "floor_mismatch"
+          }
+        ],
+        "robot_lift_grants": 0,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 0,
+        "final_parcel_holder": "SIM-R1",
+        "completed_by": null,
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "matches_expected": true,
+      "differences": {},
+      "timeline": [
+        {
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "DENY robot trip (floor mismatch)",
+          "parcel_holder": "SIM-R1"
+        }
+      ],
+      "downstream_outputs": [
+        {
+          "channel": "routine_log",
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "channel": "robot",
+          "request_id": "T57-1",
+          "decision": "deny",
+          "reason": "floor_mismatch"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "DENY robot trip (floor mismatch)",
+          "parcel_holder": "SIM-R1"
+        }
+      ]
+    },
+    {
+      "case_id": "U07",
+      "title": "Requester is assigned to Ward A only",
+      "cohort": "unauthorized_request",
+      "observed": {
+        "robot_decisions": [
+          {
+            "request_id": "T58-1",
+            "decision": "deny",
+            "reason": "requester_ward_not_allowed"
+          }
+        ],
+        "robot_lift_grants": 0,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 0,
+        "final_parcel_holder": "SIM-R1",
+        "completed_by": null,
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "matches_expected": true,
+      "differences": {},
+      "timeline": [
+        {
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "DENY robot trip (requester ward not allowed)",
+          "parcel_holder": "SIM-R1"
+        }
+      ],
+      "downstream_outputs": [
+        {
+          "channel": "routine_log",
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "channel": "robot",
+          "request_id": "T58-1",
+          "decision": "deny",
+          "reason": "requester_ward_not_allowed"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "DENY robot trip (requester ward not allowed)",
+          "parcel_holder": "SIM-R1"
+        }
+      ]
+    },
+    {
+      "case_id": "U08",
+      "title": "No independent pharmacy dispatch matches this task",
+      "cohort": "unauthorized_request",
+      "observed": {
+        "robot_decisions": [
+          {
+            "request_id": "T59-1",
+            "decision": "deny",
+            "reason": "no_dispatch"
+          }
+        ],
+        "robot_lift_grants": 0,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 0,
+        "final_parcel_holder": "SIM-R1",
+        "completed_by": null,
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "matches_expected": true,
+      "differences": {},
+      "timeline": [
+        {
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "DENY robot trip (no dispatch)",
+          "parcel_holder": "SIM-R1"
+        }
+      ],
+      "downstream_outputs": [
+        {
+          "channel": "routine_log",
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "channel": "robot",
+          "request_id": "T59-1",
+          "decision": "deny",
+          "reason": "no_dispatch"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "DENY robot trip (no dispatch)",
+          "parcel_holder": "SIM-R1"
+        }
+      ]
+    },
+    {
+      "case_id": "U09",
+      "title": "Additional fictional private field reaches the dispatch gateway",
+      "cohort": "unauthorized_request",
+      "observed": {
+        "robot_decisions": [
+          {
+            "request_id": "T60-1",
+            "decision": "deny",
+            "reason": "extra_payload_field"
+          }
+        ],
+        "robot_lift_grants": 0,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 0,
+        "final_parcel_holder": "SIM-R1",
+        "completed_by": null,
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "matches_expected": true,
+      "differences": {},
+      "timeline": [
+        {
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "DENY robot trip (extra payload field)",
+          "parcel_holder": "SIM-R1"
+        }
+      ],
+      "downstream_outputs": [
+        {
+          "channel": "routine_log",
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "channel": "robot",
+          "request_id": "T60-1",
+          "decision": "deny",
+          "reason": "extra_payload_field"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "DENY robot trip (extra payload field)",
+          "parcel_holder": "SIM-R1"
+        }
+      ]
+    },
+    {
+      "case_id": "U10",
+      "title": "The robot reaches the synthetic request limit",
+      "cohort": "unauthorized_request",
+      "observed": {
+        "robot_decisions": [
+          {
+            "request_id": "T61-1",
+            "decision": "deny",
+            "reason": "rate_limit"
+          }
+        ],
+        "robot_lift_grants": 0,
+        "urgent_calls_served": 0,
+        "robot_caused_urgent_delay_s": null,
+        "accepted_porter_handoffs": 0,
+        "distinct_ward_receipts": 0,
+        "final_parcel_holder": "SIM-R1",
+        "completed_by": null,
+        "private_marker_appearances_in_downstream_outputs": 0
+      },
+      "matches_expected": true,
+      "differences": {},
+      "timeline": [
+        {
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "DENY robot trip (rate limit)",
+          "parcel_holder": "SIM-R1"
+        }
+      ],
+      "downstream_outputs": [
+        {
+          "channel": "routine_log",
+          "t_s": 0,
+          "event": "parcel_loaded",
+          "action": "Pharmacy loaded the parcel",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 118,
+          "event": "lift_state",
+          "action": "Lift reported ready",
+          "parcel_holder": "SIM-R1"
+        },
+        {
+          "t_s": 120,
+          "channel": "robot",
+          "request_id": "T61-1",
+          "decision": "deny",
+          "reason": "rate_limit"
+        },
+        {
+          "channel": "routine_log",
+          "t_s": 120,
+          "event": "robot_lift_request",
+          "action": "DENY robot trip (rate limit)",
+          "parcel_holder": "SIM-R1"
+        }
+      ]
+    }
+  ]
+}

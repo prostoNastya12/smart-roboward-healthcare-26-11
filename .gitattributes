@@ -1,0 +1,5 @@
+# The map and scenario fixture are verified by hashes of their original LF bytes.
+* text=auto eol=lf
+*.glb binary
+*.pdf binary
+*.png binary

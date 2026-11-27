@@ -1,0 +1,86 @@
+<section id="ward-lift-replay" aria-label="Shared lift and parcel custody replay">
+  <div class="viz-controls">
+    <label class="form-label">Delivery
+      <select class="form-select" data-case>
+        <option value="U02">U02 · Urgent patient transfer</option>
+        <option value="A01">A01 · Routine pharmacy delivery</option>
+      </select>
+    </label>
+    <label class="form-label">Event <span class="tabular-nums" data-step-label>5 of 10</span>
+      <input class="form-range" type="range" min="1" max="10" step="1" value="5" data-step>
+    </label>
+  </div>
+  <div class="ward-event" aria-live="polite" aria-atomic="true">
+    <p class="text-small text-muted tabular-nums" data-time>2 min 00 s elapsed</p>
+    <h3 data-action>Lift denied the robot after its permission was revoked.</h3>
+    <ol class="ward-custody" aria-label="Parcel custody" data-chain>
+      <li aria-current="step">Robot <span>holds parcel</span></li><li>Porter</li><li>Ward B</li>
+    </ol>
+  </div>
+  <style>
+    #ward-lift-replay {display:grid; gap:var(--font-size-base)}
+    #ward-lift-replay .ward-event {display:grid; gap:calc(var(--font-size-base) * .3)}
+    #ward-lift-replay .ward-custody {display:flex; align-items:baseline; flex-wrap:wrap; gap:calc(var(--font-size-base) * .65); list-style:none; padding:0; margin:calc(var(--font-size-base) * .45) 0 0}
+    #ward-lift-replay .ward-custody li {color:var(--muted-foreground)}
+    #ward-lift-replay .ward-custody li::before {content:"→"; margin-inline-end:calc(var(--font-size-base) * .65); color:var(--muted-foreground)}
+    #ward-lift-replay .ward-custody li:first-child::before {content:none}
+    #ward-lift-replay .ward-custody li[aria-current] {font-weight:500; color:var(--foreground)}
+  </style>
+</section>
+<script>
+(() => {
+  const root = document.getElementById("ward-lift-replay");
+  const cases = {"A01":[[0,"Pharmacy loaded the parcel","SIM-R1"],[118,"Lift reported ready","SIM-R1"],[120,"ALLOW robot trip (authorized)","SIM-R1"],[1240,"Parcel arrived. Awaiting the ward scan","SIM-R1"],[1260,"Ward scan closed the delivery","WARD-B"]],"U02":[[0,"Pharmacy loaded the parcel","SIM-R1"],[118,"Lift reported ready","SIM-R1"],[119,"Hospital revoked the robot's permission","SIM-R1"],[119,"Lift accepted the urgent patient call","SIM-R1"],[120,"DENY robot trip (robot revoked)","SIM-R1"],[128,"Handoff offered. The robot still holds the parcel","SIM-R1"],[150,"Facilities confirmed the urgent transfer finished","SIM-R1"],[160,"Porter accepted custody","SIM-PORTER"],[900,"Parcel arrived. Awaiting the ward scan","SIM-PORTER"],[920,"Ward scan closed the delivery","WARD-B"]]};
+  const picker = root.querySelector("[data-case]");
+  const step = root.querySelector("[data-step]");
+  const names = {"SIM-R1":"Robot", "SIM-PORTER":"Porter", "WARD-B":"Ward B"};
+  const decisions = {
+    "DENY robot trip (robot revoked)": "Lift denied the robot after its permission was revoked.",
+    "ALLOW robot trip (authorized)": "Lift approved the assigned pharmacy delivery."
+  };
+  function display() {
+    const frames = cases[picker.value];
+    const current = Number(step.value) - 1;
+    const [seconds, action, holder] = frames[current];
+    root.querySelector("[data-step-label]").textContent = (current + 1) + " of " + frames.length;
+    const elapsed = Math.floor(seconds / 60) + " min " + String(seconds % 60).padStart(2, "0") + " s elapsed";
+    root.querySelector("[data-time]").textContent = elapsed;
+    root.querySelector("[data-action]").textContent = decisions[action] || action;
+    step.setAttribute("aria-valuetext", "Event " + (current + 1) + " of " + frames.length + ", " + elapsed);
+    const chain = root.querySelector("[data-chain]");
+    chain.replaceChildren();
+    for (const id of new Set(frames.map(frame => frame[2]))) {
+      const item = document.createElement("li");
+      item.textContent = names[id] || id;
+      if (id === holder) {
+        item.setAttribute("aria-current", "step");
+        item.append(" holds parcel");
+      }
+      chain.appendChild(item);
+    }
+  }
+  function select(caseId, index) {
+    const key = Object.hasOwn(cases, caseId) ? caseId : "U02";
+    const count = cases[key].length;
+    picker.value = key;
+    step.max = count;
+    step.value = Number.isInteger(index) ? Math.max(1, Math.min(count, index)) : key === "U02" ? 5 : 3;
+    display();
+  }
+  function remember() {
+    window.openai?.setWidgetState?.({
+      modelContent: {caseId: picker.value, eventIndex: Number(step.value)}, privateContent: null
+    })?.catch(() => {});
+  }
+  function restore(state) {
+    select(state?.modelContent?.caseId, state?.modelContent?.eventIndex);
+  }
+  picker.addEventListener("change", () => { select(picker.value); remember(); });
+  step.addEventListener("input", display);
+  step.addEventListener("change", remember);
+  window.addEventListener("openai:set_globals", event => {
+    if (event.detail?.globals && "widgetState" in event.detail.globals) restore(event.detail.globals.widgetState);
+  });
+  restore(window.openai?.widgetState);
+})();
+</script>

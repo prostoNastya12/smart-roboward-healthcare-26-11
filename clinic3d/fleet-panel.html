@@ -1,0 +1,54 @@
+<section id="model-panel" aria-label="Clinic World fleet console">
+  <div class="ops-heading">
+    <h1>Fleet control</h1>
+    <dl class="ops-counts"><div><dt>Robots</dt><dd id="count-fleet">3</dd></div><div><dt>Active missions</dt><dd id="count-missions">0</dd></div><div><dt>Open alerts</dt><dd id="count-alerts">0</dd></div></dl>
+  </div>
+  <div class="ops-grid">
+    <section id="clinic-view" class="ops-card map-card" aria-label="3D live fleet view">
+      <div class="map-head"><div class="map-name"><span class="floor-glyph" aria-hidden="true"></span><h2>Clinic World</h2></div>
+        <div class="map-tools"><label class="sr-only" for="model-floor">Visible floor</label>
+          <select id="model-floor"><option value="L1">Floor 1</option><option value="L2">Floor 2</option><option value="both">Both floors</option></select>
+          <button type="button" id="model-full" aria-pressed="false">Full screen</button>
+        </div>
+      </div>
+      <div id="model-frame">
+        <canvas id="model-canvas" tabindex="0" aria-label="3D clinic and fleet. Drag to rotate or scroll to zoom.">Three-dimensional fleet view.</canvas>
+        <div id="robot-markers" aria-label="Select a robot in the scene"></div>
+        <button type="button" id="map-alert" aria-controls="evidence" hidden></button>
+        <div class="map-corner"><button type="button" id="fleet-follow" aria-pressed="false" disabled>Follow robot</button></div>
+        <div class="map-zoom"><button type="button" id="model-plus" aria-label="Zoom in" title="Zoom in">+</button><button type="button" id="model-minus" aria-label="Zoom out" title="Zoom out">−</button><button type="button" id="model-reset" aria-label="Reset view" title="Reset view">↺</button></div>
+        <p id="model-message" role="status" hidden></p>
+      </div>
+      <div class="map-foot"><span class="lift-row"><i class="status-dot" aria-hidden="true"></i>Lift 1 <strong id="fleet-lift">Available</strong></span><span class="map-hint">Drag to orbit · Scroll to zoom</span></div>
+    </section>
+    <aside class="ops-card fleet-card" aria-label="Fleet and mission controls">
+      <div class="card-heading"><h2>Robot fleet</h2><span class="small-label">Select a unit</span></div>
+      <div id="fleet-roster" class="fleet-roster" role="group" aria-label="Select a robot"></div>
+      <div class="command-panel"><div class="card-heading"><h3>Mission control</h3><span class="device-ref" id="command-unit">RX-01</span></div>
+        <div class="mission-line"><span id="mission-description">Connecting to local devices…</span><span class="mono" id="mission-code"></span></div>
+        <div class="dispatch-row"><label for="mission-destination">Destination</label><select id="mission-destination" disabled></select><button id="fleet-dispatch" class="primary" type="button" disabled>Dispatch</button></div>
+        <div class="action-row"><button id="fleet-pause" type="button" disabled>Pause mission</button><button id="fleet-receipt" type="button" hidden>Confirm ward receipt</button><button id="fleet-isolate" type="button" disabled>Isolate robot</button></div>
+        <p id="command-feedback" class="inline-feedback" role="status"></p>
+        <div class="mission-readings"><span>Travel speed <strong id="travel-speed">0.0 m/s</strong></span><span>Mission distance <strong id="travel-distance">—</strong></span></div>
+      </div>
+    </aside>
+  </div>
+  <div class="monitor-grid">
+    <section class="ops-card security-card" aria-label="Defensive monitoring examples">
+      <div class="card-heading"><h2>Security monitor</h2><span class="device-ref" id="security-unit">RX-01</span></div>
+      <div class="example-options" role="group" aria-label="Security example">
+        <button type="button" data-example="spin" aria-pressed="true">Unexpected spin</button>
+        <button type="button" data-example="silence" aria-pressed="false">Heartbeat loss</button>
+        <button type="button" data-example="lift" aria-pressed="false">Wrong lift floor</button>
+      </div>
+      <div class="example-body"><p id="example-description"></p><button id="fleet-example" class="primary" type="button" disabled>Run example</button></div>
+      <div id="evidence" class="evidence" aria-live="polite" tabindex="-1"></div>
+      <div class="sensor-strip"><span>Heartbeat <strong id="sensor-beat">—</strong></span><span>Turn rate <strong id="sensor-turn">—</strong></span></div>
+    </section>
+    <section class="ops-card journal-card" aria-label="Fleet communication log">
+      <div class="card-heading"><h2>Communication log</h2><label class="sr-only" for="journal-filter">Filter messages</label><select id="journal-filter"><option value="all">All robots</option><option value="selected">Selected robot</option></select></div>
+      <div id="fleet-journal" class="fleet-journal" aria-label="Messages, newest first"></div>
+    </section>
+  </div>
+  <div class="console-footer"><span>Open-RMF clinic geometry · Simulated devices &amp; sensors</span><a id="model-download" download="Clinic-World.glb" href="Clinic-World.glb">Download 3D clinic (.glb)</a></div>
+</section>
