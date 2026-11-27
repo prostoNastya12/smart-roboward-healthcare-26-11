@@ -1,45 +1,57 @@
 # Smart RoboWard · Kurzfassung für die Jury
 
-**Healthcare Hackathon Bayern · IFOHRA Challenge 9 · Stand 27. November 2026**
+**Healthcare Hackathon Bayern · IFOHRA Challenge 9 · Stand 28. November 2026**
 
 ## Das Problem
 
 Transportroboter im Krankenhaus bekommen ihre Aufträge über das Netzwerk und teilen sich Flure und Aufzüge mit Patienten und Personal. Wird ein Robotersystem angegriffen, bleibt heute oft nur, alles abzuschalten. Dann steht die Logistik der ganzen Station.
 
-## Unsere Lösung
+## Unser Vorgehen
 
-Smart RoboWard prüft zweimal, bevor sich etwas bewegt.
+Wir wollten nicht raten, welcher Schutz der beste ist. Wir haben sieben Kommunikationswege zwischen Roboter und Aufzug gebaut, vom offenen Netz bis zu unserem mehrschichtigen Entwurf. Alle sieben wurden mit denselben Angriffen getestet. Die Regel für die Auswahl stand vor dem ersten Durchlauf fest.
 
-1. **Auftragsprüfung.** Jeder Auftrag braucht ein signiertes, einmal gültiges Ticket und muss zu Rolle und Station der anfragenden Person passen. Der Roboter erhält nur Auftragsnummer und Ziel, keine Patientendaten. Bei einer Angriffswelle trennt ein Schutzschalter die Roboterzone ab, und die Station arbeitet im Handbetrieb weiter.
-2. **Aufzugsprüfung.** Für jeden Aufzugsruf entscheidet das System: erlauben, anhalten oder ablehnen. Es vergleicht den Ruf mit der aktuellen Fahrt, mit der von der Haustechnik freigegebenen Zuordnung der Stockwerksnamen und mit dem aktuellen Zustand des Aufzugs. Ein Patiententransport hat immer Vorrang.
-3. **Übergabe an Menschen.** Wird eine Fahrt angehalten, kann ein Träger das Paket übernehmen. Die Station sieht jederzeit, wer es hat, und bestätigt den Empfang genau einmal.
-
-## Was heute läuft
-
-Alles läuft ohne Internet im Browser, mit erfundenen Daten und einem simulierten Krankenhaus.
-
-- **Live-Angriff:** Ein simulierter Angreifer schickt gefälschte und wiederholte Aufträge an die Flotte.
-- **Leitstand Stationssicherheit:** Fünf Szenarien am gemeinsamen Aufzug, mit Entscheidung, Begründung und nächstem Schritt für das Personal.
-- **Auswertung:** 10.000 simulierte Fahrten mit Streckenkarte und Alarmstatistik.
-
-## Messergebnisse (Simulation)
-
-| Messung | Ergebnis | Vergleich |
+| | Kommunikationsweg | Herkunft |
 | --- | --- | --- |
-| Gefälschte Anfragen blockiert | 10 von 10 | Ohne Schutz: 1 von 10 |
-| Berechtigte Aufträge erledigt | 10 von 10 | Ohne Schutz: 10 von 10 |
-| Erledigte Stationsaufgaben während einer Angriffswelle | 100 %, davon 149 von 150 im Handbetrieb | Ohne Abschottung: 51 % |
-| Erkannte Roboter-Stillstände | 90 von 100 | Fester Schwellenwert: 0 von 100 |
-| Fehlalarme je 100 unauffällige Fahrten | 1,39 | Fester Schwellenwert: 1,33 |
+| A | Offenes Netz | Ausgangslage |
+| B | Nur Netzzugangskontrolle | Übliche Praxis im Krankenhaus |
+| C | Signierte Einmal-Tickets | Lösung unseres Teammitglieds, unveränderter Code |
+| D | Signierte Nachrichten je Gerät | Standardverfahren |
+| E | Verschlüsselter Kanal mit gegenseitiger Authentifizierung | Standardverfahren, Prinzip von Mutual TLS |
+| F | Fahrtberechtigung mit Besitznachweis | Unser Vorschlag |
+| G | Mehrschichtiger Weg | Kombination aus E, F, Datensparsamkeit, Schutzschalter und Aufzugsprüfung |
 
-Die Testfälle hat das Team selbst geschrieben. Die Zahlen sind kein klinischer Nachweis. Es war kein echtes Krankenhausgerät beteiligt.
+## Ergebnis
+
+Die Zahlen stehen in `secure-comms/RESULTS.md` und werden aus der Messung erzeugt. Gewählt wurde **G, der mehrschichtige Weg**. Er hat alle Angriffe der Hauptliste abgewehrt und alle fünf Normalfälle bestanden. Die einzelnen Schutzmaßnahmen scheitern jeweils an anderer Stelle:
+
+- **Netzzugangskontrolle** hält Außenstehende ab. Ein kompromittiertes Gerät im Netz kann alles.
+- **Tickets** binden das Stockwerk an die Fahrt. Wer ein Ticket mitliest, kann es zuerst benutzen.
+- **Signaturen** beweisen, wer fragt. Sie sagen nicht, ob dieses Gerät dieses Stockwerk anfordern darf.
+- **Verschlüsselung** schützt jede Teilstrecke. Ein kompromittierter Server des Flottenherstellers kann trotzdem Aufzugsrufe erfinden.
+- **Die Fahrtberechtigung** schließt diese Lücke. Sie reist aber im Klartext und begrenzt keine Überlastung.
+
+## Der gewählte Weg
+
+1. Die Leitstelle signiert für jede Fahrt eine Berechtigung: dieser Roboter, dieser Aufzug, dieses Stockwerk, zehn Minuten.
+2. Der Roboter signiert jeden Ruf mit seinem eigenen Schlüssel.
+3. Beide Netzstrecken sind verschlüsselt, mit frischen Schlüsseln je Verbindung.
+4. Der Flottenserver trennt einen Roboter ab, der das System flutet.
+5. Der Aufzugsadapter prüft die Berechtigung, den aktuellen Zustand des Aufzugs, den Vorrang für Patiententransporte und einen Sensor am Aufzug, bevor sich etwas bewegt.
+6. Der Roboter sendet nur, was ein Aufzug braucht. Jede Entscheidung steht in einem signierten Protokoll.
+
+## Grenzen
+
+- Die Geräte sind simuliert. Die Kryptografie ist echt (Ed25519, X25519, AES-256-GCM).
+- Die Angriffe hat das Team selbst geschrieben. Das ist keine unabhängige Prüfung.
+- Zwei Angriffe gelingen bei allen sieben Wegen: eine kompromittierte Leitstelle, und ein Beobachter, der am Zeitpunkt der Nachrichten erkennt, wann ein Roboter den Aufzug ruft.
+- Der gewählte Weg verlangt am meisten von den Herstellern: sieben Voraussetzungen, von der Zertifizierungsstelle bis zum Sensor am Aufzug.
 
 ## Offenlegung
 
-Der 3D-Simulator wurde vor dem Hackathon mit einem KI-Assistenten erzeugt und übernommen. Die beiden Prüfstufen, die Auswertung und die Seiten entstanden vor Ort mit Claude. Drittanbieter: Three.js (MIT) und die Open-RMF-Klinikkarte (Apache-2.0). Einzelheiten stehen in `README.md` und `NOTICE.md`.
+Der 3D-Simulator wurde vor dem Hackathon mit einem KI-Assistenten erzeugt und übernommen. Die Kommunikationswege, die Angriffe, die Auswertung und die Seiten entstanden vor Ort mit Claude. Drittanbieter: Three.js (MIT) und die Open-RMF-Klinikkarte (Apache-2.0). Einzelheiten stehen in `README.md` und `NOTICE.md`.
 
 ## Nächste Schritte
 
 1. Den simulierten Aufzug durch eine Hersteller-Schnittstelle ersetzen.
-2. Angriffe und harmlose Sonderfälle von Außenstehenden schreiben lassen und neu messen.
+2. Angriffe von Außenstehenden schreiben lassen und neu messen.
 3. Ein begleiteter Pilot: eine Strecke, ein Aufzug, ein Partnerkrankenhaus.

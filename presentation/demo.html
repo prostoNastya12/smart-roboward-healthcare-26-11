@@ -42,6 +42,11 @@
   .flow .sub { font-weight: 400; font-size: 24px; fill: #b4c8ba; }
   .flow .hot text { fill: #0e2b25; }
   .flow .hot .sub { fill: #24493f; }
+  .bars { width: 100%; height: 560px; }
+  .bars text { font: 600 30px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #b4c8ba; }
+  .bars .hot text { fill: #f6fbf3; }
+  .bars .val { font-size: 40px; font-variant-numeric: tabular-nums; }
+  .flow .tiny { font-weight: 400; font-size: 22px; fill: #b4c8ba; }
 </style>
 </head>
 <body>
@@ -64,13 +69,19 @@
   </section>
 
   <section class="slide">
-    <div class="kicker">What we built</div>
-    <h2>Two gates and a fallback</h2>
+    <div class="kicker">Our method</div>
+    <h2>We attacked seven designs the same way</h2>
     <div class="row">
-      <div class="card"><h3>Request gate</h3><p>Signed single-use orders, ward rules, minimal data, a circuit breaker.</p></div>
-      <div class="card"><h3>Lift gate</h3><p>Allow, hold or deny each call for this trip.</p></div>
-      <div class="card"><h3>Human fallback</h3><p>A porter takes over. The ward scans exactly once.</p></div>
+      <div class="card"><h3>7 pipelines</h3><p>From an open network to our layered design, all running code.</p></div>
+      <div class="card"><h3>21 attacks</h3><p>Outsider, insider, hacked robot, hacked supplier, stolen keys.</p></div>
+      <div class="card"><h3>One rule</h3><p>Fixed before the first run. Most attacks blocked wins.</p></div>
     </div>
+  </section>
+
+  <section class="slide" style="padding:72px 120px; gap:36px">
+    <div class="kicker">Attacks blocked, of 19</div>
+    <h2>Layering beats every single defence</h2>
+    <svg class="bars" viewBox="0 0 1680 542" role="img" aria-label="Attacks blocked by each pipeline"><g class=""><text x="0" y="48">A · Open network</text><rect x="620" y="8" width="6" height="56" rx="10" fill="#4d6b60"/><text class="val" x="644" y="50">0</text></g><g class=""><text x="0" y="124">B · Network admission only</text><rect x="620" y="84" width="97.89473684210526" height="56" rx="10" fill="#4d6b60"/><text class="val" x="735.8947368421052" y="126">2</text></g><g class=""><text x="0" y="200">C · Signed single-use tickets</text><rect x="620" y="160" width="342.63157894736844" height="56" rx="10" fill="#4d6b60"/><text class="val" x="980.6315789473684" y="202">7</text></g><g class=""><text x="0" y="276">D · Per-device signed messages</text><rect x="620" y="236" width="489.4736842105263" height="56" rx="10" fill="#4d6b60"/><text class="val" x="1127.4736842105262" y="278">10</text></g><g class=""><text x="0" y="352">E · Encrypted channel</text><rect x="620" y="312" width="489.4736842105263" height="56" rx="10" fill="#4d6b60"/><text class="val" x="1127.4736842105262" y="354">10</text></g><g class=""><text x="0" y="428">F · Trip capability with proof of possession</text><rect x="620" y="388" width="587.3684210526316" height="56" rx="10" fill="#4d6b60"/><text class="val" x="1225.3684210526317" y="430">12</text></g><g class="hot"><text x="0" y="504">G · Layered pipeline</text><rect x="620" y="464" width="930" height="56" rx="10" fill="#c1de94"/><text class="val" x="1568" y="506">19</text></g></svg>
   </section>
 
   <section class="slide" style="padding:56px 120px; gap:28px">
@@ -79,20 +90,20 @@
   </section>
 
   <section class="slide">
-    <div class="kicker">How it works</div>
-    <h2>Checked twice before anything moves</h2>
-    <svg class="flow" viewBox="0 0 1680 420" role="img" aria-label="Order passes the request gate, the robot fleet, the lift gate and the ward scan"><g class=""><rect x="0" y="120" width="296" height="180" rx="20" fill="#153a32" stroke="#2c5247" stroke-width="2"/><text x="148" y="200" text-anchor="middle">Nurse order</text><text class="sub" x="148" y="244" text-anchor="middle">task + destination</text></g><g class="hot"><rect x="346" y="120" width="296" height="180" rx="20" fill="#c1de94" stroke="#c1de94" stroke-width="2"/><text x="494" y="200" text-anchor="middle">Request gate</text><text class="sub" x="494" y="244" text-anchor="middle">4 checks</text></g><g class=""><rect x="692" y="120" width="296" height="180" rx="20" fill="#153a32" stroke="#2c5247" stroke-width="2"/><text x="840" y="200" text-anchor="middle">Robot fleet</text><text class="sub" x="840" y="244" text-anchor="middle">minimal payload</text></g><g class="hot"><rect x="1038" y="120" width="296" height="180" rx="20" fill="#c1de94" stroke="#c1de94" stroke-width="2"/><text x="1186" y="200" text-anchor="middle">Lift gate</text><text class="sub" x="1186" y="244" text-anchor="middle">allow · hold · deny</text></g><g class=""><rect x="1384" y="120" width="296" height="180" rx="20" fill="#153a32" stroke="#2c5247" stroke-width="2"/><text x="1532" y="200" text-anchor="middle">Ward scan</text><text class="sub" x="1532" y="244" text-anchor="middle">one receipt</text></g><path d="M300 210 H338" stroke="#b4c8ba" stroke-width="3"/><path d="M330 200 l12 10 l-12 10z" fill="#b4c8ba"/><path d="M646 210 H684" stroke="#b4c8ba" stroke-width="3"/><path d="M676 200 l12 10 l-12 10z" fill="#b4c8ba"/><path d="M992 210 H1030" stroke="#b4c8ba" stroke-width="3"/><path d="M1022 200 l12 10 l-12 10z" fill="#b4c8ba"/><path d="M1338 210 H1376" stroke="#b4c8ba" stroke-width="3"/><path d="M1368 200 l12 10 l-12 10z" fill="#b4c8ba"/><text class="sub" x="494" y="360" text-anchor="middle">forged or replayed: blocked</text><text class="sub" x="1186" y="360" text-anchor="middle">wrong floor or stale data: stopped</text><text class="sub" x="840" y="60" text-anchor="middle">Every decision is written to a tamper-evident log</text></svg>
+    <div class="kicker">The chosen pipeline</div>
+    <h2>Checked at every step before the lift moves</h2>
+    <svg class="flow" viewBox="0 0 1680 420" role="img" aria-label="A lift call passes two encrypted hops, the fleet manager and the lift adapter"><g class="hot"><rect x="0" y="120" width="300" height="180" rx="20" fill="#c1de94" stroke="#c1de94" stroke-width="2"/><text x="150" y="200" text-anchor="middle">Robot</text><text class="sub" x="150" y="244" text-anchor="middle">signs each call</text></g><path d="M306 210 H335" stroke="#b4c8ba" stroke-width="3"/><g class=""><rect x="345" y="120" width="300" height="180" rx="20" fill="#153a32" stroke="#2c5247" stroke-width="2"/><text x="495" y="200" text-anchor="middle">Encrypted hop</text><text class="sub" x="495" y="244" text-anchor="middle">fresh keys</text></g><path d="M651 210 H680" stroke="#b4c8ba" stroke-width="3"/><g class="hot"><rect x="690" y="120" width="300" height="180" rx="20" fill="#c1de94" stroke="#c1de94" stroke-width="2"/><text x="840" y="200" text-anchor="middle">Fleet manager</text><text class="sub" x="840" y="244" text-anchor="middle">breaker per robot</text></g><path d="M996 210 H1025" stroke="#b4c8ba" stroke-width="3"/><g class=""><rect x="1035" y="120" width="300" height="180" rx="20" fill="#153a32" stroke="#2c5247" stroke-width="2"/><text x="1185" y="200" text-anchor="middle">Encrypted hop</text><text class="sub" x="1185" y="244" text-anchor="middle">fresh keys</text></g><path d="M1341 210 H1370" stroke="#b4c8ba" stroke-width="3"/><g class="hot"><rect x="1380" y="120" width="300" height="180" rx="20" fill="#c1de94" stroke="#c1de94" stroke-width="2"/><text x="1530" y="200" text-anchor="middle">Lift adapter</text><text class="sub" x="1530" y="244" text-anchor="middle">grant · status · sensor</text></g><text class="sub" x="840" y="60" text-anchor="middle">The dispatcher signs one grant per trip: this robot, this lift, this floor, ten minutes</text><text class="sub" x="840" y="370" text-anchor="middle">Every decision goes into a signed log. Only the fields a lift needs leave the robot.</text></svg>
   </section>
 
   <section class="slide">
-    <div class="kicker">Measured on simulated data</div>
+    <div class="kicker">Measured on simulated devices</div>
     <h2>What the tests show</h2>
     <div class="cols">
-      <div class="stat"><div class="num">10/10</div><div class="label"><b>forged requests blocked</b><br>baseline blocked 1 of 10</div></div>
-      <div class="stat"><div class="num">100%</div><div class="label"><b>ward tasks kept during a flood</b><br>without containment: 51%</div></div>
-      <div class="stat"><div class="num">90/100</div><div class="label"><b>equipment holds detected</b><br>fixed threshold: 0 of 100</div></div>
+      <div class="stat"><div class="num">19/19</div><div class="label"><b>attacks blocked</b><br>next best design: 12 of 19</div></div>
+      <div class="stat"><div class="num">100%</div><div class="label"><b>lift calls served during a flood</b><br>every other design: 10%</div></div>
+      <div class="stat"><div class="num">5/5</div><div class="label"><b>normal operations still work</b><br>retry, handover, key change</div></div>
     </div>
-    <p class="tag">Fictional data, test rows written by the team. No hospital equipment was involved.</p>
+    <p class="tag">Real cryptography, fictional devices. We wrote the attacks ourselves. 2 attacks still get through, and we show them.</p>
   </section>
 
   <section class="slide">

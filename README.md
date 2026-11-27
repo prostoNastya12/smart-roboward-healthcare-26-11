@@ -9,6 +9,35 @@
 - **Written by the team.** `HACKATHON.md`, `experiments/`, `gate/` (request gate, benchmark, tests, and the live hack demo, written with Claude), `site/` (including the shared page theme `site/theme.css`, copied from the 3D console's design), `.github/workflows/pages.yml` and this section. `output/visualizations/Smart-RoboWard-replay.html` is now rebuilt by the team from `site/replay-template.html`, with the same A01/U02 timelines as the AI-generated fragment `shared-lift-replay.html`. Reproduce the benchmark with `node gate/run.cjs`, run the tests with `node --test gate/`, and rebuild the pages with `node site/build-site.cjs`, `node gate/build-page.cjs` and `node gate/build-hacker.cjs`.
 - **Not included.** The organizer's brief image (it carries third-party logos and has no redistribution licence). Read the brief and rules on the [event page](https://www.bayern-innovativ.de/events-termine/detail/events-termine/healthcare-hackathon-bayern-hacken-bis-der-arzt-kommt-november2026).
 
+## Secure communication pipelines
+
+The core of the project. We built seven ways for a robot to ask a hospital lift for a floor, attacked each with the same 21 attacks, and chose one by a rule fixed before the first run.
+
+| | Pipeline | Where it comes from | Attacks blocked |
+| --- | --- | --- | --- |
+| A | Open network | Baseline | 0 of 19 |
+| B | Network admission only | Common hospital practice, admission step modelled | 2 of 19 |
+| C | Signed single-use tickets | Teammate's gate, method M1, real code | 7 of 19 |
+| D | Per-device signed messages | Standard practice | 10 of 19 |
+| E | Encrypted channel, mutual authentication | Standard practice, the idea behind mutual TLS | 10 of 19 |
+| F | Trip capability with proof of possession | Our proposal | 12 of 19 |
+| G | Layered pipeline | Combination of the above, the teammate's M3 and M4, and our lift admission | 19 of 19 |
+
+**Chosen: G, the layered pipeline, with 19 of 19.** The next best blocked 12. Two further attacks are listed as known limits and get through every design, including ours: a compromised dispatcher and traffic analysis.
+
+- Open [site/security-pipelines.html](site/security-pipelines.html) for the full matrix. Select any cell to run that attack again in your browser and see the frames on the wire.
+- Read [secure-comms/RESULTS.md](secure-comms/RESULTS.md) for the generated report, including what each pipeline needs from suppliers and why the others lost.
+- Read [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md) for the threat model, the attack definitions and the selection rule.
+
+The cryptography is real: Ed25519 signatures, X25519 key agreement, HKDF, AES-256-GCM and HMAC-SHA-256 from the platform's standard library. The devices, trips and keys are fictional. The team wrote the attacks, so this is our own measurement and not an independent audit. Written on site with Claude.
+
+```sh
+node secure-comms/run.cjs          # measure, writes secure-comms/results.json
+node secure-comms/report.cjs       # writes secure-comms/RESULTS.md
+node secure-comms/build-page.cjs   # writes site/security-pipelines.html
+node --test secure-comms/*.test.cjs
+```
+
 ## Ward safety control room
 
 Open [ward-safety/index.html](ward-safety/index.html) in any modern browser. It runs offline from that one file. Pick a **Simulation round**, press **To decision**, and watch whether the lift adapter allows, holds or denies RX-01's call for the Ward B delivery.
@@ -23,13 +52,13 @@ Open [ward-safety/index.html](ward-safety/index.html) in any modern browser. It 
 
 **Trust study** shows the held-out results of 10,000 simulated missions and a route heatmap. A dashed grey lane was never observed. A blue lane was observed rarely. **Workflow review** replays a policy change, parcel custody checks and a two-vendor lift queue.
 
-The control room was written by the team with Claude. It reuses the imported fleet engine and clinic map. Every number comes from local simulation with fictional data. Rebuild with `node ward-safety/build.cjs` (needs Python 3 for the map and policy replay). The nurse's order passes the request gate from `gate/` before the robot is dispatched, and **Send a forged order** shows a refusal. The plan and current status are in [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md).
+The control room was written by the team with Claude. It reuses the imported fleet engine and clinic map. Every number comes from local simulation with fictional data. Rebuild with `node ward-safety/build.cjs` (needs Python 3 for the map and policy replay). The nurse's order passes the request gate from `gate/` before the robot is dispatched, and **Send a forged order** shows a refusal. Under **Message security**, each round's lift call is also sent for real through the chosen pipeline, and the page shows whether the answer over the wire agrees with the simulation. The plan and current status are in [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md).
 
 ## Pitch materials
 
 | File | Use |
 | --- | --- |
-| [presentation/demo.html](presentation/demo.html) | Seven slides in one offline file. Arrows to move, `f` fullscreen, `p` play or pause, `m` sound, `t` timer |
+| [presentation/demo.html](presentation/demo.html) | Eight slides in one offline file, built from the measured results by `node presentation/build-deck.cjs`. Arrows to move, `f` fullscreen, `p` play or pause, `m` sound, `t` timer |
 | [presentation/SCRIPT.md](presentation/SCRIPT.md) | Talk track, about four minutes |
 | [presentation/media/smart-roboward-demo-v1.mp4](presentation/media/smart-roboward-demo-v1.mp4) | 76-second narrated fallback video, recorded from the real pages with a locally generated voice |
 | [docs/Zusammenfassung-DE.md](docs/Zusammenfassung-DE.md) | One-page German summary for the jury |
@@ -70,7 +99,7 @@ Run these commands from the repository root. Python 3.9+ builds the 3D console a
 
 ```sh
 python clinic3d/build_model.py
-node --test clinic3d/fleet.test.cjs ward-safety/*.test.cjs gate/*.test.cjs
+node --test clinic3d/fleet.test.cjs ward-safety/*.test.cjs gate/*.test.cjs secure-comms/*.test.cjs
 python output/simulation/replay.py --case A01
 python output/simulation/replay.py --case U02
 ```

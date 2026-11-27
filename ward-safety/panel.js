@@ -211,6 +211,7 @@
     renderGate(state);
     renderTopology(state);
     renderEvents(state);
+    renderWire(state);
     text("clock", clock(state.time));
     const finished = state.journey.phase === "received" || state.journey.phase === "denied";
     if (finished && playing) setPlaying(false);
@@ -253,9 +254,48 @@
     render();
   }
   byId("forge").addEventListener("click", forge);
+  // The same lift call, sent for real through the chosen secure pipeline (secure-comms, pipeline G):
+  // encrypted hops, a signed trip grant bound to RX-01's key, and the same admission function this simulation uses.
+  let wire = null, wireRun = 0;
+  async function wireCheck(round) {
+    const run = ++wireRun;
+    wire = null;
+    text("wire-channel", "Checking…"); text("wire-grant", "Checking…"); text("wire-decision", "Checking…");
+    try {
+      const w = await SecureComms.makeWorld("G");
+      await w.dispatch("TRIP-WB", "RX-01", "L2");
+      w.arrive("RX-01");
+      if (round === "priority") w.site.priority = true;
+      if (round === "roam") { w.feedBlocked = true; w.site.seenAt = null; }
+      const claims = SecureComms.claimsFor("RX-01", "TRIP-WB", round === "forbidden" ? "Ground" : "Upper");
+      if (round === "unverified") claims.mapRevision = "map-8";
+      const reply = await w.pipe.call(w.nodes["RX-01"], claims);
+      if (run !== wireRun) return;
+      const frames = w.net.captured, sealed = frames.filter(f => f.frame.includes('"t":"rec"')).length;
+      const readable = frames.some(f => f.frame.includes("TRIP-WB") || f.frame.includes('"rawFloor"'));
+      wire = {decision: reply.decision, reason: reply.reason, calls: w.lift.calls.length};
+      text("wire-channel", readable ? "Readable on the network" : "Encrypted · " + sealed + " sealed records · both ends proved");
+      text("wire-grant", "Signed by dispatch · bound to RX-01's key");
+    } catch (error) {
+      if (run !== wireRun) return;
+      wire = {error: true};
+      text("wire-channel", "Not available in this browser"); text("wire-grant", "—");
+    }
+    render();
+  }
+  function renderWire(state) {
+    if (!wire) return;
+    const node = byId("wire-decision");
+    if (wire.error || !wire.decision) { node.textContent = "No answer"; return; }
+    const simulated = state.journey.outcome;
+    const agrees = simulated === "pending" ? "" : wire.decision === simulated ? " · agrees with the simulation" : " · differs from the simulation";
+    node.textContent = outcomeNames[wire.decision] + " · " + wire.calls + " lift call" + (wire.calls === 1 ? "" : "s") + agrees;
+    node.dataset.match = agrees.includes("differs") ? "no" : "yes";
+  }
   function reset() {
     setPlaying(false);
     openGate();
+    wireCheck(byId("round").value);
     if (!gateResult.ok) throw Error("The request gate refused the routine order: " + gateResult.reason);
     simulation = new WardSafety.WardSimulation({network, round:byId("round").value});
     simulation.fleet.journal.unshift({time:0, kind:"gate", source:"Request gate", text:"Nurse order passed token, policy and schema checks. Robot payload: task and destination only"});

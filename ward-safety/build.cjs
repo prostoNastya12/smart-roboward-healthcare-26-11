@@ -33,7 +33,7 @@ print(json.dumps(plan, separators=(",", ":")))
 }
 
 // Links to the team's other pages. The published site is flat; the repository copy uses relative paths.
-const LINKS = [["Overview", "index.html", "../site/index.html"], ["Fleet console", "Clinic-World.html", "../output/visualizations/Clinic-World.html"],
+const LINKS = [["Overview", "index.html", "../site/index.html"], ["Secure pipelines", "security-pipelines.html", "../site/security-pipelines.html"], ["Fleet console", "Clinic-World.html", "../output/visualizations/Clinic-World.html"],
   ["Live hack demo", "hacker-demo.html", "../site/hacker-demo.html"], ["Gate results", "gate-results.html", "../site/gate-results.html"]];
 
 function buildPage(published = false) {
@@ -49,10 +49,10 @@ function buildPage(published = false) {
   }).join("\n");
   // The teammate's request gate, unchanged, with its browser crypto shim (see gate/build-hacker.cjs).
   const sources = [read("../clinic3d/fleet.js"), require("../gate/build-hacker.cjs").gateBrowserSource(),
-    read("controller.js"), read("workflows.js"), read("panel.js")];
+    read("controller.js"), read("../secure-comms/comms.js"), read("workflows.js"), read("panel.js")];
   const scripts = sources.map(source => "<script>\n" + source.replace(/<\/script/gi,"<\\/script") + "\n</script>").join("\n");
   const links = LINKS.map(([label, flat, local]) => '<a href="' + (published ? flat : local) + '">' + label + "</a>").join("");
-  let html = read("panel.html");
+  let html = read("panel.html").replace('id="wire-link" href="#"', 'id="wire-link" href="' + (published ? "" : "../site/") + 'security-pipelines.html"');
   for (const [slot,content] of Object.entries({WARD_DATA:data, WARD_STYLE:"<style>\n"+read("panel.css")+"\n</style>", WARD_SCRIPTS:scripts, WARD_LINKS:links})) {
     const marker = "<!--" + slot + "-->";
     if (html.split(marker).length !== 2) throw Error("Expected one " + marker);
