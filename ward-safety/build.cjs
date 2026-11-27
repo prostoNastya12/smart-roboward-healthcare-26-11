@@ -32,7 +32,11 @@ print(json.dumps(plan, separators=(",", ":")))
   return JSON.parse(result.stdout);
 }
 
-function buildPage() {
+// Links to the team's other pages. The published site is flat; the repository copy uses relative paths.
+const LINKS = [["Overview", "index.html", "../site/index.html"], ["Fleet console", "Clinic-World.html", "../output/visualizations/Clinic-World.html"],
+  ["Live hack demo", "hacker-demo.html", "../site/hacker-demo.html"], ["Gate results", "gate-results.html", "../site/gate-results.html"]];
+
+function buildPage(published = false) {
   const inputs = {
     "network-data":load("../clinic3d/network.json"),
     "floor-data":buildFloors(),
@@ -43,10 +47,13 @@ function buildPage() {
     const json = JSON.stringify(value).replaceAll("<","\\u003c");
     return '<script type="application/json" id="' + id + '">' + json + '</script>';
   }).join("\n");
-  const scripts = ["../clinic3d/fleet.js","controller.js","workflows.js","panel.js"].map(name =>
-    "<script>\n" + read(name).replace(/<\/script/gi,"<\\/script") + "\n</script>").join("\n");
+  // The teammate's request gate, unchanged, with its browser crypto shim (see gate/build-hacker.cjs).
+  const sources = [read("../clinic3d/fleet.js"), require("../gate/build-hacker.cjs").gateBrowserSource(),
+    read("controller.js"), read("workflows.js"), read("panel.js")];
+  const scripts = sources.map(source => "<script>\n" + source.replace(/<\/script/gi,"<\\/script") + "\n</script>").join("\n");
+  const links = LINKS.map(([label, flat, local]) => '<a href="' + (published ? flat : local) + '">' + label + "</a>").join("");
   let html = read("panel.html");
-  for (const [slot,content] of Object.entries({WARD_DATA:data, WARD_STYLE:"<style>\n"+read("panel.css")+"\n</style>", WARD_SCRIPTS:scripts})) {
+  for (const [slot,content] of Object.entries({WARD_DATA:data, WARD_STYLE:"<style>\n"+read("panel.css")+"\n</style>", WARD_SCRIPTS:scripts, WARD_LINKS:links})) {
     const marker = "<!--" + slot + "-->";
     if (html.split(marker).length !== 2) throw Error("Expected one " + marker);
     html = html.replace(marker, () => content);
@@ -55,6 +62,7 @@ function buildPage() {
 }
 if (require.main === module) {
   fs.writeFileSync(path.join(__dirname,"index.html"),buildPage());
-  console.log("Built ward-safety/index.html");
+  fs.writeFileSync(path.join(__dirname,"../site/ward-safety.html"),buildPage(true));
+  console.log("Built ward-safety/index.html and site/ward-safety.html");
 }
 module.exports = {buildPage, buildFloors};

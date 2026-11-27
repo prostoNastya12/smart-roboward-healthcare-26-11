@@ -28,12 +28,11 @@ jobs:
       - name: Stage site files
         run: |
           mkdir _site
-          cp site/index.html site/gate-results.html site/hacker-demo.html _site/
+          cp site/index.html site/gate-results.html site/hacker-demo.html site/ward-safety.html _site/
           cp output/visualizations/Clinic-World.html \
              output/visualizations/Clinic-World.glb \
              output/visualizations/Clinic-World-3D.png \
              output/visualizations/Smart-RoboWard-replay.html _site/
-          cp ward-safety/index.html _site/ward-safety.html
           touch _site/.nojekyll
           ls -la _site
 

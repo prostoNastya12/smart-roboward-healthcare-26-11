@@ -123,8 +123,13 @@ footer strong {color:var(--ink)}
 @media(prefers-reduced-motion:reduce) {*,*::before,*::after {scroll-behavior:auto!important}}
 .topology {margin-top:16px}
 .topology-title {display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:15px 21px 0}
-.topology-title span {font:600 11px var(--mono);color:var(--sub)}
-.topology-steps {list-style:none;margin:0;padding:13px 21px 18px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}
+.topology-steps {list-style:none;margin:0;padding:13px 21px 18px;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px}
+.forge {display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.forge output {font:600 11px var(--mono);color:#8f3426}
+.page-links {margin-left:auto;display:flex;gap:4px}
+.page-links a {color:#c4d8cb;font-size:12px;font-weight:600;text-decoration:none;padding:6px 9px;border-radius:5px;white-space:nowrap}
+.page-links a:hover {background:#204b3f;color:#fff}
+.page-links+.local-status {margin-left:8px}
 .topology-steps li {position:relative;display:grid;gap:3px;align-content:start;padding:10px 11px;border:1px solid var(--line);border-top:3px solid #b9c7ba;border-radius:6px;background:var(--wash);min-width:0}
 .topology-steps li:not(:last-child):after {content:"›";position:absolute;right:-8px;top:9px;color:#8aa08f;font-weight:700}
 .topology-steps strong {font-size:12px}
@@ -142,5 +147,6 @@ footer strong {color:var(--ink)}
 .edge-select select {text-transform:none;letter-spacing:0;font-family:inherit;max-width:100%}
 #heat-values {margin-top:12px}
 #metrics {margin-top:4px}
+@media(max-width:1100px) {.page-links {display:none}}
 @media(max-width:900px) {.topology-steps {grid-template-columns:repeat(4,minmax(0,1fr))}.topology-steps li:after {display:none}}
 @media(max-width:700px) {.topology-steps {grid-template-columns:repeat(2,minmax(0,1fr));padding-left:14px;padding-right:14px}.topology-title {padding-left:14px;padding-right:14px}}

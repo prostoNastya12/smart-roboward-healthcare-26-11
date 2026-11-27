@@ -169,6 +169,7 @@
     const j = state.journey, f = state.facilities;
     const gate = {pending:"idle", allow:"ok", hold:"wait", deny:"stop"}[j.outcome];
     const steps = [
+      ["Request gate", forged ? "Nurse order passed · " + count(forged, "forged order") + " blocked" : "Nurse order passed 4 checks", "ok"],
       ["Dispatcher", "Trip " + j.trip + " granted for L2", "ok"],
       ["Fleet manager", j.holder === "Porter" ? "Mission paused · porter assigned" : "Mission sent to RX-01", j.holder === "Porter" ? "wait" : "ok"],
       ["RX-01", phaseNames[j.phase], j.phase === "denied" ? "stop" : j.phase === "waiting" || j.phase === "porter_offered" ? "wait" : "ok"],
@@ -230,9 +231,34 @@
       render();
     }, 50);
   }
+  // The nurse's order passes the team's request gate (gate/gate.cjs, full stack) before any robot is dispatched.
+  const order = {type:"deliver", user:"N2", task_id:"TRIP-WB", destination:"Ward B", source:"ward-b-station"};
+  let gate, gateResult, forged = 0;
+  function openGate() {
+    const world = RWGate.makeWorld(), timer = {t:Date.now()};
+    world.tasks[order.task_id] = {dest:order.destination, type:"med", owner:order.user, status:"REGISTERED"};
+    world.destinations[order.destination] = "B";
+    gate = new RWGate.Gate(world, {M1:true, M2:true, M3:true, M4:true}, timer);
+    gateResult = gate.handle({...order, token:RWGate.issueToken(order.user, order.task_id, order.destination, timer.t)});
+    forged = 0;
+    text("forge-status", "");
+  }
+  function forge() {
+    // Same order from an unknown device with no signed token. Five refusals trip the gate's breaker for that source.
+    const reply = gate.handle({...order, destination:"Ward A", source:"unknown-device"});
+    forged++;
+    const robotOrders = gate.w.robot.inbox.length;
+    text("forge-status", "Forged order " + forged + " blocked · " + reply.reason + " · robot received " + count(robotOrders, "order"));
+    simulation.fleet.capture("blocked", "Request gate", "Forged order from unknown-device refused: " + reply.reason);
+    render();
+  }
+  byId("forge").addEventListener("click", forge);
   function reset() {
     setPlaying(false);
+    openGate();
+    if (!gateResult.ok) throw Error("The request gate refused the routine order: " + gateResult.reason);
     simulation = new WardSafety.WardSimulation({network, round:byId("round").value});
+    simulation.fleet.journal.unshift({time:0, kind:"gate", source:"Request gate", text:"Nurse order passed token, policy and schema checks. Robot payload: task and destination only"});
     byId("floor").value = "auto";
     lastFloor = lastActions = ""; lastEvents = -1; renderTopology.last = "";
     text("action-status", "");

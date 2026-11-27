@@ -12,7 +12,7 @@
   <header class="site-head"><div class="site-inner">
     <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M5 9h7V5h8v7h7v8h-7v7h-8v-7H5z"/><path d="M9 13v4h7v6m0-14v7h7"/></svg></span><strong>Smart RoboWard</strong></div>
     <nav aria-label="Dashboard"><button data-view="control" aria-pressed="true">Control room</button><button data-view="study" aria-pressed="false">Trust study</button><button data-view="review" aria-pressed="false">Workflow review</button></nav>
-    <span class="local-status"><i></i> Local simulation</span>
+    <span class="page-links"><!--WARD_LINKS--></span><span class="local-status"><i></i> Local simulation</span>
   </div></header>
   <main id="main" tabindex="-1">
     <section id="view-control">
@@ -34,7 +34,7 @@
           <div id="actions" class="actions"></div><p id="action-status" class="action-status" aria-live="polite"></p></div>
         </aside>
       </div>
-      <article class="topology panel"><div class="topology-title"><h2>Service path</h2><span>RX-01 → Ward B</span></div><ol id="topology" class="topology-steps"></ol></article>
+      <article class="topology panel"><div class="topology-title"><h2>Service path</h2><span class="forge"><output id="forge-status" aria-live="polite"></output><button id="forge" type="button">Send a forged order</button></span></div><ol id="topology" class="topology-steps"></ol></article>
       <div class="detail-grid"><article class="panel"><div class="panel-head"><div><h2>Ward receipt</h2></div><span class="panel-icon" aria-hidden="true">✓</span></div><dl class="facts custody"><div><dt>Delivery</dt><dd>RX-01 → Ward B</dd></div><div><dt>Journey phase</dt><dd id="phase">—</dd></div><div><dt>Current holder</dt><dd id="holder">—</dd></div><div><dt>Ward receipts</dt><dd id="receipts">0</dd></div></dl><div id="receipt-actions" class="actions receipt-actions"></div></article>
       <article class="panel"><div class="panel-head"><div><h2>Event log</h2></div><span id="event-count" class="meta"></span></div><ol id="events" class="event-list"></ol></article></div>
     </section>
