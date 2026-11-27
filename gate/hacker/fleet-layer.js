@@ -1,6 +1,6 @@
 "use strict";
 // The demo's 3D layer, drawn into the fleet console's own Three.js scene (clinic meters):
-// the hacker, the nurse workstation, the gate, attack packets, and the "robot zone cut off" box.
+// the hacker, the nurse workstation, the gate, attack packets, task tags above the robots, and the "robot zone cut off" box.
 // It only draws what app.js tells it. All allow/block decisions come from the real gate code.
 const DemoLayer = (function () {
   const T = THREE, V = T.Vector3;
@@ -8,11 +8,14 @@ const DemoLayer = (function () {
   const GREEN = 0x1fbf6b, RED = 0xe5384f, ORANGE = 0xff9f1c, BLUE = 0x2aa8e0, NEON = 0x39ff88;
   const P = {nurse: new V(-14, 0, 29), gate: new V(4, 0, 24), hacker: new V(22, 0, 31), entrance: new V(4, 0, 15.5)};
   const VIEWS = {   // target, direction from the target to the camera, distance (meters)
-    whole: {t: [2, 2, 8], dir: [0.35, 0.6, 0.75], d: 82},
-    hacker: {t: [22, 3.2, 30], dir: [-0.5, 0.3, 0.8], d: 9},
-    gate: {t: [4, 2.2, 24], dir: [0.15, 0.45, 0.85], d: 24}
+    overview: {t: [2, 4, 4], dir: [0.3, 0.66, 0.69], d: 72},
+    nurse: {t: [-14, 2.6, 28], dir: [0.45, 0.35, 0.82], d: 14},
+    gate: {t: [4, 2.2, 24], dir: [0.15, 0.45, 0.85], d: 24},
+    hacker: {t: [22, 3.2, 30], dir: [-0.5, 0.3, 0.8], d: 10}
   };
-  let env, root, hacker, nurse, gateObj, zone, zoneLabel, cable, ready = false, isolated = false, hackerTyping = false, hackerBubble = null;
+  const AMBER = 0xf0a020, TAG = {nurse: "rgba(23,103,76,.95)", auto: "rgba(74,98,92,.92)", hacker: "rgba(170,30,45,.95)", operator: "rgba(40,95,145,.95)"};
+  let env, root, hacker, nurse, gateObj, zone, zoneLabel, cable, ready = false, isolated = false, hackerTyping = false, hackerBubble = null, nurseBubble = null;
+  const tags = new Map();   // robot id -> {sprite, key}: the job tag floating above each robot
   let hackerGlass = null, shake = 0;   // shared glasses material, and the head shake while the hacker rages
   let labels = [], tweens = [], runners = 0, active = false, camTween = null, last = 0, time = 0, frame = 0, adjacency = null;
 
@@ -31,7 +34,9 @@ const DemoLayer = (function () {
     c.width = w; c.height = h; x.font = font;
     if (o.bg) { x.fillStyle = o.bg; roundRect(x, 0, 0, w, h, 16); x.fill(); }
     x.fillStyle = o.color; x.textBaseline = "middle"; x.textAlign = "center"; x.fillText(text, w / 2, h / 2 + 2);
-    const s = new T.Sprite(new T.SpriteMaterial({map: new T.CanvasTexture(c), transparent: true, depthWrite: false, toneMapped: false}));
+    const tex = new T.CanvasTexture(c); if (T.SRGBColorSpace) tex.colorSpace = T.SRGBColorSpace;   // keep the label colours as drawn
+    const s = new T.Sprite(new T.SpriteMaterial({map: tex, transparent: true, depthWrite: false, depthTest: !o.overlay, toneMapped: false}));
+    if (o.overlay) s.renderOrder = 10;   // always drawn on top, like the console's own robot pins
     s.scale.set(w * o.scale, h * o.scale, 1); s.userData.base = [w * o.scale, h * o.scale]; labels.push(s);
     return s;
   }
@@ -196,14 +201,38 @@ const DemoLayer = (function () {
     request(o) {
       if (!ready) { if (o.arrive) o.arrive(); return; }
       const hk = o.from === "hacker", from = hk ? new V(P.hacker.x - 1.6, 3, P.hacker.z - 0.5) : new V(P.nurse.x + 1.8, 3, P.nurse.z - 0.5);
-      const gate = new V(P.gate.x, 2.4, P.gate.z + 0.5), color = hk ? (o.color || RED) : GREEN, k = o.fast ? 0.5 : 1;
+      const gate = new V(P.gate.x, 2.4, P.gate.z + 0.5), color = hk ? (o.color || RED) : (o.hold ? AMBER : GREEN), k = o.fast ? 0.5 : 1;
       packet(from, gate, color, Math.max(0.5, from.distanceTo(gate) / 24) * k, () => {
+        if (o.hold) { gateFlash(AMBER); pop(o.text || "NEEDS AUTHORIZATION", "#ffd28a", new V(P.gate.x, 6.8, P.gate.z)); if (o.arrive) o.arrive(); return; }
         if (!o.passed) { gateFlash(RED); if (!o.quiet) { burst(new V(P.gate.x, 2.4, P.gate.z + 0.8), RED); pop(o.text || "BLOCKED", "#ff9aa6", new V(P.gate.x, 6.8, P.gate.z)); } if (o.arrive) o.arrive(); return; }
         gateFlash(hk ? RED : GREEN);
         if (o.noRobot) { if (!o.quiet) pop(o.text || "OK", hk ? "#ff9aa6" : "#8dffbe", new V(P.gate.x, 6.8, P.gate.z)); if (o.arrive) o.arrive(); return; }
         const to = robotPos(o.target);
         packet(gate, to, color, Math.max(0.7, gate.distanceTo(to) / 22) * k, () => { if (o.arrive) o.arrive(); });
       });
+    },
+    // A held task was authorized: it continues from the gate to the robot.
+    gateToRobot(target, cb) {
+      if (!ready) { if (cb) cb(); return; }
+      const gate = new V(P.gate.x, 2.4, P.gate.z + 0.5), to = robotPos(target);
+      gateFlash(GREEN); pop("AUTHORIZED", "#8dffbe", new V(P.gate.x, 6.8, P.gate.z));
+      packet(gate, to, GREEN, Math.max(0.7, gate.distanceTo(to) / 22), cb);
+    },
+    // The job tag above a robot. kind: nurse | auto | hacker | operator. text=null removes it.
+    setTask(id, text, kind) {
+      if (!ready) return;
+      const old = tags.get(id), key = text ? kind + "|" + text : null;
+      if (old && old.key === key) return;
+      if (old) { root.remove(old.sprite); dispose(old.sprite); tags.delete(id); }
+      if (!text) return;
+      const s = label(text, {size: 40, color: "#ffffff", bg: TAG[kind] || TAG.auto, pad: 14, overlay: true, scale: 0.03}); root.add(s);
+      tags.set(id, {sprite: s, key});
+    },
+    nurseSay(text) {
+      if (!ready) return;
+      if (nurseBubble) { root.remove(nurseBubble); dispose(nurseBubble); }
+      const s = label(text, {size: 36, color: "#14202b", bg: "rgba(255,255,255,.96)"}); s.position.set(P.nurse.x, 8.6, P.nurse.z); root.add(s); nurseBubble = s;
+      tween(2.2, p => { if (p > 0.85) s.material.opacity = (1 - p) / 0.15; }, () => { if (nurseBubble === s) nurseBubble = null; root.remove(s); dispose(s); });
     },
     // A message coming BACK from the (possibly hacked) robot. passed=true means the gate let the bad message in.
     robotMessage(o) {
@@ -251,7 +280,7 @@ const DemoLayer = (function () {
       const to = new V(...v.t), pos = to.clone().addScaledVector(new V(...v.dir).normalize(), v.d);
       camTween = {t: 0, dur: reduce ? 0.01 : 1.1, p0: env.camera.position.clone(), t0: env.controls.target.clone(), p1: pos, t1: to};
     },
-    reset() { if (ready) { runners = 0; } api.setIsolated(false); }
+    reset() { if (ready) { runners = 0; for (const id of [...tags.keys()]) api.setTask(id, null); } api.setIsolated(false); }
   };
 
   function loop(now) {
@@ -272,10 +301,19 @@ const DemoLayer = (function () {
       }
       hacker.userData.glow.material.opacity = hackerTyping ? 0.45 + Math.sin(time * 20) * 0.2 : 0.2;
       if (isolated && !reduce) zone.children[0].material.opacity = 0.06 + Math.sin(time * 3) * 0.025;
+      if (tags.size) {
+        const snap = window.fleetConsole && window.fleetConsole.snapshot, fl = document.getElementById("model-floor");
+        for (const [id, t] of tags) {
+          const r = snap && snap.robots.find(x => x.id === id);
+          t.sprite.visible = !!r && (!fl || fl.value === "both" || fl.value === r.pose.floor);
+          if (r) t.sprite.position.set(r.pose.x, r.pose.y + 4.4, r.pose.z);
+        }
+        moving = true;
+      }
       labels = labels.filter(s => s.parent);
       for (const s of labels) {   // keep labels readable: smaller when the camera is close, larger when far away
         s.getWorldPosition(tmp);
-        const f = Math.max(0.25, Math.min(1.5, env.camera.position.distanceTo(tmp) / 45));
+        const f = Math.max(0.25, Math.min(2.2, env.camera.position.distanceTo(tmp) / 45));
         s.scale.set(s.userData.base[0] * f, s.userData.base[1] * f, 1);
       }
       if (moving || ((active || isolated) && frame % 2 === 0)) env.schedule();
