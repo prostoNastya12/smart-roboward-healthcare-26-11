@@ -11,22 +11,25 @@
 
 ## Secure communication pipelines
 
-The core of the project. We built seven ways for a robot to ask a hospital lift for a floor, attacked each with the same 21 attacks, and chose one by a rule fixed before the first run.
+The core of the project. We built seven ways for a robot to ask a hospital lift for a floor, attacked each with the same 24 attacks, and chose one by a rule fixed before the first run.
 
 | | Pipeline | Where it comes from | Attacks blocked |
 | --- | --- | --- | --- |
-| A | Open network | Baseline | 0 of 19 |
-| B | Network admission only | Common hospital practice, admission step modelled | 2 of 19 |
-| C | Signed single-use tickets | Teammate's gate, method M1, real code | 7 of 19 |
-| D | Per-device signed messages | Standard practice | 10 of 19 |
-| E | Encrypted channel, mutual authentication | Standard practice, the idea behind mutual TLS | 10 of 19 |
-| F | Trip capability with proof of possession | Our proposal | 12 of 19 |
-| G | Layered pipeline | Combination of the above, the teammate's M3 and M4, and our lift admission | 19 of 19 |
+| A | Open network | Baseline | 1 of 20 |
+| B | Network admission only | Common hospital practice, admission step modelled | 3 of 20 |
+| C | Signed single-use tickets | Teammate's gate, method M1, real code | 7 of 20 |
+| D | Per-device signed messages | Standard practice | 11 of 20 |
+| E | Encrypted channel, mutual authentication | Standard practice, the idea behind mutual TLS | 11 of 20 |
+| F | Trip capability with proof of possession | Our proposal | 13 of 20 |
+| G | Layered pipeline | Combination of the above, the teammate's M3 and M4, and our lift admission | 20 of 20 |
+| H | Layered pipeline with dual control | Extension of G with a second signature from the clinical order system. Reported, not a candidate | 20 of 20 |
 
-**Chosen: G, the layered pipeline, with 19 of 19.** The next best blocked 12. Two further attacks are listed as known limits and get through every design, including ours: a compromised dispatcher and traffic analysis.
+**Chosen: G, the layered pipeline, with 20 of 20.** The next best blocked 13. All eight pass the 6 legitimate cases. A further 4 attacks are reported as known limits and get through all seven candidates: a compromised dispatcher, traffic analysis, a fleet manager that reads what it relays, and a flood sent straight to the adapter. Extension H closes the first of these.
+
+A second reviewer, who did not write the code, attacked an earlier version and confirmed eleven findings, including a way to lock a genuine robot out through the circuit breaker. Nine are fixed and now have their own attacks or tests. Two are reported as limits. The report lists them.
 
 - Open [site/security-pipelines.html](site/security-pipelines.html) for the full matrix. Select any cell to run that attack again in your browser and see the frames on the wire.
-- Read [secure-comms/RESULTS.md](secure-comms/RESULTS.md) for the generated report, including what each pipeline needs from suppliers and why the others lost.
+- Read [secure-comms/RESULTS.md](secure-comms/RESULTS.md) for the generated report: what each pipeline needs from suppliers, why the others lost, the fairness check and the review findings.
 - Read [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md) for the threat model, the attack definitions and the selection rule.
 
 The cryptography is real: Ed25519 signatures, X25519 key agreement, HKDF, AES-256-GCM and HMAC-SHA-256 from the platform's standard library. The devices, trips and keys are fictional. The team wrote the attacks, so this is our own measurement and not an independent audit. Written on site with Claude.

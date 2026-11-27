@@ -4,8 +4,8 @@
   "node": "v26.7.0",
   "command": "node secure-comms/run.cjs",
   "inputs": {
-   "comms.js": "a38cc6b992376a471957f4e885a51c51f2cb369ed664cff8bbdc32f0eaf682c3",
-   "attacks.js": "324bdbb23aeee19bd3a604c22bd8101913950af6aee2c1da2b297037814c8ef8"
+   "comms.js": "11394a1fc3d8c22a4ecc26b850bfc05768dcdde7a3dc75517182d9709a652fa0",
+   "attacks.js": "72578fab8e313cd5d9bf9483437feacf86011efd715f41808e0ef1188a53154f"
   },
   "flood": {
    "adapterFramesPerSecond": 20,
@@ -161,6 +161,27 @@
    "position": "PATH",
    "wins": "The attacker can tell when a robot called the lift",
    "limit": true
+  },
+  {
+   "id": "T22",
+   "name": "Lock out a genuine robot by abusing the breaker",
+   "position": "PATH",
+   "wins": "RX-01's next legitimate call, two minutes later, is refused",
+   "limit": false
+  },
+  {
+   "id": "T23",
+   "name": "Compromised fleet manager reads the deliveries it relays",
+   "position": "FLEET",
+   "wins": "The fleet manager sees the trip and the floor",
+   "limit": true
+  },
+  {
+   "id": "T24",
+   "name": "Flood the lift adapter directly, past the fleet manager",
+   "position": "DEV",
+   "wins": "Fewer than 90% of other robots' legitimate calls are served",
+   "limit": true
   }
  ],
  "legit": [
@@ -183,36 +204,52 @@
   {
    "id": "L05",
    "name": "Key rotation"
+  },
+  {
+   "id": "L06",
+   "name": "Held for a patient transfer, robot keeps retrying"
   }
  ],
  "pipelines": {
   "A": {
    "name": "Open network",
-   "short": "Open"
+   "short": "Open",
+   "extension": false
   },
   "B": {
    "name": "Network admission only",
-   "short": "Admission"
+   "short": "Admission",
+   "extension": false
   },
   "C": {
    "name": "Signed single-use tickets",
-   "short": "Tickets"
+   "short": "Tickets",
+   "extension": false
   },
   "D": {
    "name": "Per-device signed messages",
-   "short": "Signed"
+   "short": "Signed",
+   "extension": false
   },
   "E": {
    "name": "Encrypted channel, mutual authentication",
-   "short": "Channel"
+   "short": "Channel",
+   "extension": false
   },
   "F": {
    "name": "Trip capability with proof of possession",
-   "short": "Capability"
+   "short": "Capability",
+   "extension": false
   },
   "G": {
    "name": "Layered pipeline",
-   "short": "Layered"
+   "short": "Layered",
+   "extension": false
+  },
+  "H": {
+   "name": "Layered pipeline with dual control",
+   "short": "G + dual",
+   "extension": true
   }
  },
  "results": {
@@ -228,7 +265,7 @@
     },
     "T03": {
      "blocked": false,
-     "detail": "2 extra lift call(s) after replaying 2 recorded frame(s)"
+     "detail": "1 extra lift call(s) after replaying 2 recorded frame(s), verbatim and renamed"
     },
     "T04": {
      "blocked": false,
@@ -252,7 +289,7 @@
     },
     "T09": {
      "blocked": false,
-     "detail": "2 lift call(s) from a revoked robot"
+     "detail": "3 lift call(s) from a revoked robot"
     },
     "T10": {
      "blocked": false,
@@ -264,7 +301,7 @@
     },
     "T12": {
      "blocked": false,
-     "detail": "2 of 2 forged answers accepted by the robot"
+     "detail": "Robot accepted a forged answer: edit, replay, swap"
     },
     "T13": {
      "blocked": false,
@@ -285,7 +322,7 @@
     },
     "T17": {
      "blocked": false,
-     "detail": "The private marker is stored on the lift side"
+     "detail": "The private marker is stored on the lift side, sent as: extra field, request ID"
     },
     "T18": {
      "blocked": false,
@@ -302,6 +339,19 @@
     "T21": {
      "blocked": false,
      "detail": "Frame timing and sender show when RX-01 called"
+    },
+    "T22": {
+     "blocked": true,
+     "detail": "After 3 held frames were released twice, RX-01's next call got: allow"
+    },
+    "T23": {
+     "blocked": false,
+     "detail": "The fleet manager handles the trip and floor in clear"
+    },
+    "T24": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 420 frames as overloaded",
+     "retainedPct": 10
     }
    },
    "legit": {
@@ -310,8 +360,8 @@
      "detail": "allow, 1 lift call(s)"
     },
     "L02": {
-     "pass": false,
-     "detail": "allow, 2 lift call(s)"
+     "pass": true,
+     "detail": "allow, 1 lift call(s)"
     },
     "L03": {
      "pass": true,
@@ -324,6 +374,10 @@
     "L05": {
      "pass": true,
      "detail": "allow with the new key, 2 lift call(s)"
+    },
+    "L06": {
+     "pass": true,
+     "detail": "Last answer allow after 0 holds, 1 lift call(s)"
     }
    },
    "cost": {
@@ -333,12 +387,12 @@
     "calls": 201
    },
    "summary": {
-    "blocked": 0,
-    "of": 19,
+    "blocked": 1,
+    "of": 20,
     "limitsBlocked": 0,
-    "limits": 2,
-    "legitPassed": 4,
-    "legitOf": 5
+    "limits": 4,
+    "legitPassed": 6,
+    "legitOf": 6
    }
   },
   "B": {
@@ -353,7 +407,7 @@
     },
     "T03": {
      "blocked": false,
-     "detail": "2 extra lift call(s) after replaying 2 recorded frame(s)"
+     "detail": "1 extra lift call(s) after replaying 2 recorded frame(s), verbatim and renamed"
     },
     "T04": {
      "blocked": false,
@@ -389,7 +443,7 @@
     },
     "T12": {
      "blocked": false,
-     "detail": "2 of 2 forged answers accepted by the robot"
+     "detail": "Robot accepted a forged answer: edit, replay, swap"
     },
     "T13": {
      "blocked": false,
@@ -410,7 +464,7 @@
     },
     "T17": {
      "blocked": false,
-     "detail": "The private marker is stored on the lift side"
+     "detail": "The private marker is stored on the lift side, sent as: extra field, request ID"
     },
     "T18": {
      "blocked": false,
@@ -427,6 +481,19 @@
     "T21": {
      "blocked": false,
      "detail": "Frame timing and sender show when RX-01 called"
+    },
+    "T22": {
+     "blocked": true,
+     "detail": "After 3 held frames were released twice, RX-01's next call got: allow"
+    },
+    "T23": {
+     "blocked": false,
+     "detail": "The fleet manager handles the trip and floor in clear"
+    },
+    "T24": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 420 frames as overloaded",
+     "retainedPct": 10
     }
    },
    "legit": {
@@ -435,8 +502,8 @@
      "detail": "allow, 1 lift call(s)"
     },
     "L02": {
-     "pass": false,
-     "detail": "allow, 2 lift call(s)"
+     "pass": true,
+     "detail": "allow, 1 lift call(s)"
     },
     "L03": {
      "pass": true,
@@ -449,6 +516,10 @@
     "L05": {
      "pass": true,
      "detail": "allow with the new key, 2 lift call(s)"
+    },
+    "L06": {
+     "pass": true,
+     "detail": "Last answer allow after 0 holds, 1 lift call(s)"
     }
    },
    "cost": {
@@ -458,12 +529,12 @@
     "calls": 201
    },
    "summary": {
-    "blocked": 2,
-    "of": 19,
+    "blocked": 3,
+    "of": 20,
     "limitsBlocked": 0,
-    "limits": 2,
-    "legitPassed": 4,
-    "legitOf": 5
+    "limits": 4,
+    "legitPassed": 6,
+    "legitOf": 6
    }
   },
   "C": {
@@ -478,7 +549,7 @@
     },
     "T03": {
      "blocked": true,
-     "detail": "0 extra lift call(s) after replaying 2 recorded frame(s)"
+     "detail": "0 extra lift call(s) after replaying 2 recorded frame(s), verbatim and renamed"
     },
     "T04": {
      "blocked": true,
@@ -501,8 +572,8 @@
      "detail": "0 lift call(s) for L1"
     },
     "T09": {
-     "blocked": true,
-     "detail": "0 lift call(s) from a revoked robot"
+     "blocked": false,
+     "detail": "1 lift call(s) from a revoked robot"
     },
     "T10": {
      "blocked": false,
@@ -514,7 +585,7 @@
     },
     "T12": {
      "blocked": false,
-     "detail": "2 of 2 forged answers accepted by the robot"
+     "detail": "Robot accepted a forged answer: edit, replay, swap"
     },
     "T13": {
      "blocked": false,
@@ -535,7 +606,7 @@
     },
     "T17": {
      "blocked": false,
-     "detail": "The private marker is stored on the lift side"
+     "detail": "The private marker is stored on the lift side, sent as: extra field, request ID"
     },
     "T18": {
      "blocked": false,
@@ -552,6 +623,19 @@
     "T21": {
      "blocked": false,
      "detail": "Frame timing and sender show when RX-01 called"
+    },
+    "T22": {
+     "blocked": true,
+     "detail": "After 3 held frames were released twice, RX-01's next call got: allow"
+    },
+    "T23": {
+     "blocked": false,
+     "detail": "The fleet manager handles the trip and floor in clear"
+    },
+    "T24": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 420 frames as overloaded",
+     "retainedPct": 10
     }
    },
    "legit": {
@@ -574,21 +658,25 @@
     "L05": {
      "pass": true,
      "detail": "allow with the new key, 2 lift call(s)"
+    },
+    "L06": {
+     "pass": true,
+     "detail": "Last answer allow after 0 holds, 1 lift call(s)"
     }
    },
    "cost": {
     "bytesPerCall": 802,
     "setupBytes": 0,
-    "msPerCall": 0.03,
+    "msPerCall": 0.02,
     "calls": 201
    },
    "summary": {
     "blocked": 7,
-    "of": 19,
+    "of": 20,
     "limitsBlocked": 0,
-    "limits": 2,
-    "legitPassed": 5,
-    "legitOf": 5
+    "limits": 4,
+    "legitPassed": 6,
+    "legitOf": 6
    }
   },
   "D": {
@@ -603,7 +691,7 @@
     },
     "T03": {
      "blocked": true,
-     "detail": "0 extra lift call(s) after replaying 2 recorded frame(s)"
+     "detail": "0 extra lift call(s) after replaying 2 recorded frame(s), verbatim and renamed"
     },
     "T04": {
      "blocked": true,
@@ -639,7 +727,7 @@
     },
     "T12": {
      "blocked": true,
-     "detail": "0 of 2 forged answers accepted by the robot"
+     "detail": "0 of 3 forged answers accepted by the robot"
     },
     "T13": {
      "blocked": true,
@@ -660,7 +748,7 @@
     },
     "T17": {
      "blocked": false,
-     "detail": "The private marker is stored on the lift side"
+     "detail": "The private marker is stored on the lift side, sent as: extra field, request ID"
     },
     "T18": {
      "blocked": false,
@@ -677,6 +765,19 @@
     "T21": {
      "blocked": false,
      "detail": "Frame timing and sender show when RX-01 called"
+    },
+    "T22": {
+     "blocked": true,
+     "detail": "After 3 held frames were released twice, RX-01's next call got: allow"
+    },
+    "T23": {
+     "blocked": false,
+     "detail": "The fleet manager handles the trip and floor in clear"
+    },
+    "T24": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 420 frames as overloaded",
+     "retainedPct": 10
     }
    },
    "legit": {
@@ -699,21 +800,25 @@
     "L05": {
      "pass": true,
      "detail": "allow with the new key, 2 lift call(s)"
+    },
+    "L06": {
+     "pass": true,
+     "detail": "Last answer allow after 0 holds, 1 lift call(s)"
     }
    },
    "cost": {
-    "bytesPerCall": 2074,
+    "bytesPerCall": 2236,
     "setupBytes": 0,
     "msPerCall": 0.65,
     "calls": 201
    },
    "summary": {
-    "blocked": 10,
-    "of": 19,
+    "blocked": 11,
+    "of": 20,
     "limitsBlocked": 0,
-    "limits": 2,
-    "legitPassed": 5,
-    "legitOf": 5
+    "limits": 4,
+    "legitPassed": 6,
+    "legitOf": 6
    }
   },
   "E": {
@@ -728,7 +833,7 @@
     },
     "T03": {
      "blocked": true,
-     "detail": "0 extra lift call(s) after replaying 6 recorded frame(s)"
+     "detail": "0 extra lift call(s) after replaying 6 recorded frame(s), verbatim and renamed"
     },
     "T04": {
      "blocked": true,
@@ -764,7 +869,7 @@
     },
     "T12": {
      "blocked": true,
-     "detail": "0 of 2 forged answers accepted by the robot"
+     "detail": "0 of 3 forged answers accepted by the robot"
     },
     "T13": {
      "blocked": true,
@@ -785,7 +890,7 @@
     },
     "T17": {
      "blocked": false,
-     "detail": "The private marker is stored on the lift side"
+     "detail": "The private marker is stored on the lift side, sent as: extra field, request ID"
     },
     "T18": {
      "blocked": false,
@@ -802,6 +907,19 @@
     "T21": {
      "blocked": false,
      "detail": "Frame timing and sender show when RX-01 called"
+    },
+    "T22": {
+     "blocked": true,
+     "detail": "After 6 held frames were released twice, RX-01's next call got: allow"
+    },
+    "T23": {
+     "blocked": false,
+     "detail": "The fleet manager handles the trip and floor in clear"
+    },
+    "T24": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 436 frames as overloaded",
+     "retainedPct": 10
     }
    },
    "legit": {
@@ -824,21 +942,25 @@
     "L05": {
      "pass": true,
      "detail": "allow with the new key, 2 lift call(s)"
+    },
+    "L06": {
+     "pass": true,
+     "detail": "Last answer allow after 0 holds, 1 lift call(s)"
     }
    },
    "cost": {
     "bytesPerCall": 934,
     "setupBytes": 1770,
-    "msPerCall": 0.28,
+    "msPerCall": 0.74,
     "calls": 201
    },
    "summary": {
-    "blocked": 10,
-    "of": 19,
+    "blocked": 11,
+    "of": 20,
     "limitsBlocked": 0,
-    "limits": 2,
-    "legitPassed": 5,
-    "legitOf": 5
+    "limits": 4,
+    "legitPassed": 6,
+    "legitOf": 6
    }
   },
   "F": {
@@ -853,7 +975,7 @@
     },
     "T03": {
      "blocked": true,
-     "detail": "0 extra lift call(s) after replaying 2 recorded frame(s)"
+     "detail": "0 extra lift call(s) after replaying 2 recorded frame(s), verbatim and renamed"
     },
     "T04": {
      "blocked": true,
@@ -889,7 +1011,7 @@
     },
     "T12": {
      "blocked": true,
-     "detail": "0 of 2 forged answers accepted by the robot"
+     "detail": "0 of 3 forged answers accepted by the robot"
     },
     "T13": {
      "blocked": true,
@@ -910,7 +1032,7 @@
     },
     "T17": {
      "blocked": false,
-     "detail": "The private marker is stored on the lift side"
+     "detail": "The private marker is stored on the lift side, sent as: extra field, request ID"
     },
     "T18": {
      "blocked": false,
@@ -927,6 +1049,19 @@
     "T21": {
      "blocked": false,
      "detail": "Frame timing and sender show when RX-01 called"
+    },
+    "T22": {
+     "blocked": true,
+     "detail": "After 3 held frames were released twice, RX-01's next call got: allow"
+    },
+    "T23": {
+     "blocked": false,
+     "detail": "The fleet manager handles the trip and floor in clear"
+    },
+    "T24": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 420 frames as overloaded",
+     "retainedPct": 10
     }
    },
    "legit": {
@@ -949,21 +1084,25 @@
     "L05": {
      "pass": true,
      "detail": "allow with the new key, 2 lift call(s)"
+    },
+    "L06": {
+     "pass": true,
+     "detail": "Last answer allow after 0 holds, 1 lift call(s)"
     }
    },
    "cost": {
-    "bytesPerCall": 2784,
+    "bytesPerCall": 2946,
     "setupBytes": 0,
     "msPerCall": 0.78,
     "calls": 201
    },
    "summary": {
-    "blocked": 12,
-    "of": 19,
+    "blocked": 13,
+    "of": 20,
     "limitsBlocked": 0,
-    "limits": 2,
-    "legitPassed": 5,
-    "legitOf": 5
+    "limits": 4,
+    "legitPassed": 6,
+    "legitOf": 6
    }
   },
   "G": {
@@ -978,7 +1117,7 @@
     },
     "T03": {
      "blocked": true,
-     "detail": "0 extra lift call(s) after replaying 6 recorded frame(s)"
+     "detail": "0 extra lift call(s) after replaying 6 recorded frame(s), verbatim and renamed"
     },
     "T04": {
      "blocked": true,
@@ -1014,7 +1153,7 @@
     },
     "T12": {
      "blocked": true,
-     "detail": "0 of 2 forged answers accepted by the robot"
+     "detail": "0 of 3 forged answers accepted by the robot"
     },
     "T13": {
      "blocked": true,
@@ -1031,7 +1170,7 @@
     },
     "T16": {
      "blocked": true,
-     "detail": "Signatures and the witnessed head exposed both the edit and the cut"
+     "detail": "Signatures exposed the edit, and the head held by the outside witness exposed the cut"
     },
     "T17": {
      "blocked": true,
@@ -1052,6 +1191,19 @@
     "T21": {
      "blocked": false,
      "detail": "Frame timing and sender show when RX-01 called"
+    },
+    "T22": {
+     "blocked": true,
+     "detail": "After 6 held frames were released twice, RX-01's next call got: allow"
+    },
+    "T23": {
+     "blocked": false,
+     "detail": "The fleet manager handles the trip and floor in clear"
+    },
+    "T24": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 436 frames as overloaded",
+     "retainedPct": 10
     }
    },
    "legit": {
@@ -1074,22 +1226,262 @@
     "L05": {
      "pass": true,
      "detail": "allow with the new key, 2 lift call(s)"
+    },
+    "L06": {
+     "pass": true,
+     "detail": "Last answer allow after 5 holds, 1 lift call(s)"
     }
    },
    "cost": {
-    "bytesPerCall": 4160,
+    "bytesPerCall": 4132,
     "setupBytes": 1770,
-    "msPerCall": 1.28,
+    "msPerCall": 1.79,
     "calls": 201
    },
    "summary": {
-    "blocked": 19,
-    "of": 19,
+    "blocked": 20,
+    "of": 20,
     "limitsBlocked": 0,
-    "limits": 2,
-    "legitPassed": 5,
-    "legitOf": 5
+    "limits": 4,
+    "legitPassed": 6,
+    "legitOf": 6
    }
+  },
+  "H": {
+   "attacks": {
+    "T01": {
+     "blocked": true,
+     "detail": "Nothing readable on the wire"
+    },
+    "T02": {
+     "blocked": true,
+     "detail": "0 lift call(s) from a device with no hospital credentials"
+    },
+    "T03": {
+     "blocked": true,
+     "detail": "0 extra lift call(s) after replaying 6 recorded frame(s), verbatim and renamed"
+    },
+    "T04": {
+     "blocked": true,
+     "detail": "0 lift call(s) for the attacker's floor"
+    },
+    "T05": {
+     "blocked": true,
+     "detail": "0 lift call(s) in RX-01's name from SUP-03"
+    },
+    "T06": {
+     "blocked": true,
+     "detail": "0 lift call(s) for a robot with no trip"
+    },
+    "T07": {
+     "blocked": true,
+     "detail": "0 lift call(s) the robot never made"
+    },
+    "T08": {
+     "blocked": true,
+     "detail": "0 lift call(s) for L1"
+    },
+    "T09": {
+     "blocked": true,
+     "detail": "0 lift call(s) from a revoked robot"
+    },
+    "T10": {
+     "blocked": true,
+     "detail": "0 lift call(s) from SUP-03. Lifted off the wire: cert"
+    },
+    "T11": {
+     "blocked": true,
+     "detail": "0 lift call(s) from a message delivered 120 s late"
+    },
+    "T12": {
+     "blocked": true,
+     "detail": "0 of 3 forged answers accepted by the robot"
+    },
+    "T13": {
+     "blocked": true,
+     "detail": "Robot refused the answer: no secure channel or no answer"
+    },
+    "T14": {
+     "blocked": true,
+     "detail": "20 of 20 legitimate calls served (100%), adapter refused 0 frames as overloaded",
+     "retainedPct": 100
+    },
+    "T15": {
+     "blocked": true,
+     "detail": "Long-term keys sign only. No key-agreement secret or exportable session key was kept"
+    },
+    "T16": {
+     "blocked": true,
+     "detail": "Signatures exposed the edit, and the head held by the outside witness exposed the cut"
+    },
+    "T17": {
+     "blocked": true,
+     "detail": "The private marker was not stored on the lift side"
+    },
+    "T18": {
+     "blocked": true,
+     "detail": "0 lift call(s) forwarded on 60 s old status"
+    },
+    "T19": {
+     "blocked": true,
+     "detail": "0 lift call(s) with no robot seen at the lift"
+    },
+    "T20": {
+     "blocked": true,
+     "detail": "0 lift call(s) on a grant the dispatcher should not have issued"
+    },
+    "T21": {
+     "blocked": false,
+     "detail": "Frame timing and sender show when RX-01 called"
+    },
+    "T22": {
+     "blocked": true,
+     "detail": "After 6 held frames were released twice, RX-01's next call got: allow"
+    },
+    "T23": {
+     "blocked": false,
+     "detail": "The fleet manager handles the trip and floor in clear"
+    },
+    "T24": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 436 frames as overloaded",
+     "retainedPct": 10
+    }
+   },
+   "legit": {
+    "L01": {
+     "pass": true,
+     "detail": "allow, 1 lift call(s)"
+    },
+    "L02": {
+     "pass": true,
+     "detail": "allow, 1 lift call(s)"
+    },
+    "L03": {
+     "pass": true,
+     "detail": "allow after reconnect, 2 lift call(s)"
+    },
+    "L04": {
+     "pass": true,
+     "detail": "allow and allow, 2 lift call(s)"
+    },
+    "L05": {
+     "pass": true,
+     "detail": "allow with the new key, 2 lift call(s)"
+    },
+    "L06": {
+     "pass": true,
+     "detail": "Last answer allow after 5 holds, 1 lift call(s)"
+    }
+   },
+   "cost": {
+    "bytesPerCall": 5166,
+    "setupBytes": 1770,
+    "msPerCall": 2.11,
+    "calls": 201
+   },
+   "summary": {
+    "blocked": 20,
+    "of": 20,
+    "limitsBlocked": 1,
+    "limits": 4,
+    "legitPassed": 6,
+    "legitOf": 6
+   }
+  }
+ },
+ "variants": {
+  "A": {
+   "summary": {
+    "blocked": 4,
+    "of": 20,
+    "limitsBlocked": 0,
+    "limits": 4,
+    "legitPassed": 6,
+    "legitOf": 6
+   },
+   "through": [
+    "T01",
+    "T02",
+    "T03",
+    "T05",
+    "T07",
+    "T09",
+    "T10",
+    "T11",
+    "T12",
+    "T13",
+    "T14",
+    "T15",
+    "T16",
+    "T17",
+    "T18",
+    "T19"
+   ]
+  },
+  "B": {
+   "summary": {
+    "blocked": 6,
+    "of": 20,
+    "limitsBlocked": 0,
+    "limits": 4,
+    "legitPassed": 6,
+    "legitOf": 6
+   },
+   "through": [
+    "T01",
+    "T03",
+    "T05",
+    "T07",
+    "T10",
+    "T11",
+    "T12",
+    "T13",
+    "T14",
+    "T15",
+    "T16",
+    "T17",
+    "T18",
+    "T19"
+   ]
+  },
+  "D": {
+   "summary": {
+    "blocked": 13,
+    "of": 20,
+    "limitsBlocked": 0,
+    "limits": 4,
+    "legitPassed": 6,
+    "legitOf": 6
+   },
+   "through": [
+    "T01",
+    "T14",
+    "T15",
+    "T16",
+    "T17",
+    "T18",
+    "T19"
+   ]
+  },
+  "E": {
+   "summary": {
+    "blocked": 13,
+    "of": 20,
+    "limitsBlocked": 0,
+    "limits": 4,
+    "legitPassed": 6,
+    "legitOf": 6
+   },
+   "through": [
+    "T07",
+    "T11",
+    "T14",
+    "T16",
+    "T17",
+    "T18",
+    "T19"
+   ]
   }
  },
  "decision": {
@@ -1098,7 +1490,9 @@
    "F",
    "E",
    "D",
-   "C"
+   "C",
+   "B",
+   "A"
   ],
   "winner": "G"
  }

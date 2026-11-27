@@ -7,16 +7,16 @@
 </style></head><body><main>
 <!--__HEADER__-->
 <div class="ops-heading">
-  <div><h1>Secure communication pipelines</h1><p class="lede">Seven ways for a robot to ask a hospital lift for a floor. The same 21 attacks against each. One is chosen.</p></div>
-  <dl class="ops-counts"><div><dt>Pipelines</dt><dd>7</dd></div><div><dt>Attacks</dt><dd id="n-attacks">21</dd></div><div><dt>Chosen</dt><dd id="n-chosen">–</dd></div></dl>
+  <div><h1>Secure communication pipelines</h1><p class="lede">Seven ways for a robot to ask a hospital lift for a floor, and one extension. The same attacks against each. One is chosen.</p></div>
+  <dl class="ops-counts"><div><dt>Pipelines</dt><dd id="n-pipes">8</dd></div><div><dt>Attacks</dt><dd id="n-attacks">21</dd></div><div><dt>Chosen</dt><dd id="n-chosen">–</dd></div></dl>
 </div>
-<p class="note"><strong>Simulated devices, real cryptography.</strong> Every device, trip and key is fictional and created when the test runs. Signatures, key agreement and encryption are the real algorithms from the browser's standard library. The team wrote the attacks, so this is our own measurement, not an independent audit.</p>
+<p class="note"><strong>Simulated devices, real cryptography.</strong> Every device, trip and key is fictional and created when the test runs. Signatures, key agreement and encryption are the real algorithms from the browser's standard library. The team wrote the attacks, so this is our own measurement, not an independent audit. A second reviewer attacked an earlier version and its findings are fixed or listed as limits below.</p>
 
 <section class="ops-card decision" id="decision"></section>
 
 <section class="ops-card" style="margin-top:14px">
   <div class="card-heading"><h2>Every attack against every pipeline</h2><span class="device-ref" id="matrix-source">saved run</span></div>
-  <p class="section-note">A tick means the attack had no effect. A cross means the design has no defence against it, or its defence failed. Select a cell to see what happened and to run it again in this browser.</p>
+  <p class="section-note">A to G are the seven candidates. H extends the chosen one. A tick means the attack had no effect. A cross means the design has no defence against it, or its defence failed. Select a cell to see what happened and to run it again in this browser.</p>
   <div class="tablewrap"><table class="data matrix" id="matrix"><thead></thead><tbody></tbody><tfoot></tfoot></table></div>
   <div class="matrix-actions"><button type="button" id="rerun">Run all attacks again in this browser</button><output id="rerun-status" aria-live="polite"></output></div>
 </section>
@@ -34,7 +34,7 @@
   </div>
 </section>
 
-<div class="section-title"><h2>The seven pipelines</h2><span class="device-ref">source · idea · what it needs</span></div>
+<div class="section-title"><h2>The pipelines</h2><span class="device-ref">source · idea · what it needs</span></div>
 <div class="card-grid pipes" id="pipes"></div>
 
 <section class="ops-card" style="margin-top:14px">

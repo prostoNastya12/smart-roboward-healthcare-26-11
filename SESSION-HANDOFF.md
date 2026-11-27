@@ -4,7 +4,11 @@
 
 ## Paste into the next session
 
-> Read `IMPLEMENTATION-PLAN.md` and `SESSION-HANDOFF.md` in `smart-roboward-healthcare-26-11`, continue on `feature/ward-safety-console`, and work through the "Before the deadline" table. The control room is finished and browser-tested. The open items are the pull request into `master`, the dry run, slides and the fallback video.
+> Read `IMPLEMENTATION-PLAN.md` (sections 10 and 11) and `secure-comms/RESULTS.md` in `smart-roboward-healthcare-26-11`, continue on `feature/ward-safety-console`, and work through "For the morning". The security comparison, the control room, the slides and the documents are finished. Open items: the team's decision between G and H, the pull request, re-recording the video, and the dry run.
+
+## Security work, 28 November
+
+The project's focus is now the security of robot-to-lift communication. `secure-comms/` holds seven candidate pipelines and one extension with real cryptography, an attack suite, a runner, a generated report and a comparison page. The layered pipeline G was chosen by a rule fixed before the first run. An independent review found eleven issues: nine are fixed and tested, two are reported as limits. Run `node secure-comms/run.cjs`, then `report.cjs`, `build-page.cjs` and `presentation/build-deck.cjs` after any change to `comms.js` or `attacks.js`.
 
 ## Goal and decisions
 
@@ -22,7 +26,7 @@ Use the team repository and the feature branch based on `master` at `4d935e4`. T
 | [Workflow review](ward-safety/workflows.js) | Policy preview replays a candidate that drops Ward B. Custody fixtures exercise tote reuse, duplicate scans and corrections. A two-vendor queue models capacity, retries and patient priority. |
 | [Mission study](ward-safety/study.cjs) and [saved results](ward-safety/study-summary.json) | Seed `20261127`, 6,000 training, 2,000 calibration and 2,000 held-out missions across 30 directed station pairs. Overall outcomes were 9,740 receipts, 199 refused requests and 61 timeouts. The advisory detected 90/100 simulated equipment holds and 96/100 mismatched destinations on the held-out set, with 1.39 false alerts per 100 benign missions. The baseline detected 0/100 and 96/100 respectively. The batch uses the shared fleet engine and its own mismatch rule. It does not measure the new lift adapter or a hospital deployment. |
 | [Browser console](ward-safety/index.html) | Finished on 27 November. Built from `panel.html`, `panel.css`, `panel.js` and the embedded data by `node ward-safety/build.cjs`. All five rounds, recovery actions, porter handoff, both floors, the heatmap and the workflow tables were exercised in a browser. The [3D fleet console](output/visualizations/Clinic-World.html) is a separate entry point. |
-| Verification | 39 Node tests pass across the shared fleet, gate, ward controller, workflows, study and page build. The Python replay matched all 20 scripted cases over 100 input events. `master` up to `b4f48e2` is merged into the feature branch. |
+| Verification | 57 Node tests pass across the shared fleet, gate, ward controller, workflows, study, page builds and the secure pipelines. The Python replay matched all 20 scripted cases over 100 input events. `master` up to `b4f48e2` is merged into the feature branch. |
 
 GitHub was reachable. The lift, fleet, Wi-Fi handover and ward scanner use local synthetic data. There is no configured hospital API, device endpoint or live telemetry feed.
 
@@ -32,7 +36,7 @@ Follow [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md). The feature branch need
 
 ```sh
 git status --short --branch
-node --test clinic3d/fleet.test.cjs ward-safety/*.test.cjs gate/*.test.cjs
+node --test clinic3d/fleet.test.cjs ward-safety/*.test.cjs gate/*.test.cjs secure-comms/*.test.cjs
 python3 output/simulation/replay.py --case A01
 node ward-safety/build.cjs
 ```

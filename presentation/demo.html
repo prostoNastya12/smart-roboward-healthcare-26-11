@@ -73,15 +73,15 @@
     <h2>We attacked seven designs the same way</h2>
     <div class="row">
       <div class="card"><h3>7 pipelines</h3><p>From an open network to our layered design, all running code.</p></div>
-      <div class="card"><h3>21 attacks</h3><p>Outsider, insider, hacked robot, hacked supplier, stolen keys.</p></div>
+      <div class="card"><h3>24 attacks</h3><p>Outsider, insider, hacked robot, hacked supplier, stolen keys.</p></div>
       <div class="card"><h3>One rule</h3><p>Fixed before the first run. Most attacks blocked wins.</p></div>
     </div>
   </section>
 
   <section class="slide" style="padding:72px 120px; gap:36px">
-    <div class="kicker">Attacks blocked, of 19</div>
+    <div class="kicker">Attacks blocked, of 20</div>
     <h2>Layering beats every single defence</h2>
-    <svg class="bars" viewBox="0 0 1680 542" role="img" aria-label="Attacks blocked by each pipeline"><g class=""><text x="0" y="48">A · Open network</text><rect x="620" y="8" width="6" height="56" rx="10" fill="#4d6b60"/><text class="val" x="644" y="50">0</text></g><g class=""><text x="0" y="124">B · Network admission only</text><rect x="620" y="84" width="97.89473684210526" height="56" rx="10" fill="#4d6b60"/><text class="val" x="735.8947368421052" y="126">2</text></g><g class=""><text x="0" y="200">C · Signed single-use tickets</text><rect x="620" y="160" width="342.63157894736844" height="56" rx="10" fill="#4d6b60"/><text class="val" x="980.6315789473684" y="202">7</text></g><g class=""><text x="0" y="276">D · Per-device signed messages</text><rect x="620" y="236" width="489.4736842105263" height="56" rx="10" fill="#4d6b60"/><text class="val" x="1127.4736842105262" y="278">10</text></g><g class=""><text x="0" y="352">E · Encrypted channel</text><rect x="620" y="312" width="489.4736842105263" height="56" rx="10" fill="#4d6b60"/><text class="val" x="1127.4736842105262" y="354">10</text></g><g class=""><text x="0" y="428">F · Trip capability with proof of possession</text><rect x="620" y="388" width="587.3684210526316" height="56" rx="10" fill="#4d6b60"/><text class="val" x="1225.3684210526317" y="430">12</text></g><g class="hot"><text x="0" y="504">G · Layered pipeline</text><rect x="620" y="464" width="930" height="56" rx="10" fill="#c1de94"/><text class="val" x="1568" y="506">19</text></g></svg>
+    <svg class="bars" viewBox="0 0 1680 542" role="img" aria-label="Attacks blocked by each pipeline"><g class=""><text x="0" y="48">A · Open network</text><rect x="620" y="8" width="46.5" height="56" rx="10" fill="#4d6b60"/><text class="val" x="684.5" y="50">1</text></g><g class=""><text x="0" y="124">B · Network admission only</text><rect x="620" y="84" width="139.5" height="56" rx="10" fill="#4d6b60"/><text class="val" x="777.5" y="126">3</text></g><g class=""><text x="0" y="200">C · Signed single-use tickets</text><rect x="620" y="160" width="325.5" height="56" rx="10" fill="#4d6b60"/><text class="val" x="963.5" y="202">7</text></g><g class=""><text x="0" y="276">D · Per-device signed messages</text><rect x="620" y="236" width="511.5" height="56" rx="10" fill="#4d6b60"/><text class="val" x="1149.5" y="278">11</text></g><g class=""><text x="0" y="352">E · Encrypted channel</text><rect x="620" y="312" width="511.5" height="56" rx="10" fill="#4d6b60"/><text class="val" x="1149.5" y="354">11</text></g><g class=""><text x="0" y="428">F · Trip capability with proof of possession</text><rect x="620" y="388" width="604.5" height="56" rx="10" fill="#4d6b60"/><text class="val" x="1242.5" y="430">13</text></g><g class="hot"><text x="0" y="504">G · Layered pipeline</text><rect x="620" y="464" width="930" height="56" rx="10" fill="#c1de94"/><text class="val" x="1568" y="506">20</text></g></svg>
   </section>
 
   <section class="slide" style="padding:56px 120px; gap:28px">
@@ -99,11 +99,11 @@
     <div class="kicker">Measured on simulated devices</div>
     <h2>What the tests show</h2>
     <div class="cols">
-      <div class="stat"><div class="num">19/19</div><div class="label"><b>attacks blocked</b><br>next best design: 12 of 19</div></div>
+      <div class="stat"><div class="num">20/20</div><div class="label"><b>attacks blocked</b><br>next best design: 13 of 20</div></div>
       <div class="stat"><div class="num">100%</div><div class="label"><b>lift calls served during a flood</b><br>every other design: 10%</div></div>
-      <div class="stat"><div class="num">5/5</div><div class="label"><b>normal operations still work</b><br>retry, handover, key change</div></div>
+      <div class="stat"><div class="num">6/6</div><div class="label"><b>normal operations still work</b><br>retry, handover, key change</div></div>
     </div>
-    <p class="tag">Real cryptography, fictional devices. We wrote the attacks ourselves. 2 attacks still get through, and we show them.</p>
+    <p class="tag">Real cryptography, fictional devices. We wrote the attacks ourselves. 4 attacks still get through, and we show them.</p>
   </section>
 
   <section class="slide">

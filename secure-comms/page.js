@@ -13,13 +13,15 @@
   const good = (c, r) => c.kind === "attack" ? r.blocked : r.pass;
 
   function renderDecision() {
-    const s = results[chosen].summary, runner = saved.decision.eligible[1], out = ids.filter(id => !saved.decision.eligible.includes(id));
-    $("n-chosen").textContent = chosen;
+    const s = results[chosen].summary, runner = saved.decision.eligible[1], out = ids.filter(id => !saved.decision.eligible.includes(id) && !saved.pipelines[id].extension);
+    const extension = ids.find(id => saved.pipelines[id].extension);
+    $("n-chosen").textContent = chosen; $("n-pipes").textContent = ids.length;
     $("decision").replaceChildren(el("div", chosen, "big"),
       el("h2", "Chosen: " + saved.pipelines[chosen].name + ". It blocked " + s.blocked + " of " + s.of + " attacks and passed " + s.legitPassed + " of " + s.legitOf + " legitimate cases."),
-      el("p", "The rule was fixed before the first run. A pipeline that fails a legitimate case is out" + (out.length ? " (" + out.join(" and ") + " lost a retried call)" : "") +
+      el("p", "The rule was fixed before the first run. A pipeline that fails a legitimate case is out" + (out.length ? " (" + out.join(" and ") + ")" : "") +
         ". Among the rest, the most attacks blocked wins. Next best: " + runner + " with " + results[runner].summary.blocked + " of " + results[runner].summary.of +
-        ". The price of " + chosen + " is " + SecureInfo[chosen].needs.length + " things to obtain from suppliers and " + results[chosen].cost.bytesPerCall + " bytes per lift call."));
+        ". The price of " + chosen + " is " + SecureInfo[chosen].needs.length + " things to obtain from suppliers and " + results[chosen].cost.bytesPerCall + " bytes per lift call." +
+        (extension ? " Pipeline " + extension + " is " + chosen + " plus a second signature from the clinical order system. We added it after the first results to close one known limit. It is reported, not a candidate." : "")));
   }
   function renderMatrix() {
     const head = $("matrix").tHead, body = $("matrix").tBodies[0], foot = $("matrix").tFoot;
@@ -69,7 +71,10 @@
     }));
   }
   function renderLimits() {
-    const items = cases.filter(c => c.limit).map(c => c.id + " · " + c.name + ". " + outcome(chosen, c).detail + ". No pipeline here stops it.");
+    const items = cases.filter(c => c.limit).map(c => {
+      const stops = ids.filter(id => outcome(id, c).blocked);
+      return c.id + " · " + c.name + ". In " + chosen + ": " + outcome(chosen, c).detail + ". " + (stops.length ? "Stopped only by " + stops.join(", ") + "." : "No pipeline here stops it.");
+    });
     items.push("A compromised lift adapter or hospital certificate authority. Both are trusted by every design above.",
       "Radio jamming and physical tampering with a robot. These need physical and operational measures.",
       "The network admission step in B and the adapter's capacity in the flood are models. Everything else executes.",

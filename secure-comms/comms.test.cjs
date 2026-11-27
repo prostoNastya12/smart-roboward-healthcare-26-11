@@ -67,6 +67,42 @@ test("the layered pipeline gives the intended reason for each refusal", async ()
   assert.deepEqual(await run(w => { w.tick(700); w.arrive("RX-01"); }), ["deny", "capability is outside its time window", 0]);
 });
 
+test("the breaker isolates a flooding robot for a limited time and never counts a late message", async () => {
+  const w = await makeWorld("G"), sup = w.nodes["SUP-03"];
+  for (let i = 0; i < 8; i++) await w.pipe.call(sup, claimsFor("SUP-03", "JUNK-" + i), {noRetry: true});
+  assert.equal(w.pipe.isolated("SUP-03"), true);
+  assert.equal(w.pipe.isolated("RX-01"), false);
+  w.tick(SC.LIMITS.isolationSeconds + 1);
+  assert.equal(w.pipe.isolated("SUP-03"), false);
+  assert.equal(await w.pipe.verifyAudit(), true);
+  assert.ok(w.pipe.log.some(e => e.event === "breaker"));
+});
+
+test("a revoked fleet manager loses its open connection to the adapter", async () => {
+  const w = await makeWorld("G");
+  await w.dispatch("TRIP-WB", "RX-01", "L2"); await w.dispatch("TRIP-2", "RX-01", "L2");
+  w.arrive("RX-01");
+  assert.equal((await w.pipe.call(w.nodes["RX-01"], claimsFor("RX-01", "TRIP-WB"))).decision, "allow");
+  w.revoke("fleet");
+  const r = await w.pipe.call(w.nodes["RX-01"], claimsFor("RX-01", "TRIP-2"));
+  assert.notEqual(r.decision, "allow");
+  assert.equal(w.lift.calls.length, 1);
+});
+
+test("a call with a non-numeric time or an unexpected envelope field is refused", async () => {
+  for (const id of ["D", "F"]) {
+    const w = await makeWorld(id), rx = w.nodes["RX-01"];
+    await w.dispatch("TRIP-WB", "RX-01", "L2");
+    const good = JSON.parse(await w.pipe.frame(rx, claimsFor("RX-01", "TRIP-WB")));
+    for (const edit of [f => { f.env.hdr.ts = "never"; }, f => { f.env.extra = "x"; }, f => { f.env.hdr.note = "x"; }]) {
+      const f = structuredClone(good); edit(f);
+      f.sig = await tools.sign(rx.key.priv, tools.canon(f.env));
+      await w.net.rpc("backbone", "fleet", "adapter", JSON.stringify(f));
+    }
+    assert.equal(w.lift.calls.length, 0, id);
+  }
+});
+
 test("a signed answer is refused when it is old or belongs to another request", async () => {
   const w = await makeWorld("F");
   const reply = await tools.signedReply(w.nodes.adapter, w, "req-1", "allow", "ok");

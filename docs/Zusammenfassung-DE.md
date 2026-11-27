@@ -22,7 +22,7 @@ Wir wollten nicht raten, welcher Schutz der beste ist. Wir haben sieben Kommunik
 
 ## Ergebnis
 
-Die Zahlen stehen in `secure-comms/RESULTS.md` und werden aus der Messung erzeugt. Gewählt wurde **G, der mehrschichtige Weg**. Er hat alle Angriffe der Hauptliste abgewehrt und alle fünf Normalfälle bestanden. Die einzelnen Schutzmaßnahmen scheitern jeweils an anderer Stelle:
+Die Zahlen stehen in `secure-comms/RESULTS.md` und werden aus der Messung erzeugt. Gewählt wurde **G, der mehrschichtige Weg**. Er hat alle 20 Angriffe der Hauptliste abgewehrt, der nächstbeste Weg 13. Alle Wege bestehen die 6 Normalfälle. Die einzelnen Schutzmaßnahmen scheitern jeweils an anderer Stelle:
 
 - **Netzzugangskontrolle** hält Außenstehende ab. Ein kompromittiertes Gerät im Netz kann alles.
 - **Tickets** binden das Stockwerk an die Fahrt. Wer ein Ticket mitliest, kann es zuerst benutzen.
@@ -43,7 +43,8 @@ Die Zahlen stehen in `secure-comms/RESULTS.md` und werden aus der Messung erzeug
 
 - Die Geräte sind simuliert. Die Kryptografie ist echt (Ed25519, X25519, AES-256-GCM).
 - Die Angriffe hat das Team selbst geschrieben. Das ist keine unabhängige Prüfung.
-- Zwei Angriffe gelingen bei allen sieben Wegen: eine kompromittierte Leitstelle, und ein Beobachter, der am Zeitpunkt der Nachrichten erkennt, wann ein Roboter den Aufzug ruft.
+- Vier Angriffe gelingen bei allen sieben Wegen: eine kompromittierte Leitstelle, ein Beobachter, der am Zeitpunkt der Nachrichten erkennt, wann ein Roboter den Aufzug ruft, ein Flottenserver, der mitliest, was er weiterleitet, und eine Überlastung direkt am Aufzugsadapter. Die Erweiterung H schließt den ersten Fall mit einer zweiten Signatur des klinischen Auftragssystems.
+- Ein zweiter Prüfer, der den Code nicht geschrieben hat, hat eine frühere Fassung angegriffen und elf Schwachstellen bestätigt. Neun sind behoben und jetzt Teil der Tests, zwei stehen in der Liste oben.
 - Der gewählte Weg verlangt am meisten von den Herstellern: sieben Voraussetzungen, von der Zertifizierungsstelle bis zum Sensor am Aufzug.
 
 ## Offenlegung

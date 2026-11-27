@@ -11,15 +11,24 @@ async function measure(options = {}) {
   const results = {};
   for (const id of Object.keys(SC.PIPELINES)) results[id] = await A.runPipeline(id, options);
   const needs = Object.fromEntries(Object.entries(info).map(([id, i]) => [id, i.vendorNeeds]));
-  return {results, decision: A.choose(results, needs)};
+  // Fairness check asked for by the review: give the identity-only designs an online trip table at the adapter and measure again.
+  const variants = {};
+  A.setOptions({tripTable: true});
+  try {
+    for (const id of ["A", "B", "D", "E"]) {
+      const r = await A.runPipeline(id, {skipCost: true});
+      variants[id] = {summary: r.summary, through: A.ATTACKS.filter(a => !a.limit && !r.attacks[a.id].blocked).map(a => a.id)};
+    }
+  } finally { A.setOptions({}); }
+  return {results, variants, decision: A.choose(results, needs)};
 }
-if (require.main === module) measure({costRuns: 200}).then(({results, decision}) => {
+if (require.main === module) measure({costRuns: 200}).then(({results, variants, decision}) => {
   const doc = {meta: {label: "measured on simulated devices with fictional data; attacks written by the team", node: process.version, command: "node secure-comms/run.cjs",
       inputs: {"comms.js": hash("comms.js"), "attacks.js": hash("attacks.js")}, flood: {adapterFramesPerSecond: 20, junkPerSecond: 100, legitimatePerSecond: 4, seconds: 5}},
     attacks: A.ATTACKS.map(({id, name, position, wins, limit}) => ({id, name, position, wins, limit: !!limit})),
     legit: A.LEGIT.map(({id, name}) => ({id, name})),
-    pipelines: Object.fromEntries(Object.entries(SC.PIPELINES).map(([id, p]) => [id, {name: p.name, short: p.short}])),
-    results, decision};
+    pipelines: Object.fromEntries(Object.entries(SC.PIPELINES).map(([id, p]) => [id, {name: p.name, short: p.short, extension: !!p.extension}])),
+    results, variants, decision};
   fs.writeFileSync(path.join(__dirname, "results.json"), JSON.stringify(doc, null, 1) + "\n");
   for (const [id, r] of Object.entries(results)) {
     console.log(id, SC.PIPELINES[id].name.padEnd(42), "attacks blocked", String(r.summary.blocked).padStart(2) + "/" + r.summary.of,

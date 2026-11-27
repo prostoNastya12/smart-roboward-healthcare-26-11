@@ -6,7 +6,7 @@ table.data{width:100%;border-collapse:collapse;font-size:13px}
 table.data th,table.data td{padding:8px 10px;border-bottom:1px solid #dfe7de;text-align:left;vertical-align:top}
 table.data thead th{background:var(--soft);font:600 11px var(--mono);letter-spacing:.02em;white-space:nowrap}
 table.data tbody th{font-weight:600}
-.matrix td,.matrix thead th:not(:first-child),.matrix tfoot td{text-align:center;width:9%}
+.matrix td,.matrix thead th:not(:first-child),.matrix tfoot td{text-align:center;width:8%}
 .matrix tbody th small{display:block;font-weight:400;color:var(--muted);font-size:11px}
 .matrix tbody th b{font:600 11px var(--mono);color:var(--muted);margin-right:6px}
 .matrix button.cell{width:34px;height:28px;padding:0;border-radius:5px;font-weight:700;font-size:14px;border:1px solid transparent}

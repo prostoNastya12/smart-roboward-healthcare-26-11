@@ -6,7 +6,7 @@ const path = require("node:path");
 
 function buildDeck() {
   const doc = JSON.parse(fs.readFileSync(path.join(__dirname, "../secure-comms/results.json"), "utf8"));
-  const ids = Object.keys(doc.pipelines), r = doc.results, win = doc.decision.winner, of = r[win].summary.of;
+  const ids = Object.keys(doc.pipelines).filter(id => !doc.pipelines[id].extension), r = doc.results, win = doc.decision.winner, of = r[win].summary.of;
   const next = doc.decision.eligible[1];
   const floodOthers = [...new Set(ids.filter(id => id !== win).map(id => r[id].attacks.T14.retainedPct))];
   // Horizontal bars, value written on each bar, the chosen pipeline highlighted.

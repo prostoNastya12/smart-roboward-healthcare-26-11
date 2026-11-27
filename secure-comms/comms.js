@@ -15,7 +15,8 @@
   const SCHEMA = Object.freeze(["type", "robot", "trip", "lift", "rawFloor", "mapRevision", "requestId"]);
   const LIFT_LABEL = Object.freeze({L2: "01", L1: "G"});                    // the lift's own names for the same landings
   const MARKER = "ZETA-PRIVATE-7731";                                      // fictional private marker a careless sender attaches
-  const LIMITS = Object.freeze({freshSeconds: 30, statusSeconds: 10, presenceSeconds: 10, ratePerSecond: 5, denialsToTrip: 5});
+  const LIMITS = Object.freeze({freshSeconds: 30, statusSeconds: 10, presenceSeconds: 10, ratePerSecond: 5, denialsToTrip: 5,
+    denialWindowSeconds: 10, isolationSeconds: 60});
 
   // ---- primitives ---------------------------------------------------------
   const b64 = bytes => btoa(Array.from(bytes, b => String.fromCharCode(b)).join("")).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -109,19 +110,19 @@
   }
 
   // ---- world --------------------------------------------------------------
-  async function makeWorld(id) {
+  async function makeWorld(id, options = {}) {
     if (!PIPELINES[id]) throw Error("Unknown pipeline " + id);
-    const w = {id, now: 1000, ca: {key: await signingKey(), next: 1}, crl: new Set(), revokedKeys: new Set(), nodes: {}, trips: new Map(),
+    const w = {id, tripTable: !!options.tripTable, now: 1000, ca: {key: await signingKey(), next: 1}, crl: new Set(), revokedKeys: new Set(), nodes: {}, trips: new Map(),
       lift: {calls: []}, site: {approvedRevision: "map-7", destinationLabel: "01", priority: false, seenAt: 1000, landing: "L1"},
       presence: {}, admitted: new Set(), admission: false, feedBlocked: false, capacity: Infinity, bucket: {second: -1, used: 0}, overloaded: 0};
     w.caPub = w.ca.key.pub;
     w.enroll = async (node, role) => {
       const key = await signingKey();
-      w.nodes[node] = {id: node, role, key, cert: await issueCert(w.ca, node, role, key.pub, 1e9), x: {seq: 0, tickets: {}, caps: {}, sent: {}}};
+      w.nodes[node] = {id: node, role, key, cert: await issueCert(w.ca, node, role, key.pub, 1e9), x: {seq: 0, tickets: {}, caps: {}}};
       w.admitted.add(node);
       return w.nodes[node];
     };
-    for (const [node, role] of [["dispatcher", "dispatcher"], ["fleet", "fleet"], ["adapter", "adapter"], ["RX-01", "agv"], ["LAB-02", "agv"], ["SUP-03", "agv"]]) {
+    for (const [node, role] of [["dispatcher", "dispatcher"], ["fleet", "fleet"], ["adapter", "adapter"], ["RX-01", "agv"], ["LAB-02", "agv"], ["SUP-03", "agv"], ["orders", "orders"]]) {
       await w.enroll(node, role);
     }
     w.net = new Net(w);
@@ -132,7 +133,11 @@
     w.arrive = robot => { w.presence[robot] = w.now; };                   // independent lobby sensor sees the robot
     w.forward = (claims, by) => w.lift.calls.push({robot: claims.robot, trip: claims.trip, floor: MAP[claims.rawFloor], rawFloor: claims.rawFloor,
       at: w.now, statusAge: w.site.seenAt === null ? Infinity : w.now - w.site.seenAt, by});
-    w.dispatch = async (trip, robot, floor = "L2") => {
+    // A delivery normally starts as a clinical order, which the dispatcher turns into a trip.
+    // `rogue` models a compromised dispatcher that creates a trip with no clinical order behind it.
+    w.orders = new Map();
+    w.dispatch = async (trip, robot, floor = "L2", o = {}) => {
+      if (!o.rogue) w.orders.set(trip, {robot, floor});
       w.trips.set(trip, {trip, robot, lift: "Lift 1", origin: "L1", floor});
       await w.pipe.onDispatch(w.trips.get(trip));
     };
@@ -146,7 +151,7 @@
       const old = w.nodes[robot], x = old.x;
       w.crl.add(old.cert.body.serial); w.revokedKeys.add(old.key.pub);
       const fresh = await w.enroll(robot, old.role);
-      fresh.x = {...x, session: null, tickets: {}, caps: {}, sent: {}};
+      fresh.x = {...x, link: null, tickets: {}, caps: {}, orders: {}};
       w.pipe.dropPeer(robot);
     };
     w.net.handlers.fleet = (frame, meta) => w.pipe.fleet(frame, meta);
@@ -174,9 +179,12 @@
     async verifyAudit() { return true; }                                   // a plain list has nothing to verify
     record(event, detail) { this.entries.push({seq: this.entries.length, ts: this.w.now, event, detail}); }
     // Identity-only authorization: the adapter knows which trips exist, and nothing about who may ask for which floor.
+    // With `tripTable` (a fairness variant, see run.cjs) the adapter also looks up which robot and floor the trip was given.
     decide(claims) {
       if (!claims || !this.known.has(claims.trip)) return answer("deny", "unknown trip");
       if (!Object.hasOwn(MAP, claims.rawFloor)) return answer("deny", "unknown floor name");
+      const trip = this.w.trips.get(claims.trip);
+      if (this.w.tripTable && (trip.robot !== claims.robot || trip.floor !== MAP[claims.rawFloor])) return answer("deny", "call does not match the trip table");
       this.w.forward(claims, this.w.id);
       return answer("allow", "known trip");
     }
@@ -187,19 +195,30 @@
     async direct(mat, claims, o = {}) { return this.w.net.rpc("backbone", mat.id, "adapter", await this.frame(mat, claims, o), o); }
   }
 
-  // Signed reply from the adapter, bound to the request it answers.
-  async function signedReply(mat, world, requestId, decision, reason, head) {
-    const env = {from: mat.cert.body.id, requestId, ts: world.now, decision, reason, head};
+  // A signed envelope must have exactly the expected fields and types. This also keeps free text out of the log.
+  function malformed(env, headerKeys) {
+    const {hdr, claims} = env;
+    if (Object.keys(env).some(k => !["hdr", "capId", "claims"].includes(k)) || Object.keys(hdr).some(k => !headerKeys.includes(k))) return "unexpected field in the envelope";
+    if (!Number.isFinite(hdr.ts) || !Number.isInteger(hdr.seq)) return "time or sequence number is not a number";
+    if (typeof hdr.requestId !== "string" || !/^[A-Za-z0-9_-]{1,40}$/.test(hdr.requestId) || hdr.requestId !== claims.requestId) return "request ID is malformed";
+    if (Object.values(claims).some(v => typeof v !== "string" || v.length > 80)) return "claim value is malformed";
+    return null;
+  }
+  const envelopeHash = frameText => { const env = parse(frameText)?.env; return env ? sha256hex(canon(env)) : null; };
+  // Signed reply from the adapter, bound to the exact request it answers and to the time it was given.
+  async function signedReply(mat, world, requestId, decision, reason, requestHash) {
+    const env = {from: mat.cert.body.id, requestId, requestHash, ts: world.now, decision, reason};
     return JSON.stringify({env, cert: mat.cert, sig: await sign(mat.key.priv, canon(env))});
   }
-  async function readSignedReply(world, text, requestId) {
+  async function readSignedReply(world, text, requestId, requestHash) {
     const r = parse(text);
     if (!r || !r.env) return noAnswer("no signed answer");
     if (await certProblem(world, r.cert, "adapter")) return noAnswer("answer is not from the lift adapter");
     if (!await verify(r.cert.body.pub, r.sig, canon(r.env))) return noAnswer("answer signature is wrong");
     if (r.env.requestId !== requestId) return noAnswer("answer belongs to another request");
-    if (Math.abs(world.now - r.env.ts) > LIMITS.freshSeconds) return noAnswer("answer is stale");
-    return {...answer(r.env.decision, r.env.reason), head: r.env.head};
+    if (requestHash !== undefined && r.env.requestHash !== requestHash) return noAnswer("answer was given to a different message");
+    if (!Number.isFinite(r.env.ts) || Math.abs(world.now - r.env.ts) > LIMITS.freshSeconds) return noAnswer("answer is stale");
+    return answer(r.env.decision, r.env.reason);
   }
 
   // Three-message handshake and encrypted records, shared by E and G.
@@ -214,9 +233,10 @@
     const keys = await sessionKeys(eph.priv, ack.eph, transcript);
     const fin = {v: tag, t: "fin", sid: ack.sid, sig: await sign(mat.key.priv, transcript + "|fin")};
     const ok = parse(await world.net.rpc(hop, mat.id, server, JSON.stringify(fin), opts));
-    return ok && ok.t === "ok" ? {sid: ack.sid, keys, out: 0, in: 0, server} : null;
+    return ok && ok.t === "ok" ? {sid: ack.sid, keys, out: 0, in: 0, server, serverCert: ack.cert, serverRole} : null;
   }
   async function exchange(world, mat, hop, session, text, opts) {
+    if (await certProblem(world, session.serverCert, session.serverRole)) return null;   // revoked since the handshake
     const n = session.out++;
     const frame = {t: "rec", sid: session.sid, n, ct: await seal(session.keys.c2s, n, session.sid + "|c2s", text)};
     const reply = parse(await world.net.rpc(hop, mat.id, session.server, JSON.stringify(frame), opts));
@@ -237,7 +257,9 @@
       const ack = {t: "ack", sid: random(), eph: eph.pub, cert: mat.cert};
       const transcript = transcriptOf(f, ack);
       ack.sig = await sign(mat.key.priv, transcript);
-      sessions.set(ack.sid, {peer: f.cert.body, keys: await sessionKeys(eph.priv, f.eph, transcript), transcript, in: 0, out: 0, ready: false});
+      // At most one half-open session per claimed identity, so replayed hellos cannot pile up.
+      for (const [sid, old] of sessions) if (!old.ready && old.peer.id === f.cert.body.id) sessions.delete(sid);
+      sessions.set(ack.sid, {peer: f.cert.body, peerCert: f.cert, keys: await sessionKeys(eph.priv, f.eph, transcript), transcript, in: 0, out: 0, ready: false});
       return JSON.stringify(ack);
     }
     const s = sessions.get(f.sid);
@@ -245,12 +267,15 @@
     if (f.t === "fin") {
       if (!await verify(s.peer.pub, f.sig, s.transcript + "|fin")) { sessions.delete(f.sid); return error("client proof failed"); }
       s.ready = true;
+      // One live session per device: a proven new connection retires the old ones, so held-back frames from them are dead.
+      for (const [sid, old] of sessions) if (sid !== f.sid && old.peer.id === s.peer.id) sessions.delete(sid);
       return JSON.stringify({t: "ok"});
     }
     if (f.t !== "rec" || !s.ready || f.n !== s.in) return error("out of order");
+    s.in++;                                                                // claim the slot before any await: no concurrent replays
+    if (await certProblem(world, s.peerCert)) { sessions.delete(f.sid); return error("certificate refused"); }
     const plain = await unseal(s.keys.c2s, f.n, f.sid + "|c2s", f.ct);
     if (plain === null) return error("record refused");
-    s.in++;
     const out = await inner(plain, s.peer);
     const n = s.out++;
     return JSON.stringify({t: "rec", sid: f.sid, n, ct: await seal(s.keys.s2c, n, f.sid + "|s2c", out)});
@@ -278,8 +303,10 @@
     async adapter(frame) {
       const f = parse(frame);
       if (!f || !f.claims) return JSON.stringify(answer("deny", "unreadable"));
+      const hit = this.cached(f.claims.requestId, canon(f.claims));
+      if (hit) return hit;
       this.record("call", f.claims);
-      return JSON.stringify(this.decide(f.claims));
+      return this.remember(f.claims.requestId, canon(f.claims), JSON.stringify(this.decide(f.claims)));
     }
   }
 
@@ -322,33 +349,34 @@
   // ---- D · per-device signed messages ------------------------------------
   class Signed extends Base {
     constructor(world) { super(world); this.lastSeq = new Map(); }
+    // A retry keeps its request ID and is signed again with a fresh time and sequence number.
     async frame(mat, claims, o = {}) {
-      if (mat.x.sent[claims.requestId] && !o.stolen && !o.claimFrom) return mat.x.sent[claims.requestId];   // a retry repeats the same bytes
       const env = {hdr: {from: o.claimFrom ?? mat.cert.body.id, to: "adapter", seq: ++mat.x.seq, ts: this.w.now, requestId: claims.requestId}, claims};
-      const frame = JSON.stringify({v: "D", env, cert: o.stolen?.cert ?? mat.cert, sig: await sign(mat.key.priv, canon(env))});
-      mat.x.sent[claims.requestId] = frame;
-      return frame;
+      return JSON.stringify({v: "D", env, cert: o.stolen?.cert ?? mat.cert, sig: await sign(mat.key.priv, canon(env))});
     }
     async call(mat, claims, o = {}) {
-      return readSignedReply(this.w, await this.w.net.rpc("wifi", mat.id, "fleet", await this.frame(mat, claims, o), o), claims.requestId);
+      const frame = await this.frame(mat, claims, o);
+      return readSignedReply(this.w, await this.w.net.rpc("wifi", mat.id, "fleet", frame, o), claims.requestId, await envelopeHash(frame));
     }
     async adapter(frame) {
       const w = this.w, me = w.nodes.adapter, f = parse(frame);
-      const refuse = why => signedReply(me, w, f?.env?.hdr?.requestId, "deny", why);
-      if (!f || !f.env || !f.env.hdr || !f.env.claims) return refuse("unreadable");
-      const {hdr, claims} = f.env;
+      if (!f || !f.env || !f.env.hdr || !f.env.claims) return signedReply(me, w, undefined, "deny", "unreadable");
+      const {hdr, claims} = f.env, requestHash = await sha256hex(canon(f.env));
+      const refuse = why => signedReply(me, w, hdr.requestId, "deny", why, requestHash);
       const problem = await certProblem(w, f.cert, "agv");
       if (problem) return refuse(problem);
       if (!await verify(f.cert.body.pub, f.sig, canon(f.env))) return refuse("signature is wrong");
+      const shape = malformed(f.env, ["from", "to", "seq", "ts", "requestId"]);
+      if (shape) return refuse(shape);
       if (hdr.to !== "adapter" || hdr.from !== f.cert.body.id || claims.robot !== hdr.from) return refuse("sender does not match its certificate");
-      const hit = this.cached(hdr.requestId, canon(f.env));
-      if (hit) return hit;
       if (Math.abs(w.now - hdr.ts) > LIMITS.freshSeconds) return refuse("message is stale");
+      const hit = this.cached(hdr.requestId, canon(claims));
+      if (hit) return signedReply(me, w, hdr.requestId, hit.decision, hit.reason, requestHash);        // a retry gets the earlier answer, signed for this message
       if (!(hdr.seq > (this.lastSeq.get(hdr.from) ?? 0))) return refuse("sequence number already used");
       this.lastSeq.set(hdr.from, hdr.seq);
       this.record("call", claims);
-      const d = this.decide(claims);
-      return this.remember(hdr.requestId, canon(f.env), await signedReply(me, w, hdr.requestId, d.decision, d.reason));
+      const d = this.remember(hdr.requestId, canon(claims), this.decide(claims));
+      return signedReply(me, w, hdr.requestId, d.decision, d.reason, requestHash);
     }
   }
 
@@ -359,8 +387,9 @@
     body(mat, claims) { return canon({claims}); }
     async call(mat, claims, o = {}) {
       mat.x.link ??= {session: null};
-      const reply = await viaChannel(this.w, mat, mat.x.link, "wifi", "fleet", "fleet", this.tag, await this.body(mat, claims, o), o);
-      return reply === null ? noAnswer("no secure channel or no answer") : this.readReply(reply, claims);
+      const body = await this.body(mat, claims, o);
+      const reply = await viaChannel(this.w, mat, mat.x.link, "wifi", "fleet", "fleet", this.tag, body, o);
+      return reply === null ? noAnswer("no secure channel or no answer") : this.readReply(reply, claims, body);
     }
     readReply(text) { const r = parse(text); return r && typeof r.decision === "string" ? answer(r.decision, r.reason) : noAnswer("no answer"); }
     upstream(text) { return viaChannel(this.w, this.w.nodes.fleet, this.up, "backbone", "adapter", "adapter", this.tag, text); }
@@ -401,11 +430,8 @@
     },
     async request(pipe, mat, claims, o = {}) {
       const cap = o.stolen?.cap ?? mat.x.caps[claims.trip];
-      if (mat.x.sent[claims.requestId] && !o.stolen && !o.claimFrom) return mat.x.sent[claims.requestId];
       const env = {hdr: {from: o.claimFrom ?? mat.cert.body.id, seq: ++mat.x.seq, ts: pipe.w.now, requestId: claims.requestId}, capId: cap?.body?.capId, claims};
-      const frame = JSON.stringify({v: pipe.w.id, cap, env, sig: await sign(mat.key.priv, canon(env))});
-      mat.x.sent[claims.requestId] = frame;
-      return frame;
+      return JSON.stringify({v: pipe.w.id, cap, env, sig: await sign(mat.key.priv, canon(env)), ...pipe.attach?.(mat, claims, o)});
     },
     // Returns {cap, claims, hdr} when everything checks out, otherwise {refuse: reason}.
     async check(pipe, f) {
@@ -423,36 +449,50 @@
       if (f.env.capId !== cap.body.capId || claims.robot !== cap.body.robot || claims.trip !== cap.body.trip || claims.lift !== cap.body.lift) {
         return {refuse: "call does not match its capability"};
       }
+      const shape = malformed(f.env, ["from", "seq", "ts", "requestId"]);
+      if (shape) return {refuse: shape};
       if (Math.abs(w.now - hdr.ts) > LIMITS.freshSeconds) return {refuse: "call is stale"};
       return {cap, claims, hdr};
+    },
+    // Each signed call is accepted once. A relay that kept a copy cannot submit it again later.
+    seenBefore(pipe, hdr) {
+      if (!(hdr.seq > (pipe.lastSeq.get(hdr.from) ?? 0))) return true;
+      pipe.lastSeq.set(hdr.from, hdr.seq);
+      return false;
     }
   };
   class TripCapability extends Base {
-    constructor(world) { super(world); this.revokedCaps = new Set(); this.used = new Map(); }
+    constructor(world) { super(world); this.revokedCaps = new Set(); this.used = new Map(); this.lastSeq = new Map(); }
     async onDispatch(trip) { await Capability.issue(this, trip); }
     frame(mat, claims, o) { return Capability.request(this, mat, claims, o); }
     async call(mat, claims, o = {}) {
-      return readSignedReply(this.w, await this.w.net.rpc("wifi", mat.id, "fleet", await this.frame(mat, claims, o), o), claims.requestId);
+      const frame = await this.frame(mat, claims, o);
+      return readSignedReply(this.w, await this.w.net.rpc("wifi", mat.id, "fleet", frame, o), claims.requestId, await envelopeHash(frame));
     }
     async adapter(frame) {
       const w = this.w, me = w.nodes.adapter, f = parse(frame);
+      const requestHash = f?.env ? await sha256hex(canon(f.env)) : undefined;
+      const reply = (decision, reason) => signedReply(me, w, f?.env?.hdr?.requestId, decision, reason, requestHash);
       const checked = await Capability.check(this, f);
-      if (checked.refuse) return signedReply(me, w, f?.env?.hdr?.requestId, "deny", checked.refuse);
+      if (checked.refuse) return reply("deny", checked.refuse);
       const {cap, claims, hdr} = checked;
-      const hit = this.cached(hdr.requestId, canon(f.env));
-      if (hit) return hit;
+      const hit = this.cached(hdr.requestId, canon(claims));
+      if (hit) return reply(hit.decision, hit.reason);
+      if (Capability.seenBefore(this, hdr)) return reply("deny", "call was already seen");
       this.record("call", claims);
-      if (MAP[claims.rawFloor] !== cap.body.floor) return signedReply(me, w, hdr.requestId, "deny", "requested floor is outside this trip");
-      if (!this.used.has(cap.body.capId)) { w.forward(claims, "F"); this.used.set(cap.body.capId, hdr.requestId); }
-      return this.remember(hdr.requestId, canon(f.env), await signedReply(me, w, hdr.requestId, "allow", "capability and proof of possession verified"));
+      if (MAP[claims.rawFloor] !== cap.body.floor) return reply("deny", "requested floor is outside this trip");
+      const first = !this.used.has(cap.body.capId);
+      if (first) { w.forward(claims, "F"); this.used.set(cap.body.capId, hdr.requestId); }
+      const d = this.remember(hdr.requestId, canon(claims), answer("allow", first ? "capability and proof of possession verified" : "lift call for this trip was already forwarded"));
+      return reply(d.decision, d.reason);
     }
   }
 
   // ---- G · layered pipeline ----------------------------------------------
   class Layered extends Channel {
     constructor(world) {
-      super(world); this.tag = "G"; this.revokedCaps = new Set(); this.used = new Map(); this.chain = [];
-      this.buckets = new Map(); this.isolated = new Set();
+      super(world); this.tag = "G"; this.revokedCaps = new Set(); this.used = new Map(); this.lastSeq = new Map(); this.chain = [];
+      this.buckets = new Map(); this.isolatedUntil = new Map();
     }
     get log() { return this.chain; }
     async onDispatch(trip) { await Capability.issue(this, trip); }
@@ -463,6 +503,8 @@
       entry.hash = await sha256hex(prev + JSON.stringify([entry.seq, entry.ts, event, detail]));
       entry.sig = await sign(this.w.nodes.adapter.key.priv, entry.hash);
       this.chain.push(entry);
+      // The head of the log is exported to a witness outside the adapter (the hospital's security log) on every append.
+      this.w.witness = {seq: entry.seq, hash: entry.hash};
     }
     async verifyAudit() {
       let prev = "genesis";
@@ -471,43 +513,49 @@
         if (e.prev !== prev || e.hash !== hash || !await verify(this.w.nodes.adapter.key.pub, e.sig, hash)) return false;
         prev = e.hash;
       }
-      // Every signed answer carries the log's head. A robot that kept one can show the log was cut or forked after it.
+      // The log must end exactly at the head the outside witness last received: no cut, no fork, no silent append.
       const seen = this.w.witness;
-      return !seen || this.chain[seen.seq]?.hash === seen.hash;
+      return !seen ? this.chain.length === 0 : this.chain.length === seen.seq + 1 && this.chain[seen.seq].hash === seen.hash;
     }
     // Data minimization at the sender: only the fields a lift needs leave the robot.
     body(mat, claims, o = {}) {
       const minimal = o.rawSender ? claims : Object.fromEntries(SCHEMA.filter(k => k in claims).map(k => [k, claims[k]]));
       return Capability.request(this, mat, minimal, o);
     }
-    async readReply(text, claims) {
-      const r = await readSignedReply(this.w, text, claims.requestId);
-      if (r.head && (!this.w.witness || r.head.seq > this.w.witness.seq)) this.w.witness = r.head;
-      return r;
-    }
+    async readReply(text, claims, body) { return readSignedReply(this.w, text, claims.requestId, await envelopeHash(body)); }
     directBody(mat, claims, o) { return this.body(mat, claims, o); }
     // Circuit breaker at the fleet manager, per authenticated robot.
+    // Refusals are counted in a sliding window and isolation ends by itself, so a burst of bad luck cannot remove a robot for good.
     strike(id, denied) {
-      const second = Math.floor(this.w.now);
+      const now = this.w.now, second = Math.floor(now);
       let b = this.buckets.get(id);
-      if (!b) this.buckets.set(id, b = {second: -1, count: 0, denials: 0});
-      if (denied) { if (++b.denials >= LIMITS.denialsToTrip) this.isolate(id, "repeated refusals"); return; }
+      if (!b) this.buckets.set(id, b = {second: -1, count: 0, denials: []});
+      if (denied) {
+        b.denials = b.denials.filter(t => now - t < LIMITS.denialWindowSeconds).concat(now);
+        if (b.denials.length >= LIMITS.denialsToTrip) this.isolate(id, "repeated refusals");
+        return;
+      }
       if (b.second !== second) { b.second = second; b.count = 0; }
       if (++b.count > LIMITS.ratePerSecond) this.isolate(id, "request rate");
     }
-    isolate(id, why) { if (!this.isolated.has(id)) { this.isolated.add(id); this.dropPeer(id); this.pending = {id, why}; } }
+    isolated(id) { return (this.isolatedUntil.get(id) ?? -Infinity) > this.w.now; }
+    isolate(id, why) {
+      if (this.isolated(id)) return;
+      this.isolatedUntil.set(id, this.w.now + LIMITS.isolationSeconds); this.buckets.delete(id); this.dropPeer(id); this.pending = {id, why};
+    }
     async fleet(frame) {
       const reply = await serve(this.w, this.w.nodes.fleet, this.robotSessions, frame, async (plain, peer) => {
         const refuse = why => signedReply(this.w.nodes.fleet, this.w, parse(plain)?.env?.hdr?.requestId, "deny", why);
         this.strike(peer.id, false);
-        if (this.isolated.has(peer.id)) return refuse("source isolated");
+        if (this.isolated(peer.id)) return refuse("source isolated");
         const m = parse(plain);
         if (!m || !m.env || !m.env.hdr || peer.role !== "agv" || m.env.hdr.from !== peer.id) { this.strike(peer.id, true); return refuse("a robot may only speak for itself"); }
         const out = await this.upstream(plain);
         if (out === null) return refuse("lift adapter unavailable");
-        if (parse(out)?.env?.decision === "deny") this.strike(peer.id, true);
+        const verdict = parse(out)?.env;
+        if (verdict?.decision === "deny" && !/stale/.test(verdict.reason)) this.strike(peer.id, true);   // a late message is not misbehaviour
         return out;
-      }, peer => this.isolated.has(peer.id));
+      }, peer => this.isolated(peer.id));
       if (this.pending) { const p = this.pending; this.pending = null; await this.audit("breaker", {source: p.id, why: p.why}); }
       return reply;
     }
@@ -515,10 +563,11 @@
       const w = this.w, me = w.nodes.adapter;
       return serve(w, me, this.adapterSessions, frame, async (plain, peer) => {
         const f = parse(plain), requestId = f?.env?.hdr?.requestId;
+        const requestHash = f?.env ? await sha256hex(canon(f.env)) : undefined;
+        // The log stores a fingerprint of the request, never its free text.
         const reply = async (decision, reason, detail) => {
-          await this.audit(decision, {requestId, reason, ...detail});
-          const last = this.chain[this.chain.length - 1];
-          return signedReply(me, w, requestId, decision, reason, {seq: last.seq, hash: last.hash});
+          await this.audit(decision, {request: requestHash?.slice(0, 16), reason, ...detail});
+          return signedReply(me, w, requestId, decision, reason, requestHash);
         };
         if (peer.role !== "fleet") return reply("deny", "only the fleet manager may relay lift calls");
         // Unknown fields are refused and never written to the log.
@@ -526,8 +575,11 @@
         const checked = await Capability.check(this, f);
         if (checked.refuse) return reply("deny", checked.refuse);
         const {cap, claims, hdr} = checked, who = {trip: claims.trip, robot: claims.robot};
-        const hit = this.cached(hdr.requestId, canon(f.env));
-        if (hit) return hit;
+        const objection = await this.secondOpinion?.(f, cap);
+        if (objection) return reply("deny", objection, who);
+        const hit = this.cached(hdr.requestId, canon(claims));
+        if (hit) return signedReply(me, w, requestId, hit.decision, hit.reason, requestHash);
+        if (Capability.seenBefore(this, hdr)) return reply("deny", "call was already seen", who);
         // Lift admission from ward-safety/controller.js: floor mapping, patient priority, fresh lift status.
         const grant = {active: true, robot: cap.body.robot, trip: cap.body.trip, lift: cap.body.lift, origin: cap.body.origin, floor: cap.body.floor,
           from: cap.body.nbf, until: cap.body.exp};
@@ -537,9 +589,34 @@
         // Independent corroboration: a lobby sensor must have seen this robot at the lift just now.
         const seen = w.presence[claims.robot];
         if (seen === undefined || w.now - seen > LIMITS.presenceSeconds) return reply("hold", "Robot was not observed at the lift", who);
-        if (!this.used.has(cap.body.capId)) { w.forward(claims, "G"); this.used.set(cap.body.capId, hdr.requestId); }
-        return this.remember(hdr.requestId, canon(f.env), await reply("allow", verdict.reason, who));
+        const first = !this.used.has(cap.body.capId);
+        if (first) { w.forward(claims, w.id); this.used.set(cap.body.capId, hdr.requestId); }
+        const d = this.remember(hdr.requestId, canon(claims), answer("allow", first ? verdict.reason : "Lift call for this trip was already forwarded"));
+        return reply(d.decision, d.reason, who);
       });
+    }
+  }
+
+  // ---- H · layered pipeline with dual control ---------------------------
+  // Extension added after the first results, to close the "compromised dispatcher" limit: the lift adapter also requires
+  // a statement signed by the clinical order system, independent of the dispatcher, naming the same robot and floor.
+  class DualControl extends Layered {
+    constructor(world) { super(world); this.tag = "H"; }
+    async onDispatch(trip) {
+      await super.onDispatch(trip);
+      const order = this.w.orders.get(trip.trip), signer = this.w.nodes.orders;
+      if (!order) return;                                                  // no clinical order, so nothing to countersign
+      const body = {trip: trip.trip, robot: order.robot, floor: order.floor};
+      (this.w.nodes[trip.robot].x.orders ??= {})[trip.trip] = {body, sig: await sign(signer.key.priv, canon(body)), cert: signer.cert};
+    }
+    attach(mat, claims, o = {}) { return {order: o.stolen?.order ?? mat.x.orders?.[claims.trip]}; }
+    async secondOpinion(f, cap) {
+      const order = f.order;
+      if (!order || !order.body) return "no clinical order for this trip";
+      if (await certProblem(this.w, order.cert, "orders")) return "clinical order is not from the order system";
+      if (!await verify(order.cert.body.pub, order.sig, canon(order.body))) return "clinical order signature is wrong";
+      if (order.body.trip !== cap.body.trip || order.body.robot !== cap.body.robot || order.body.floor !== cap.body.floor) return "grant does not match the clinical order";
+      return null;
     }
   }
 
@@ -550,10 +627,11 @@
     D: {make: Signed, name: "Per-device signed messages", short: "Signed"},
     E: {make: Channel, name: "Encrypted channel, mutual authentication", short: "Channel"},
     F: {make: TripCapability, name: "Trip capability with proof of possession", short: "Capability"},
-    G: {make: Layered, name: "Layered pipeline", short: "Layered"}
+    G: {make: Layered, name: "Layered pipeline", short: "Layered"},
+    H: {make: DualControl, name: "Layered pipeline with dual control", short: "G + dual", extension: true}
   };
 
   return {makeWorld, claimsFor, PIPELINES, MAP, SCHEMA, MARKER, LIMITS,
     tools: {canon, parse, random, sha256hex, signingKey, sign, verify, exchangeKey, sessionKeys, seal, unseal, issueCert, certProblem,
-      signedReply, readSignedReply, transcriptOf, connect, exchange, serve, b64, unb64}};
+      signedReply, readSignedReply, envelopeHash, transcriptOf, connect, exchange, serve, b64, unb64}};
 });

@@ -16,7 +16,9 @@
   // The page sets an observer to show the frames of the last run. It has no effect on results.
   let observer = null;
   const observe = fn => { observer = fn; };
-  const world = async id => { const w = await makeWorld(id); if (observer) observer(w); return w; };
+  let options = {};
+  const setOptions = o => { options = o || {}; };                         // used by run.cjs for the fairness variants
+  const world = async id => { const w = await makeWorld(id, options); if (observer) observer(w); return w; };
   async function fresh(id) {
     const w = await world(id);
     await w.dispatch(TRIP, "RX-01", "L2");
@@ -29,7 +31,7 @@
   // An outsider brings their own certificate authority, keys, a home-made capability and a home-made ticket.
   async function outsider(w, name, pretend) {
     const ca = {key: await signingKey(), next: 900}, key = await signingKey(), boss = await signingKey();
-    const mat = {id: name, role: "agv", key, cert: await issueCert(ca, pretend, "agv", key.pub, 1e9), x: {seq: 50, tickets: {}, caps: {}, sent: {}}};
+    const mat = {id: name, role: "agv", key, cert: await issueCert(ca, pretend, "agv", key.pub, 1e9), x: {seq: 50, tickets: {}, caps: {}}};
     const body = {capId: "cap-forged", trip: TRIP, robot: pretend, robotKey: key.pub, lift: "Lift 1", origin: "L1", floor: "L2", nbf: w.now - 1, exp: w.now + 600};
     mat.x.caps[TRIP] = {body, sig: await sign(boss.priv, canon(body)), cert: await issueCert(ca, "dispatcher", "dispatcher", boss.pub, 1e9)};
     const ticket = tools.b64(new TextEncoder().encode(JSON.stringify({u: pretend, t: TRIP, d: "L2", exp: w.now * 1000 + 300000, n: "forged"})));
@@ -59,11 +61,36 @@
     for (const item of w.net.captured) walk(parse(item.frame), o => {
       if (typeof o.token === "string") bag.token = o.token;
       if (o.cap && o.cap.body) bag.cap = o.cap;
+      if (o.order && o.order.body) bag.order = o.order;
       if (o.cert && o.cert.body && o.cert.body.id === "RX-01") bag.cert = o.cert;
       return false;
     });
     return bag;
   };
+
+  // One compromised robot floods while two others work. `direct` sends the junk straight to the adapter, past the fleet manager.
+  async function flood(id, direct) {
+    const w = await world(id), seconds = 5, junkPerSecond = 100, robots = ["RX-01", "LAB-02"], perSecond = 4;
+        w.capacity = 20;
+        const trips = [];
+        for (let i = 0; i < seconds * perSecond; i++) { trips.push({trip: "TRIP-F" + i, robot: robots[i % 2]}); await w.dispatch("TRIP-F" + i, robots[i % 2], "L2"); }
+        let seed = 20261128;
+        const rand = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+        const start = w.now + 1;
+        for (let s = 0; s < seconds; s++) {
+          const work = Array.from({length: junkPerSecond}, () => null).concat(trips.slice(s * perSecond, (s + 1) * perSecond));
+          for (let i = work.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [work[i], work[j]] = [work[j], work[i]]; }
+          for (let i = 0; i < work.length; i++) {
+            w.setTime(start + s + i / work.length);
+            const job = work[i];
+            if (job) { w.arrive(job.robot); await w.pipe.call(w.nodes[job.robot], claimsFor(job.robot, job.trip), {noRetry: true}); }
+            else if (direct) await w.pipe.direct(w.nodes["SUP-03"], claimsFor("SUP-03", "JUNK-" + s + "-" + i), {noRetry: true});
+            else await w.pipe.call(w.nodes["SUP-03"], claimsFor("SUP-03", "JUNK-" + s + "-" + i), {noRetry: true});
+          }
+        }
+        const served = new Set(w.lift.calls.filter(c => c.trip.startsWith("TRIP-F")).map(c => c.trip)).size, pct = Math.round(1000 * served / trips.length) / 10;
+        return {blocked: pct >= 90, detail: served + " of " + trips.length + " legitimate calls served (" + pct + "%), adapter refused " + w.overloaded + " frames as overloaded", retainedPct: pct};
+  }
 
   const ATTACKS = [
     {id: "T01", name: "Eavesdrop on a delivery", position: "PATH", wins: "Captured frames reveal the trip, the floor or a private marker",
@@ -87,7 +114,12 @@
         const before = calls(w), recorded = w.net.captured.filter(f => f.dir === "request").map(f => ({...f}));
         w.tick(60);
         for (const f of recorded) await w.net.rpc(f.hop, f.origin, f.to, f.frame, {inside: true});
-        return {blocked: calls(w) === before, detail: (calls(w) - before) + " extra lift call(s) after replaying " + recorded.length + " recorded frame(s)"};
+        // Second try: give the recorded call a new request ID, so it no longer looks like a retry.
+        for (const f of recorded) {
+          const renamed = alter(f.frame, o => { if (typeof o.requestId === "string") { o.requestId += "-again"; return true; } return false; });
+          if (renamed) await w.net.rpc(f.hop, f.origin, f.to, renamed, {inside: true});
+        }
+        return {blocked: calls(w) === before, detail: (calls(w) - before) + " extra lift call(s) after replaying " + recorded.length + " recorded frame(s), verbatim and renamed"};
       }},
     {id: "T04", name: "Change the floor in transit", position: "PATH", wins: "The lift is called for a floor the robot did not ask for",
       async run(id) {
@@ -118,7 +150,7 @@
       async run(id) {
         const w = await fresh(id);
         // The fleet manager relayed RX-01's mission, so it holds whatever travelled with it.
-        const stolen = {token: rx(w).x.tickets[TRIP], cap: rx(w).x.caps[TRIP], cert: rx(w).cert};
+        const stolen = {token: rx(w).x.tickets[TRIP], cap: rx(w).x.caps[TRIP], order: rx(w).x.orders?.[TRIP], cert: rx(w).cert};
         await w.pipe.direct(w.nodes.fleet, claimsFor("RX-01", TRIP), {stolen, claimFrom: "RX-01", inside: true});
         return {blocked: calls(w) === 0, detail: calls(w) + " lift call(s) the robot never made"};
       }},
@@ -132,7 +164,11 @@
     {id: "T09", name: "A retired robot keeps working", position: "DEV", wins: "The lift receives a call",
       async run(id) {
         const w = await fresh(id), sup = w.nodes["SUP-03"];
+        // The robot was given a real trip, and everything that came with it, before it was retired.
+        await w.dispatch("TRIP-SUP", "SUP-03", "L2");
         w.revoke("SUP-03");
+        w.arrive("SUP-03");
+        await w.pipe.call(sup, claimsFor("SUP-03", "TRIP-SUP"));
         await w.pipe.call(sup, claimsFor("SUP-03", TRIP));
         await w.pipe.call(sup, claimsFor("RX-01", TRIP), {claimFrom: "RX-01"});
         return {blocked: calls(w) === 0, detail: calls(w) + " lift call(s) from a revoked robot"};
@@ -163,20 +199,27 @@
       }},
     {id: "T12", name: "Forge or replay the adapter's reply", position: "PATH", wins: "The robot believes a refused call was allowed",
       async run(id) {
-        let fooled = 0;
-        for (const variant of ["edit", "replay"]) {
-          const w = await fresh(id);
+        const fooled = [];
+        for (const variant of ["edit", "replay", "swap"]) {
+          const w = await fresh(id), target = claimsFor("RX-01", "TRIP-UNKNOWN", "Upper");
           await legit(w);
-          const earlier = w.net.captured.filter(f => f.hop === "wifi" && f.dir === "reply").at(-1)?.frame;
+          let substitute = w.net.captured.filter(f => f.hop === "wifi" && f.dir === "reply").at(-1)?.frame;
+          if (variant === "swap") {
+            // A compromised robot with a trip of its own asks under the victim's request ID and collects a genuine "allow".
+            await w.dispatch("TRIP-SUP", "SUP-03", "L2");
+            w.arrive("SUP-03");
+            await w.pipe.call(w.nodes["SUP-03"], claimsFor("SUP-03", "TRIP-SUP", "Upper", target.requestId));
+            substitute = w.net.captured.filter(f => f.hop === "wifi" && f.dir === "reply").at(-1)?.frame;
+          }
           w.net.taps.push({hop: "wifi", response: reply => {
             if (typeof reply !== "string" || parse(reply)?.t === "ack" || parse(reply)?.t === "ok") return undefined;
-            return variant === "replay" ? earlier : alter(reply, o => { if (typeof o.decision === "string" && o.decision !== "allow") { o.decision = "allow"; return true; } return false; });
+            return variant === "edit" ? alter(reply, o => { if (typeof o.decision === "string" && o.decision !== "allow") { o.decision = "allow"; return true; } return false; }) : substitute;
           }});
-          // RX-01 asks for a trip that was never dispatched. Every design refuses it; the attacker rewrites the refusal.
-          const result = await w.pipe.call(rx(w), claimsFor("RX-01", "TRIP-UNKNOWN", "Upper"));
-          if (result.decision === "allow") fooled++;
+          // RX-01 asks for a trip that was never dispatched. Every design refuses it; the attacker replaces the refusal.
+          const result = await w.pipe.call(rx(w), target);
+          if (result.decision === "allow") fooled.push(variant);
         }
-        return {blocked: fooled === 0, detail: fooled + " of 2 forged answers accepted by the robot"};
+        return {blocked: fooled.length === 0, detail: fooled.length ? "Robot accepted a forged answer: " + fooled.join(", ") : "0 of 3 forged answers accepted by the robot"};
       }},
     {id: "T13", name: "Impersonate the lift adapter", position: "PATH", wins: "The robot accepts an answer from the attacker",
       async run(id) {
@@ -198,27 +241,7 @@
         return {blocked: result.decision !== "allow", detail: result.decision === "allow" ? "Robot accepted the attacker's answer" : "Robot refused the answer: " + result.reason};
       }},
     {id: "T14", name: "Flood from one compromised robot", position: "DEV", wins: "Fewer than 90% of other robots' legitimate calls are served",
-      async run(id) {
-        const w = await world(id), seconds = 5, junkPerSecond = 100, robots = ["RX-01", "LAB-02"], perSecond = 4;
-        w.capacity = 20;
-        const trips = [];
-        for (let i = 0; i < seconds * perSecond; i++) { trips.push({trip: "TRIP-F" + i, robot: robots[i % 2]}); await w.dispatch("TRIP-F" + i, robots[i % 2], "L2"); }
-        let seed = 20261128;
-        const rand = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
-        const start = w.now + 1;
-        for (let s = 0; s < seconds; s++) {
-          const work = Array.from({length: junkPerSecond}, () => null).concat(trips.slice(s * perSecond, (s + 1) * perSecond));
-          for (let i = work.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [work[i], work[j]] = [work[j], work[i]]; }
-          for (let i = 0; i < work.length; i++) {
-            w.setTime(start + s + i / work.length);
-            const job = work[i];
-            if (job) { w.arrive(job.robot); await w.pipe.call(w.nodes[job.robot], claimsFor(job.robot, job.trip), {noRetry: true}); }
-            else await w.pipe.call(w.nodes["SUP-03"], claimsFor("SUP-03", "JUNK-" + s + "-" + i), {noRetry: true});
-          }
-        }
-        const served = new Set(w.lift.calls.filter(c => c.trip.startsWith("TRIP-F")).map(c => c.trip)).size, pct = Math.round(1000 * served / trips.length) / 10;
-        return {blocked: pct >= 90, detail: served + " of " + trips.length + " legitimate calls served (" + pct + "%), adapter refused " + w.overloaded + " frames as overloaded", retainedPct: pct};
-      }},
+      run: id => flood(id, false)},
     {id: "T15", name: "Decrypt recorded traffic with keys stolen later", position: "LEAK", wins: "The recorded lift calls can be read",
       async run(id) {
         const w = await fresh(id);
@@ -244,6 +267,7 @@
         for (const variant of ["edit", "cut"]) {
           const w = await fresh(id);
           await legit(w);
+          await w.pipe.call(rx(w), claimsFor("RX-01", "TRIP-UNKNOWN"));       // a refusal the attacker would like to remove
           const log = w.pipe.log;
           if (!log.length) return {blocked: false, detail: "No audit record exists"};
           if (variant === "edit") log[0].detail = "edited by the attacker"; else log.pop();
@@ -251,14 +275,17 @@
           for (const e of log) if ("hash" in e) { e.prev = prev; e.hash = prev = await sha256hex(prev + JSON.stringify([e.seq, e.ts, e.event, e.detail])); }
           if (await w.pipe.verifyAudit()) undetected.push(variant);
         }
-        return {blocked: undetected.length === 0, detail: undetected.length ? "Undetected: " + undetected.join(" and ") + " of the log" : "Signatures and the witnessed head exposed both the edit and the cut"};
+        return {blocked: undetected.length === 0, detail: undetected.length ? "Undetected: " + undetected.join(" and ") + " of the log" : "Signatures exposed the edit, and the head held by the outside witness exposed the cut"};
       }},
     {id: "T17", name: "Over-sharing", position: "NONE", wins: "A private marker reaches the lift-side log",
       async run(id) {
-        const w = await fresh(id);
-        await legit(w, {rawSender: true});
-        const kept = JSON.stringify([w.pipe.log, w.pipe.inbox ?? [], w.lift.calls]).includes(MARKER);
-        return {blocked: !kept, detail: kept ? "The private marker is stored on the lift side" : "The private marker was not stored on the lift side"};
+        const kept = [];
+        for (const variant of ["extra field", "request ID"]) {
+          const w = await fresh(id), claims = claimsFor("RX-01", TRIP, "Upper", variant === "request ID" ? MARKER : undefined);
+          await w.pipe.call(rx(w), claims, {rawSender: variant === "extra field"});
+          if (JSON.stringify([w.pipe.log, w.pipe.inbox ?? [], w.lift.calls]).includes(MARKER)) kept.push(variant);
+        }
+        return {blocked: kept.length === 0, detail: kept.length ? "The private marker is stored on the lift side, sent as: " + kept.join(", ") : "The private marker was not stored on the lift side"};
       }},
     {id: "T18", name: "Suppress lift status updates", position: "PATH", wins: "The lift receives a call while the adapter's status is older than 10 seconds",
       async run(id) {
@@ -280,7 +307,8 @@
     {id: "T20", name: "Compromised dispatcher issues a wrong grant", position: "DISPATCHER", wins: "The lift is called for the wrong floor", limit: true,
       async run(id) {
         const w = await fresh(id);
-        await w.dispatch("TRIP-EVIL", "SUP-03", "L1");
+        // The dispatcher is compromised: it issues a trip to L1 that no clinical order asked for.
+        await w.dispatch("TRIP-EVIL", "SUP-03", "L1", {rogue: true});
         w.arrive("SUP-03");
         await w.pipe.call(w.nodes["SUP-03"], claimsFor("SUP-03", "TRIP-EVIL", "Ground"));
         const n = w.lift.calls.filter(c => c.trip === "TRIP-EVIL").length;
@@ -295,6 +323,34 @@
         const visible = w.net.captured.some(f => f.hop === "wifi" && f.origin === "RX-01" && f.at === w.now);
         return {blocked: !visible, detail: visible ? "Frame timing and sender show when RX-01 called" : "No frame visible"};
       }}
+    ,{id: "T22", name: "Lock out a genuine robot by abusing the breaker", position: "PATH", wins: "RX-01's next legitimate call, two minutes later, is refused",
+      async run(id) {
+        const w = await fresh(id), held = [];
+        // Hold back three of RX-01's calls, including its automatic retries, then pour them in at once, and again once they are stale.
+        w.net.taps.push({hop: "wifi", request: frame => { const f = parse(frame); if (f && (f.t === "hello" || f.t === "fin")) return undefined; held.push(frame); return null; }});
+        for (let i = 0; i < 3; i++) await legit(w);
+        w.net.taps.length = 0;
+        for (const frame of held) await w.net.rpc("wifi", "RX-01", "fleet", frame, {inside: true});
+        w.tick(31);
+        for (const frame of held) await w.net.rpc("wifi", "RX-01", "fleet", frame, {inside: true});
+        w.tick(120);
+        await w.dispatch("TRIP-2", "RX-01", "L2");
+        w.arrive("RX-01");
+        const r = await w.pipe.call(rx(w), claimsFor("RX-01", "TRIP-2"));
+        return {blocked: r.decision === "allow", detail: "After " + held.length + " held frames were released twice, RX-01's next call got: " + (r.decision ?? "no answer")};
+      }},
+    {id: "T23", name: "Compromised fleet manager reads the deliveries it relays", position: "FLEET", wins: "The fleet manager sees the trip and the floor", limit: true,
+      async run(id) {
+        const w = await fresh(id), seen = [];
+        const relay = w.pipe.relay.bind(w.pipe), upstream = w.pipe.upstream?.bind(w.pipe);
+        w.pipe.relay = frame => { seen.push(frame); return relay(frame); };
+        if (upstream) w.pipe.upstream = text => { seen.push(text); return upstream(text); };
+        await legit(w);
+        const readable = seen.some(text => text.includes(TRIP) && text.includes('"Upper"'));
+        return {blocked: !readable, detail: readable ? "The fleet manager handles the trip and floor in clear" : "The fleet manager cannot read the call"};
+      }},
+    {id: "T24", name: "Flood the lift adapter directly, past the fleet manager", position: "DEV", wins: "Fewer than 90% of other robots' legitimate calls are served", limit: true,
+      run: id => flood(id, true)}
   ];
 
   const LEGIT = [
@@ -341,6 +397,19 @@
         w.arrive("RX-01");
         const r = await w.pipe.call(rx(w), claimsFor("RX-01", "TRIP-3"));
         return {pass: r.decision === "allow" && calls(w) === 2, detail: (r.decision ?? "no answer") + " with the new key, " + calls(w) + " lift call(s)"};
+      }},
+    {id: "L06", name: "Held for a patient transfer, robot keeps retrying",
+      async run(id) {
+        const w = await fresh(id), claims = claimsFor("RX-01", TRIP), answers = [];
+        // Facilities holds the lift for two and a half minutes. The robot asks again every 31 seconds with the same request ID.
+        w.site.priority = true;
+        for (let i = 0; i < 6; i++) {
+          if (i === 5) w.site.priority = false;
+          answers.push((await w.pipe.call(rx(w), claims)).decision ?? "no answer");
+          w.tick(31);
+          w.arrive("RX-01");
+        }
+        return {pass: answers.at(-1) === "allow" && calls(w) === 1, detail: "Last answer " + answers.at(-1) + " after " + answers.filter(a => a === "hold").length + " holds, " + calls(w) + " lift call(s)"};
       }}
   ];
 
@@ -372,10 +441,12 @@
   // Selection rule from IMPLEMENTATION-PLAN.md section 6, fixed before the first run.
   function choose(results, vendorNeeds) {
     const eligible = Object.keys(results).filter(id => results[id].summary.legitPassed === results[id].summary.legitOf);
+    // An extension of a candidate is reported, and competes only if the team adopts it as a candidate.
+    for (const id of [...eligible]) if (SC.PIPELINES[id].extension) eligible.splice(eligible.indexOf(id), 1);
     eligible.sort((a, b) => results[b].summary.blocked - results[a].summary.blocked || vendorNeeds[a] - vendorNeeds[b] ||
       (results[a].cost?.bytesPerCall ?? 0) - (results[b].cost?.bytesPerCall ?? 0));
     return {eligible, winner: eligible[0] ?? null};
   }
 
-  return {ATTACKS, LEGIT, runPipeline, cost, choose, fresh, observe};
+  return {ATTACKS, LEGIT, runPipeline, cost, choose, fresh, observe, setOptions};
 });
