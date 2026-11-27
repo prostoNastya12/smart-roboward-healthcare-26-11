@@ -1,4 +1,4 @@
- measured | 2/10; 100% retained service (measured, synthetic; `experiments/runs/latest/results.json`) | measured | 2/10 (measured, synthetic; `experiments/runs/latest/results.json`) | measured | 3/10 (measured, synthetic; `experiments/runs/latest/results.json`) | measured | 7/10 (measured, synthetic; `experiments/runs/latest/results.json`) | measured | 1/10 blocked (measured, synthetic; `experiments/runs/latest/results.json`) |# Hackathon Control Board — Smart RoboWard
+# Hackathon Control Board — Smart RoboWard
 
 ## Brief
 - Challenge: IFOHRA Challenge #9 — Secure integration of robotics in clinical environments (Healthcare Hackathon Bayern). Rules: https://www.bayern-innovativ.de/events-termine/detail/events-termine/healthcare-hackathon-bayern-hacken-bis-der-arzt-kommt-november2026 (user-supplied brief; not independently re-read)
@@ -13,7 +13,7 @@
 ## Objective & acceptance
 - Primary metric (higher better): unauthorized requests blocked before disclosure or action, of 10. Acceptance (proposed, team to confirm): 10/10.
 - Co-primary: legitimate tasks completed, of 10. Proposed: 10/10.
-- Evaluation set: `experiments/test-matrix.md` (20 rows, fictional). Results: **blank, not measured**.
+- Evaluation set: `experiments/test-matrix.md` (20 rows + C01-C04, fictional). Results measured 2026-11-27 (see Five methods).
 - **Proposed new co-primary (team to confirm): containment under attack.** While the robot subsystem is under attack or compromised, ward workflows keep running (the nurse view stays up and switches to manual/degraded mode), and the attack does not spread beyond the robot zone. Measured as: **retained service level** = legitimate ward tasks handled during an attack window (robot or manual fallback) ÷ tasks handled in an equal no-attack window, plus time to isolate the subsystem. Perfect service is not required: **proposed acceptance ≥ 80% retained (team to confirm)**, versus the whole-hospital shutdown (0%) we are preventing. Robot-delivered and manual tasks are reported separately so the 80% is not inflated. Whether M0 really drops to 0% is a hypothesis until measured.
 - Secondary: decision latency, audit-log completeness, zero patient fields in robot payload/logs.
 - Demo journey: nurse requests delivery → robot receives task ID + destination → status in nurse view → attacker replay/forgery blocked with audit entry.
@@ -21,11 +21,11 @@
 ## Five methods (all implemented and measured on synthetic data, 2026-11-27)
 | ID | Candidate / distinct hypothesis | Status | Evidence | Blocker |
 |---|---|---|---|---|
-| M0 | Baseline: static allowlist of task IDs, no auth | planned | — | — |
-| M1 | Signed, expiring, single-use task tokens (HMAC) | planned | — | — |
-| M2 | Role/ward policy check (RBAC/ABAC) on requester | planned | — | — |
-| M3 | Data-minimization gate: strict schema allowing only task_id + destination | planned | — | — |
-| M4 | Containment: circuit breaker, robot-zone isolation, degraded manual mode | planned | — | — |
+| M0 | Baseline: static allowlist of task IDs, no auth | measured | 1/10 blocked (measured, synthetic; `experiments/runs/latest/results.json`) | — |
+| M1 | Signed, expiring, single-use task tokens (HMAC) | measured | 7/10 blocked (measured, synthetic; `experiments/runs/latest/results.json`) | — |
+| M2 | Role/ward policy check (RBAC/ABAC) on requester | measured | 3/10 blocked (measured, synthetic; `experiments/runs/latest/results.json`) | — |
+| M3 | Data-minimization gate: strict schema allowing only task_id + destination | measured | 2/10 blocked (measured, synthetic; `experiments/runs/latest/results.json`) | — |
+| M4 | Containment: circuit breaker, robot-zone isolation, degraded manual mode | measured | 2/10 blocked; 100% retained service (measured, synthetic; `experiments/runs/latest/results.json`) | — |
 
 Details: `experiments/methods.md`. The hash-chained audit log is now shared plumbing for all methods, not a candidate.
 
@@ -38,10 +38,10 @@ Result summary (measured, synthetic, author-written rows): full stack 10/10 bloc
 ## Reuse vs on-site (license check required before use)
 - **Clinic simulator (disclose to jury):** `clinic3d/` and `output/` (3D fleet console, scenario fixtures, Python replay runner) were generated earlier with an AI coding assistant (commit author "Codex") and imported into this repo on 2026-11-27. Third-party: Three.js (MIT, `clinic3d/vendor/`), Open-RMF map files (Apache-2.0, `output/simulation/open-rmf/LICENSE`). We have **not** independently re-run its results; its numbers are `unverified` until we do.
 - Reused: Node.js standard library only (crypto, node:test, fs). No packages installed.
-- Built on site (2026-11-27): `gate/gate.cjs` (allowlist, tokens, policy, minimization, breaker, audit chain, simulated robot), `gate/run.cjs` (benchmark), `gate/gate.test.cjs`, `gate/build-page.cjs` + `gate/results-template.html` (plain-English results page, `site/gate-results.html`), and the live hack demo (`gate/hacker/fleet-*.js|css`, `gate/build-hacker.cjs`, `site/hacker-demo.html`): since 2026-11-27 it runs inside the real 3D fleet console (a copy of `Clinic-World.html`, console code unchanged). The real gate code (checked against the Node gate by `gate/hacker.test.cjs` and `gate/fleet-demo.test.cjs`) sits in front of every dispatch order, including the nurse's own Dispatch button; orders it passes become real fleet commands, a tripped breaker isolates the real robots, and an angry random-attack hacker character is drawn in the same scene. Replaced the earlier standalone toy-ward demo.
+- Built on site (2026-11-27): `gate/gate.cjs` (allowlist, tokens, policy, minimization, breaker, audit chain, simulated robot), `gate/run.cjs` (benchmark), `gate/*.test.cjs`, results page `site/gate-results.html`, and `site/hacker-demo.html`: the unchanged 3D fleet console with the live attack demo injected (`gate/build-hacker.cjs`; browser copy of the gate; tests assert it answers exactly like the Node gate). Added by teammates / another session after my last edit; I have read the build notes and run the tests but not watched the demo in a browser.
 
 ## Integration heartbeat
-- Input fixture: YES (synthetic, in code) · Algorithm invoked: YES (`node gate/run.cjs`; `node --test gate/` 5/5 pass) · Backend/API: N/A (static Pages site, gate runs as a script) · Frontend consumes real output: PARTLY (`site/gate-results.html` embeds real results.json; 3D console not wired to the gate) · One-command start: `node gate/run.cjs && node gate/build-page.cjs` · Live demo tested end-to-end: NO · Offline fallback: results page works offline; video not recorded
+- Input fixture: YES (synthetic, in code) · Algorithm invoked: YES (`node gate/run.cjs`) · Tests: `node --test gate/ clinic3d/` 17/17 pass (re-run 2026-11-27) · Backend/API: N/A (static Pages site, gate runs in the browser or as a script) · Frontend consumes real gate: YES in `site/hacker-demo.html` (per its build notes and tests; not visually verified by me) · One-command start: open `site/hacker-demo.html`; rebuild with `node gate/build-hacker.cjs` · Live demo tested end-to-end by a person: NO · Offline fallback: pages are single-file and work offline; video not recorded
 
 ## Pitch and submission
 - Core proof: filled only from measured results. Format/duration: TODO (unknown). Slides: `presentation/`. Submission links: TODO.
@@ -56,6 +56,6 @@ Result summary (measured, synthetic, author-written rows): full stack 10/10 bloc
 | 2026-11-27 | M4 changed from rate limiting + audit log to containment (breaker, isolation, manual mode); audit log became shared plumbing; rows C01–C04 added | User approved the swap; none of the methods had been run, so no result was affected | Build breaker and degraded mode after M0/M1/M3 |
 
 ## Next 3 actions
-1. Team reviews `experiments/runs/latest/results.json` and the caveats above; confirm owners, acceptance bars and the 11:00 cutoff.
-2. Decide whether to wire a nurse view or the 3D console to the gate (not done).
-3. Record the offline fallback video, write the pitch from measured numbers only, run a cold-start dry run. Pushing or deploying the site needs the team's approval.
+1. A team member watches `site/hacker-demo.html` end to end (cold start, realistic resolution) and confirms every claim on screen matches `results.json`.
+2. Confirm owners, acceptance bars (10/10, containment >= 80%) and the 11:00 cutoff; write the pitch from measured numbers only and record the offline fallback video.
+3. Work is on `origin/master` up to commit 05b47ec (the Pages workflow deploys from it; I have not checked the live site). Only this `HACKATHON.md` fix is uncommitted. Submission to organizers needs the team's approval.
