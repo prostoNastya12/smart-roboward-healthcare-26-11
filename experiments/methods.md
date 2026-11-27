@@ -44,9 +44,12 @@ Each tests a different mechanism: no control (M0), identity and integrity of the
 ## Status table (update only from real runs)
 | ID | Planned | Implemented | Measured | Blocked /10 | Completed /10 | Notes |
 |---|---|---|---|---|---|---|
-| M0 | yes | no | no | __ | __ | |
-| M1 | yes | no | no | __ | __ | |
-| M2 | yes | no | no | __ | __ | |
-| M3 | yes | no | no | __ | __ | |
-| M4 | yes | no | no | __ | __ | |
-| Combined stack | yes | no | no | __ | __ | separate row |
+| M0 | yes | yes | yes | 1/10 | 10/10 | retained 50.7% under attack; synthetic, measured 2026-11-27 |
+| M1 | yes | yes | yes | 7/10 | 10/10 | retained 50.7% under attack; synthetic, measured 2026-11-27 |
+| M2 | yes | yes | yes | 3/10 | 10/10 | retained 50.7% under attack; synthetic, measured 2026-11-27 |
+| M3 | yes | yes | yes | 2/10 | 10/10 | retained 50.7% under attack; synthetic, measured 2026-11-27 |
+| M4 | yes | yes | yes | 2/10 | 10/10 | retained 100% under attack; synthetic, measured 2026-11-27 |
+| Combined stack | yes | yes | yes | 10/10 | 10/10 | retained 100% under attack; synthetic, measured 2026-11-27 |
+
+
+Source: `experiments/runs/latest/results.json`, produced by `node gate/run.cjs` (seed 2611). Code: `gate/gate.cjs`. Each method is M0 plus one mechanism, so M1 to M4 share the M0 allowlist. M2 alone trusts the claimed user ID (no authentication), which is why it misses forged requests; that is a design limit, not a bug.

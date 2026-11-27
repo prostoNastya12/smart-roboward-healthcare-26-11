@@ -28,7 +28,7 @@ jobs:
       - name: Stage site files
         run: |
           mkdir _site
-          cp site/index.html _site/
+          cp site/index.html site/gate-results.html site/hacker-demo.html _site/
           cp output/visualizations/Clinic-World.html \
              output/visualizations/Clinic-World.glb \
              output/visualizations/Clinic-World-3D.png \

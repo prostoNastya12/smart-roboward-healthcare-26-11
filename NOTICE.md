@@ -4,7 +4,7 @@ This repository reuses the following third-party material. Licence texts are kep
 
 | Material | Where | Licence | Notes |
 | --- | --- | --- | --- |
-| Three.js r160 (`three.min.js`) | `clinic3d/vendor/three.min.js`, bundled into `output/visualizations/Clinic-World.html` | MIT, see `clinic3d/vendor/THREE-LICENSE.txt` (Copyright 2010-2023 three.js authors) | Used as supplied. |
+| Three.js r160 (`three.min.js`) | `clinic3d/vendor/three.min.js`, bundled into `output/visualizations/Clinic-World.html` and `site/hacker-demo.html` | MIT, see `clinic3d/vendor/THREE-LICENSE.txt` (Copyright 2010-2023 three.js authors) | Used as supplied. |
 | OrbitControls (`OrbitControls.js`) | `clinic3d/vendor/OrbitControls.js`, bundled into `Clinic-World.html` | MIT. This is part of the three.js examples and falls under the same three.js licence, `clinic3d/vendor/THREE-LICENSE.txt`. | The file itself carries no licence header. We have not changed it. |
 | Open-RMF clinic map (`clinic.building.yaml`) and floor drawing (`clinic.png`) | `output/simulation/open-rmf/` | Apache-2.0, see `output/simulation/open-rmf/LICENSE` | Taken from Open-RMF `rmf_demos` (https://github.com/open-rmf/rmf_demos#clinic-world). The README describes them as the original map; we have not verified whether they were modified. The 3D model (`Clinic-World.glb`) and the console are derived from this map. |
 | Open-RMF wall defaults | referenced by `clinic3d/build_model.py` | Apache-2.0 | Referenced from `rmf_traffic_editor`; no code copied that we know of. |

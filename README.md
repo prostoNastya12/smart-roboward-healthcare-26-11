@@ -6,7 +6,7 @@
 
 - **AI-assisted code and content.** The 3D console, fleet controller, scenario fixtures, replay runner and replay pages in `clinic3d/` and `output/` were generated with an AI coding assistant (ChatGPT / Codex) before this repository was created. The git history shows the author "Codex". `docs/C09-design-cards.md` and the incident-response PDF came from the same AI-assisted workspace, and the team has **not** verified their sources.
 - **Third-party code and data.** Three.js r160 and OrbitControls (MIT) and the Open-RMF clinic map files (Apache-2.0). Details and license locations: [NOTICE.md](NOTICE.md).
-- **Written by the team.** `HACKATHON.md`, `experiments/`, `site/`, `.github/workflows/pages.yml` and this section.
+- **Written by the team.** `HACKATHON.md`, `experiments/`, `gate/` (request gate, benchmark, tests, and the live hack demo, written with Claude), `site/`, `.github/workflows/pages.yml` and this section. Reproduce the benchmark with `node gate/run.cjs`, run the tests with `node --test gate/`, and rebuild the pages with `node gate/build-page.cjs` and `node gate/build-hacker.cjs`.
 - **Not included.** The organizer's brief image (it carries third-party logos and has no redistribution licence). Read the brief and rules on the [event page](https://www.bayern-innovativ.de/events-termine/detail/events-termine/healthcare-hackathon-bayern-hacken-bis-der-arzt-kommt-november2026).
 
 ## Try a delivery and a security alert

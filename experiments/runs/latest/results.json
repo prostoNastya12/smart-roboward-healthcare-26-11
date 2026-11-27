@@ -1,0 +1,783 @@
+{
+  "meta": {
+    "seed": 2611,
+    "capacityPerSecond": 20,
+    "windowSeconds": 30,
+    "legitPerSecond": 5,
+    "attackPerSecond": 40,
+    "limits": {
+      "ratePerSecond": 5,
+      "denialsToTrip": 5,
+      "robotMsgBytes": 200
+    },
+    "node": "v26.13.1",
+    "command": "node gate/run.cjs",
+    "label": "measured on a simulated, fictional-data model; author-written test rows"
+  },
+  "results": {
+    "M0": {
+      "rows": {
+        "U01": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U02": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U03": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U04": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U05": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U06": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U07": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U08": {
+          "pass": true,
+          "detail": "blocked: unknown task"
+        },
+        "U09": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U10": {
+          "pass": false,
+          "detail": "20/20 reached the robot"
+        },
+        "A01": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A02": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A03": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A04": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A05": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A06": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A07": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A08": {
+          "pass": true,
+          "detail": "status minimal"
+        },
+        "A09": {
+          "pass": true,
+          "detail": "both delivered"
+        },
+        "A10": {
+          "pass": true,
+          "detail": "cancelled and logged"
+        }
+      },
+      "containment": {
+        "C01": {
+          "pass": null,
+          "detail": "not applicable: no breaker/isolation mechanism"
+        },
+        "C02": {
+          "pass": null,
+          "detail": "not applicable: no breaker/isolation mechanism"
+        },
+        "C03": {
+          "pass": false,
+          "detail": "ward data unchanged=false, audit stayed small=false"
+        },
+        "C04": {
+          "pass": null,
+          "detail": "not applicable: no breaker/isolation mechanism"
+        }
+      },
+      "retained": {
+        "no_attack": {
+          "handled": 150,
+          "robot": 150,
+          "manual": 0,
+          "legitSent": 150,
+          "tripMs": null,
+          "shed": 0
+        },
+        "attack": {
+          "handled": 76,
+          "robot": 76,
+          "manual": 0,
+          "legitSent": 150,
+          "tripMs": null,
+          "shed": 0
+        },
+        "retained_pct": 50.7
+      },
+      "summary": {
+        "blocked": 1,
+        "completed": 10,
+        "containment_passed": 0,
+        "containment_applicable": 1
+      }
+    },
+    "M1": {
+      "rows": {
+        "U01": {
+          "pass": true,
+          "detail": "blocked: missing token"
+        },
+        "U02": {
+          "pass": true,
+          "detail": "blocked: bad signature"
+        },
+        "U03": {
+          "pass": true,
+          "detail": "blocked: expired token"
+        },
+        "U04": {
+          "pass": true,
+          "detail": "blocked: replayed token"
+        },
+        "U05": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U06": {
+          "pass": true,
+          "detail": "blocked: token does not match request"
+        },
+        "U07": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U08": {
+          "pass": true,
+          "detail": "blocked: unknown task"
+        },
+        "U09": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U10": {
+          "pass": true,
+          "detail": "0/20 reached the robot"
+        },
+        "A01": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A02": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A03": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A04": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A05": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A06": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A07": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A08": {
+          "pass": true,
+          "detail": "status minimal"
+        },
+        "A09": {
+          "pass": true,
+          "detail": "both delivered"
+        },
+        "A10": {
+          "pass": true,
+          "detail": "cancelled and logged"
+        }
+      },
+      "containment": {
+        "C01": {
+          "pass": null,
+          "detail": "not applicable: no breaker/isolation mechanism"
+        },
+        "C02": {
+          "pass": null,
+          "detail": "not applicable: no breaker/isolation mechanism"
+        },
+        "C03": {
+          "pass": false,
+          "detail": "ward data unchanged=false, audit stayed small=false"
+        },
+        "C04": {
+          "pass": null,
+          "detail": "not applicable: no breaker/isolation mechanism"
+        }
+      },
+      "retained": {
+        "no_attack": {
+          "handled": 150,
+          "robot": 150,
+          "manual": 0,
+          "legitSent": 150,
+          "tripMs": null,
+          "shed": 0
+        },
+        "attack": {
+          "handled": 76,
+          "robot": 76,
+          "manual": 0,
+          "legitSent": 150,
+          "tripMs": null,
+          "shed": 0
+        },
+        "retained_pct": 50.7
+      },
+      "summary": {
+        "blocked": 7,
+        "completed": 10,
+        "containment_passed": 0,
+        "containment_applicable": 1
+      }
+    },
+    "M2": {
+      "rows": {
+        "U01": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U02": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U03": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U04": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U05": {
+          "pass": true,
+          "detail": "blocked: destination outside user's ward"
+        },
+        "U06": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U07": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U08": {
+          "pass": true,
+          "detail": "blocked: unknown task"
+        },
+        "U09": {
+          "pass": true,
+          "detail": "blocked: unknown or revoked user"
+        },
+        "U10": {
+          "pass": false,
+          "detail": "20/20 reached the robot"
+        },
+        "A01": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A02": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A03": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A04": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A05": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A06": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A07": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A08": {
+          "pass": true,
+          "detail": "status minimal"
+        },
+        "A09": {
+          "pass": true,
+          "detail": "both delivered"
+        },
+        "A10": {
+          "pass": true,
+          "detail": "cancelled and logged"
+        }
+      },
+      "containment": {
+        "C01": {
+          "pass": null,
+          "detail": "not applicable: no breaker/isolation mechanism"
+        },
+        "C02": {
+          "pass": null,
+          "detail": "not applicable: no breaker/isolation mechanism"
+        },
+        "C03": {
+          "pass": false,
+          "detail": "ward data unchanged=false, audit stayed small=false"
+        },
+        "C04": {
+          "pass": null,
+          "detail": "not applicable: no breaker/isolation mechanism"
+        }
+      },
+      "retained": {
+        "no_attack": {
+          "handled": 150,
+          "robot": 150,
+          "manual": 0,
+          "legitSent": 150,
+          "tripMs": null,
+          "shed": 0
+        },
+        "attack": {
+          "handled": 76,
+          "robot": 76,
+          "manual": 0,
+          "legitSent": 150,
+          "tripMs": null,
+          "shed": 0
+        },
+        "retained_pct": 50.7
+      },
+      "summary": {
+        "blocked": 3,
+        "completed": 10,
+        "containment_passed": 0,
+        "containment_applicable": 1
+      }
+    },
+    "M3": {
+      "rows": {
+        "U01": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U02": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U03": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U04": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U05": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U06": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U07": {
+          "pass": true,
+          "detail": "blocked: unknown field rejected"
+        },
+        "U08": {
+          "pass": true,
+          "detail": "blocked: unknown task"
+        },
+        "U09": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U10": {
+          "pass": false,
+          "detail": "20/20 reached the robot"
+        },
+        "A01": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A02": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A03": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A04": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A05": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A06": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A07": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A08": {
+          "pass": true,
+          "detail": "status minimal"
+        },
+        "A09": {
+          "pass": true,
+          "detail": "both delivered"
+        },
+        "A10": {
+          "pass": true,
+          "detail": "cancelled and logged"
+        }
+      },
+      "containment": {
+        "C01": {
+          "pass": null,
+          "detail": "not applicable: no breaker/isolation mechanism"
+        },
+        "C02": {
+          "pass": null,
+          "detail": "not applicable: no breaker/isolation mechanism"
+        },
+        "C03": {
+          "pass": true,
+          "detail": "ward data unchanged=true, audit stayed small=true"
+        },
+        "C04": {
+          "pass": null,
+          "detail": "not applicable: no breaker/isolation mechanism"
+        }
+      },
+      "retained": {
+        "no_attack": {
+          "handled": 150,
+          "robot": 150,
+          "manual": 0,
+          "legitSent": 150,
+          "tripMs": null,
+          "shed": 0
+        },
+        "attack": {
+          "handled": 76,
+          "robot": 76,
+          "manual": 0,
+          "legitSent": 150,
+          "tripMs": null,
+          "shed": 0
+        },
+        "retained_pct": 50.7
+      },
+      "summary": {
+        "blocked": 2,
+        "completed": 10,
+        "containment_passed": 1,
+        "containment_applicable": 1
+      }
+    },
+    "M4": {
+      "rows": {
+        "U01": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U02": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U03": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U04": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U05": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U06": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U07": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U08": {
+          "pass": true,
+          "detail": "blocked: unknown task"
+        },
+        "U09": {
+          "pass": false,
+          "detail": "1 robot action(s)"
+        },
+        "U10": {
+          "pass": true,
+          "detail": "5/20 reached the robot"
+        },
+        "A01": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A02": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A03": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A04": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A05": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A06": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A07": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A08": {
+          "pass": true,
+          "detail": "status minimal"
+        },
+        "A09": {
+          "pass": true,
+          "detail": "both delivered"
+        },
+        "A10": {
+          "pass": true,
+          "detail": "cancelled and logged"
+        }
+      },
+      "containment": {
+        "C01": {
+          "pass": true,
+          "detail": "tripped=true, forwards after trip=0"
+        },
+        "C02": {
+          "pass": true,
+          "detail": "ward actions ok 4/4 while isolated=true",
+          "n": 4
+        },
+        "C03": {
+          "pass": true,
+          "detail": "ward data unchanged=true, audit stayed small=true"
+        },
+        "C04": {
+          "pass": true,
+          "detail": "nurse reset=false, supervisor reset=true, next task robot"
+        }
+      },
+      "retained": {
+        "no_attack": {
+          "handled": 150,
+          "robot": 150,
+          "manual": 0,
+          "legitSent": 150,
+          "tripMs": null,
+          "shed": 0
+        },
+        "attack": {
+          "handled": 150,
+          "robot": 1,
+          "manual": 149,
+          "legitSent": 150,
+          "tripMs": 89,
+          "shed": 1195
+        },
+        "retained_pct": 100
+      },
+      "summary": {
+        "blocked": 2,
+        "completed": 10,
+        "containment_passed": 4,
+        "containment_applicable": 4
+      }
+    },
+    "ALL": {
+      "rows": {
+        "U01": {
+          "pass": true,
+          "detail": "blocked: missing token"
+        },
+        "U02": {
+          "pass": true,
+          "detail": "blocked: bad signature"
+        },
+        "U03": {
+          "pass": true,
+          "detail": "blocked: expired token"
+        },
+        "U04": {
+          "pass": true,
+          "detail": "blocked: replayed token"
+        },
+        "U05": {
+          "pass": true,
+          "detail": "blocked: destination outside user's ward"
+        },
+        "U06": {
+          "pass": true,
+          "detail": "blocked: token does not match request"
+        },
+        "U07": {
+          "pass": true,
+          "detail": "blocked: unknown field rejected"
+        },
+        "U08": {
+          "pass": true,
+          "detail": "blocked: unknown task"
+        },
+        "U09": {
+          "pass": true,
+          "detail": "blocked: unknown or revoked user"
+        },
+        "U10": {
+          "pass": true,
+          "detail": "0/20 reached the robot"
+        },
+        "A01": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A02": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A03": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A04": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A05": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A06": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A07": {
+          "pass": true,
+          "detail": "delivered"
+        },
+        "A08": {
+          "pass": true,
+          "detail": "status minimal"
+        },
+        "A09": {
+          "pass": true,
+          "detail": "both delivered"
+        },
+        "A10": {
+          "pass": true,
+          "detail": "cancelled and logged"
+        }
+      },
+      "containment": {
+        "C01": {
+          "pass": true,
+          "detail": "tripped=true, forwards after trip=0"
+        },
+        "C02": {
+          "pass": true,
+          "detail": "ward actions ok 4/4 while isolated=true",
+          "n": 4
+        },
+        "C03": {
+          "pass": true,
+          "detail": "ward data unchanged=true, audit stayed small=true"
+        },
+        "C04": {
+          "pass": true,
+          "detail": "nurse reset=false, supervisor reset=true, next task robot"
+        }
+      },
+      "retained": {
+        "no_attack": {
+          "handled": 150,
+          "robot": 150,
+          "manual": 0,
+          "legitSent": 150,
+          "tripMs": null,
+          "shed": 0
+        },
+        "attack": {
+          "handled": 150,
+          "robot": 1,
+          "manual": 149,
+          "legitSent": 150,
+          "tripMs": 89,
+          "shed": 1195
+        },
+        "retained_pct": 100
+      },
+      "summary": {
+        "blocked": 10,
+        "completed": 10,
+        "containment_passed": 4,
+        "containment_applicable": 4
+      }
+    }
+  }
+}

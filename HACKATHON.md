@@ -1,11 +1,11 @@
-# Hackathon Control Board — Smart RoboWard
+ measured | 2/10; 100% retained service (measured, synthetic; `experiments/runs/latest/results.json`) | measured | 2/10 (measured, synthetic; `experiments/runs/latest/results.json`) | measured | 3/10 (measured, synthetic; `experiments/runs/latest/results.json`) | measured | 7/10 (measured, synthetic; `experiments/runs/latest/results.json`) | measured | 1/10 blocked (measured, synthetic; `experiments/runs/latest/results.json`) |# Hackathon Control Board — Smart RoboWard
 
 ## Brief
 - Challenge: IFOHRA Challenge #9 — Secure integration of robotics in clinical environments (Healthcare Hackathon Bayern). Rules: https://www.bayern-innovativ.de/events-termine/detail/events-termine/healthcare-hackathon-bayern-hacken-bis-der-arzt-kommt-november2026 (user-supplied brief; not independently re-read)
 - Judging: creativity, technical skill, feasibility; no published rubric or weights (external-source, per user). Our priority: practical patient/ward-staff impact.
 - Deadline: 28 Nov 2026, 11:00 CET. **Assumption flag:** brief also says "submission noon"; we plan to 11:00.
 - Team (4): Product manager (scope, pitch) · Robotics dev (mock robot workflow) · Data scientist (synthetic data, metrics) · Claude-proficient manager (prototype, demo integration).
-- Constraints: €0, open-source only, local synthetic data, no physical robot or simulator. Reused code must respect licenses, be disclosed to the jury, and code/results made available for review.
+- Constraints: €0, open-source only, local synthetic data, no physical robot (an imported, AI-generated 3D simulator exists, see Reuse). Reused code must respect licenses, be disclosed to the jury, and code/results made available for review.
 - Target user and pain: ward nurse tracking a delivery; robots can leak patient data or be commanded by attackers.
 - **Core problem (user, 2026-11-27, from on-site discussion; not yet checked against the official brief):** if the system is hacked, the *whole hospital* has to stop: patients cannot be treated and staff cannot work. So the main risk is **losing the whole hospital (availability)**, not only a data leak. A compromised robot system must be contained so that patient care can continue.
 - Objective: Let ward nurses track robot deliveries while the robot sees only task ID and destination, blocking unauthorized requests before any disclosure or action, with a local synthetic-data demo.
@@ -18,7 +18,7 @@
 - Secondary: decision latency, audit-log completeness, zero patient fields in robot payload/logs.
 - Demo journey: nurse requests delivery → robot receives task ID + destination → status in nurse view → attacker replay/forgery blocked with audit entry.
 
-## Five methods (all planned, none tested)
+## Five methods (all implemented and measured on synthetic data, 2026-11-27)
 | ID | Candidate / distinct hypothesis | Status | Evidence | Blocker |
 |---|---|---|---|---|
 | M0 | Baseline: static allowlist of task IDs, no auth | planned | — | — |
@@ -29,7 +29,7 @@
 
 Details: `experiments/methods.md`. The hash-chained audit log is now shared plumbing for all methods, not a candidate.
 
-Honest risk: all five in under a day is tight. Priority: M0, M1, M3 first, then M4 (it carries the core "hospital keeps working" story, so move it ahead of M2 if time is short), then M2. Any unmeasured method is shown as `not-tested`.
+Result summary (measured, synthetic, author-written rows): full stack 10/10 blocked and 10/10 completed; M0 baseline 1/10 blocked. Under a 40 req/s flood against a 20 req/s gate, M0 to M3 retain 50.7% of legitimate tasks, M4 and the full stack 100% (149 of 150 via manual fallback, 1 by robot). Caveats: the rows and the capacity model were written by us, the full-stack 10/10 is partly by design, and the "Completed" check only requires the robot payload to have task_id and destination, not that it contains nothing else.
 
 ## Systems Engineering Lite
 - Needs/requirements/architecture/contracts: `docs/` not created yet. Draft REQ-001..006 inside this file if time is short.
@@ -37,11 +37,11 @@ Honest risk: all five in under a day is tight. Priority: M0, M1, M3 first, then 
 
 ## Reuse vs on-site (license check required before use)
 - **Clinic simulator (disclose to jury):** `clinic3d/` and `output/` (3D fleet console, scenario fixtures, Python replay runner) were generated earlier with an AI coding assistant (commit author "Codex") and imported into this repo on 2026-11-27. Third-party: Three.js (MIT, `clinic3d/vendor/`), Open-RMF map files (Apache-2.0, `output/simulation/open-rmf/LICENSE`). We have **not** independently re-run its results; its numbers are `unverified` until we do.
-- Reused (proposed, nothing installed yet): Python standard library (hmac, hashlib, http.server, json), pytest if already present. Plain HTML/JS UI. Zero third-party runtime dependencies, so no install approval needed.
-- Built on site: task/token service, policy and minimization gate, mock robot, audit log, synthetic data generator, test runner, nurse dashboard, pitch.
+- Reused: Node.js standard library only (crypto, node:test, fs). No packages installed.
+- Built on site (2026-11-27): `gate/gate.cjs` (allowlist, tokens, policy, minimization, breaker, audit chain, simulated robot), `gate/run.cjs` (benchmark), `gate/gate.test.cjs`, `gate/build-page.cjs` + `gate/results-template.html` (plain-English results page, `site/gate-results.html`), and a live 3D hack demo (`gate/hacker/`, `gate/build-hacker.cjs`, `site/hacker-demo.html`): a random-attack hacker character, the real gate code running in the browser (checked against the Node gate by `gate/hacker.test.cjs`), live system checks. Not yet built: the original 3D fleet console does not call the gate.
 
 ## Integration heartbeat
-- Input fixture: NO · Algorithm invoked: NO · Backend health: NO · Frontend on real API: NO · One-command start: NO · Live demo tested: NO · Offline fallback: NO
+- Input fixture: YES (synthetic, in code) · Algorithm invoked: YES (`node gate/run.cjs`; `node --test gate/` 5/5 pass) · Backend/API: N/A (static Pages site, gate runs as a script) · Frontend consumes real output: PARTLY (`site/gate-results.html` embeds real results.json; 3D console not wired to the gate) · One-command start: `node gate/run.cjs && node gate/build-page.cjs` · Live demo tested end-to-end: NO · Offline fallback: results page works offline; video not recorded
 
 ## Pitch and submission
 - Core proof: filled only from measured results. Format/duration: TODO (unknown). Slides: `presentation/`. Submission links: TODO.
@@ -52,9 +52,10 @@ Honest risk: all five in under a day is tight. Priority: M0, M1, M3 first, then 
 | 2026-11-27 | Software-only mock robot, stdlib stack | No hardware, €0, no installs | Smoke test baseline |
 | 2026-11-27 | Recorded "hack → whole hospital stops" as the core problem; containment proposed as co-primary | Raised by the user from on-site discussion | Team confirms |
 | 2026-11-27 | Claims fixed in public repo: README 10/10 relabelled "imported fixture replay, unverified"; AI-generated/third-party disclosure added (README, NOTICE.md, landing page); organizer brief image removed from the repo (logos, no redistribution licence) | Release audit found overclaim and disclosure gaps | Re-check README before submission. Image later purged from git history (history rewritten and force-pushed 2026-11-27, so older commit IDs changed); GitHub may keep old commits reachable by exact ID until its own cleanup |
+| 2026-11-27 | Built gate, benchmark and results page; measured all five methods and the full stack | Plan said measure everything once | Review rows, wire nurse view to gate, record fallback |
 | 2026-11-27 | M4 changed from rate limiting + audit log to containment (breaker, isolation, manual mode); audit log became shared plumbing; rows C01–C04 added | User approved the swap; none of the methods had been run, so no result was affected | Build breaker and degraded mode after M0/M1/M3 |
 
 ## Next 3 actions
-1. Confirm owners, the 10/10 acceptance bar and the 11:00 cutoff.
-2. Freeze the JSON contract (task request, robot payload, status, audit entry) and synthetic dataset.
-3. Build the thin slice: request → M0 → mock robot → nurse view → smoke test.
+1. Team reviews `experiments/runs/latest/results.json` and the caveats above; confirm owners, acceptance bars and the 11:00 cutoff.
+2. Decide whether to wire a nurse view or the 3D console to the gate (not done).
+3. Record the offline fallback video, write the pitch from measured numbers only, run a cold-start dry run. Pushing or deploying the site needs the team's approval.
