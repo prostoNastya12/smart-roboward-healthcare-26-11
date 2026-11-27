@@ -5,6 +5,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const root = path.join(__dirname, "..");
+const {withTheme} = require("../site/theme.cjs");
 const read = p => fs.readFileSync(path.join(root, p), "utf8");
 
 // gate.cjs wrapped so it runs without Node: it receives a fake require() and Buffer.
@@ -26,7 +27,7 @@ function build() {
     SCENE: read("gate/hacker/scene.js"),
     APP: read("gate/hacker/app.js")
   };
-  let html = tpl;
+  let html = withTheme(tpl, "hack", "Real gate code · local simulation");
   for (const [k, v] of Object.entries(parts)) html = html.replace("/*__" + k + "__*/", () => safe(v));
   fs.writeFileSync(path.join(root, "site", "hacker-demo.html"), html);
   console.log("wrote site/hacker-demo.html", html.length, "bytes");

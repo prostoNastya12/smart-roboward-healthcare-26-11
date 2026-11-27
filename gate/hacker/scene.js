@@ -6,7 +6,7 @@ const Scene3D = (function () {
   const reduce = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
   const DEST_X = {"Pharmacy": -12, "Lab": -4, "Room 12": 4, "Room 7": 12, "Storage": 19};
   const P = {nurse: new V(-14, 0, 10), gate: new V(0, 0, 6.5), hacker: new V(15, 0, 10), home: new V(-18, 0, 1)};
-  const GREEN = 0x39ff88, RED = 0xff4d5e, ORANGE = 0xffa31a, BLUE = 0x4cc9f0;
+  const GREEN = 0x17a06a, RED = 0xd9452b, ORANGE = 0xe08a1e, BLUE = 0x2a7fc1;
   let renderer, scene, camera, canvas, ready = false, lastT = 0, time = 0;
   const tweens = [];
   let labels = [];
@@ -27,7 +27,7 @@ const Scene3D = (function () {
   const rotX = (o, v) => { o.rotation.x = v; return o; }, rotZ = (o, v) => { o.rotation.z = v; return o; };
   function roundRect(x, a, b, w, h, r) { x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r); x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath(); }
   function label(text, opt) {
-    const o = Object.assign({size: 44, color: "#ffffff", bg: "rgba(13,17,23,.82)", pad: 14, scale: 0.017}, opt || {});
+    const o = Object.assign({size: 44, color: "#18382e", bg: "rgba(255,255,255,.93)", pad: 14, scale: 0.017}, opt || {});
     const c = document.createElement("canvas"), x = c.getContext("2d"), font = "700 " + o.size + "px system-ui, Segoe UI, sans-serif";
     x.font = font;
     const w = Math.ceil(x.measureText(text).width) + o.pad * 2, h = Math.ceil(o.size * 1.4) + o.pad;
@@ -130,7 +130,7 @@ const Scene3D = (function () {
   // ---------- world ----------
   function room(name, x, color, prop) {
     scene.add(mesh(new THREE.BoxGeometry(6.6, 0.2, 6.6), M(color), x, 0.1, -6));
-    const wall = M(0x2b3a52);
+    const wall = M(0xc3cfc7);
     scene.add(mesh(new THREE.BoxGeometry(6.6, 2.2, 0.2), wall, x, 1.1, -9.3));
     scene.add(mesh(new THREE.BoxGeometry(0.2, 2.2, 6.6), wall, x - 3.3, 1.1, -6));
     scene.add(mesh(new THREE.BoxGeometry(0.2, 2.2, 6.6), wall, x + 3.3, 1.1, -6));
@@ -139,23 +139,23 @@ const Scene3D = (function () {
   }
   function box(w, h, d, c, x, y, z) { return mesh(new THREE.BoxGeometry(w, h, d), M(c), x, y, z); }
   function buildWorld() {
-    scene.add(new THREE.HemisphereLight(0xdfe9ff, 0x1a2233, 0.95));
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x9fb3a8, 1.0));
     const sun = new THREE.DirectionalLight(0xffffff, 0.6); sun.position.set(10, 25, 15); scene.add(sun);
-    scene.add(rotX(mesh(new THREE.PlaneGeometry(70, 46), M(0x141c2b), 0, 0, 2), -Math.PI / 2));
-    scene.add(box(46, 0.06, 6.4, 0x25354d, 0, 0.03, 0.9));
-    room("Pharmacy", -12, 0x2f6f6a, x => { const g = new THREE.Group(); g.add(box(4.5, 1.8, 0.7, 0x8ec5c0, x, 1.0, -8.6)); return g; });
-    room("Lab", -4, 0x3a5a8c, x => { const g = new THREE.Group(); g.add(box(3.6, 0.9, 1.4, 0xbcd0ee, x, 0.65, -6.5)); return g; });
-    room("Room 12", 4, 0x5a4a78, x => { const g = new THREE.Group(); g.add(box(2.2, 0.6, 3.4, 0xf1f1f6, x, 0.5, -6.2)); g.add(box(2.2, 0.9, 0.4, 0xd9d9ea, x, 0.7, -7.7)); return g; });
-    room("Room 7", 12, 0x6a4a58, x => { const g = new THREE.Group(); g.add(box(2.2, 0.6, 3.4, 0xf1f1f6, x, 0.5, -6.2)); g.add(box(2.2, 0.9, 0.4, 0xd9d9ea, x, 0.7, -7.7)); return g; });
-    room("Storage", 19, 0x6b5b3a, x => { const g = new THREE.Group(); g.add(box(1.6, 1.4, 1.6, 0xb99a5b, x - 1, 0.9, -7)); g.add(box(1.4, 1.0, 1.4, 0xcdae70, x + 1.2, 0.7, -6.4)); return g; });
+    scene.add(rotX(mesh(new THREE.PlaneGeometry(70, 46), M(0xd3ddd5), 0, 0, 2), -Math.PI / 2));
+    scene.add(box(46, 0.06, 6.4, 0xeef3ec, 0, 0.03, 0.9));
+    room("Pharmacy", -12, 0x9fcdbb, x => { const g = new THREE.Group(); g.add(box(4.5, 1.8, 0.7, 0x8ec5c0, x, 1.0, -8.6)); return g; });
+    room("Lab", -4, 0xb4c8e0, x => { const g = new THREE.Group(); g.add(box(3.6, 0.9, 1.4, 0xbcd0ee, x, 0.65, -6.5)); return g; });
+    room("Room 12", 4, 0xc9c0dc, x => { const g = new THREE.Group(); g.add(box(2.2, 0.6, 3.4, 0xf1f1f6, x, 0.5, -6.2)); g.add(box(2.2, 0.9, 0.4, 0xd9d9ea, x, 0.7, -7.7)); return g; });
+    room("Room 7", 12, 0xdcc3cc, x => { const g = new THREE.Group(); g.add(box(2.2, 0.6, 3.4, 0xf1f1f6, x, 0.5, -6.2)); g.add(box(2.2, 0.9, 0.4, 0xd9d9ea, x, 0.7, -7.7)); return g; });
+    room("Storage", 19, 0xdccfae, x => { const g = new THREE.Group(); g.add(box(1.6, 1.4, 1.6, 0xb99a5b, x - 1, 0.9, -7)); g.add(box(1.4, 1.0, 1.4, 0xcdae70, x + 1.2, 0.7, -6.4)); return g; });
     // nurse station
-    scene.add(box(8, 0.3, 5.5, 0x1d3b4f, P.nurse.x, 0.15, P.nurse.z));
+    scene.add(box(8, 0.3, 5.5, 0xb8d2c4, P.nurse.x, 0.15, P.nurse.z));
     const nl = label("Nurse station", {size: 38}); nl.position.set(P.nurse.x, 5.4, P.nurse.z); scene.add(nl);
     nurse = makeNurse(); nurse.position.copy(P.nurse); nurse.position.y = 0.3; nurse.rotation.y = 0.5; nurse.scale.setScalar(0.9); scene.add(nurse);
     // hacker island
-    const isl = mesh(new THREE.CylinderGeometry(5.6, 5.9, 0.5, 40), M(0x2a1233), P.hacker.x, 0.25, P.hacker.z); scene.add(isl);
+    const isl = mesh(new THREE.CylinderGeometry(5.6, 5.9, 0.5, 40), M(0xf2d6cd), P.hacker.x, 0.25, P.hacker.z); scene.add(isl);
     scene.add(rotX(mesh(new THREE.TorusGeometry(5.7, 0.09, 8, 60), B(RED), P.hacker.x, 0.52, P.hacker.z), Math.PI / 2));
-    const hl = label("OUTSIDE NETWORK", {size: 38, color: "#ff8a95"}); hl.position.set(P.hacker.x, 6.6, P.hacker.z); scene.add(hl);
+    const hl = label("OUTSIDE NETWORK", {size: 38, color: "#a3261b"}); hl.position.set(P.hacker.x, 6.6, P.hacker.z); scene.add(hl);
     hacker = makeHacker(); hacker.position.set(P.hacker.x, 0.5, P.hacker.z - 0.6); hacker.rotation.y = -0.62; hacker.scale.setScalar(0.95); scene.add(hacker);
     // robot
     robot = makeRobot(); robot.position.copy(P.home); robot.rotation.y = 0.3; scene.add(robot);
@@ -170,7 +170,7 @@ const Scene3D = (function () {
     gateObj.userData = {ring, shield, flash: 0};
     // dome that shows the isolated robot zone
     dome = mesh(new THREE.SphereGeometry(13, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), B(RED, {transparent: true, opacity: 0.09, side: THREE.DoubleSide}), -4, 0, -1); dome.scale.set(1.9, 0.35, 0.65); dome.visible = false; scene.add(dome);
-    isoLabel = label("ROBOT ZONE CUT OFF", {size: 40, color: "#ffd3d8", bg: "rgba(160,20,40,.9)"}); isoLabel.position.set(-8, 6, 1); isoLabel.visible = false; scene.add(isoLabel);
+    isoLabel = label("ROBOT ZONE CUT OFF", {size: 40, color: "#ffffff", bg: "rgba(142,59,34,.95)"}); isoLabel.position.set(-8, 6, 1); isoLabel.visible = false; scene.add(isoLabel);
     // links (cables)
     const link = (a, b, c) => { const g = new THREE.BufferGeometry().setFromPoints([a, b]); const l = new THREE.Line(g, new THREE.LineDashedMaterial({color: c, dashSize: 0.5, gapSize: 0.35})); l.computeLineDistances(); scene.add(l); return l; };
     link(new V(P.nurse.x + 3, 0.5, P.nurse.z), new V(P.gate.x - 2.9, 0.5, P.gate.z), BLUE);
@@ -214,7 +214,7 @@ const Scene3D = (function () {
     const out = [P.home.clone(), new V(x, 0, 1), new V(x, 0, -2.4)];
     robot.userData.parcel.visible = true; setRobot(job.hacked ? "hacked" : "ok");
     moveAlong(robot, out, 9, () => {
-      if (job.hacked) pop("HACKED!", "#ff8a95", new V(x, 4.5, -2), true);
+      if (job.hacked) pop("HACKED!", "#a3261b", new V(x, 4.5, -2), true);
       tween(job.hacked && !reduce ? 0.9 : 0.4, p => { if (job.hacked && !reduce) robot.rotation.y += 0.35; }, () => {
         robot.userData.parcel.visible = false;
         moveAlong(robot, out.slice().reverse(), 9, () => { robot.rotation.y = 0.3; setRobot("ok"); robotBusy = false; runRobot(); });
@@ -228,8 +228,8 @@ const Scene3D = (function () {
     init(c) {
       canvas = c;
       try { renderer = new THREE.WebGLRenderer({canvas, antialias: true}); } catch (e) { return false; }
-      renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); renderer.setClearColor(0x0b111c);
-      scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x0b111c, 55, 110);
+      renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); renderer.setClearColor(0xe1e8e3);
+      scene = new THREE.Scene(); scene.fog = new THREE.Fog(0xe1e8e3, 60, 120);
       camera = new THREE.PerspectiveCamera(42, 1, 0.1, 250);
       buildWorld(); api.resize(); ready = true;
       const ro = window.ResizeObserver ? new ResizeObserver(() => api.resize()) : null; if (ro) ro.observe(canvas.parentElement); else window.addEventListener("resize", api.resize);
@@ -256,9 +256,9 @@ const Scene3D = (function () {
       const from = o.from === "hacker" ? new V(P.hacker.x - 1, 2.4, P.hacker.z) : new V(P.nurse.x + 1, 2.4, P.nurse.z);
       const gate = new V(P.gate.x, 1.9, P.gate.z + 0.4), color = o.from === "hacker" ? (o.color || RED) : GREEN;
       packet(from, gate, color, o.fast ? 0.35 : 0.6, () => {
-        if (!o.passed) { gateFlash(RED); if (!o.quiet) { burst(new V(P.gate.x, 1.9, P.gate.z + 0.6), RED); pop(o.text || "BLOCKED", "#ff8a95", new V(P.gate.x, 4.6, P.gate.z)); } if (o.arrive) o.arrive(); return; }
+        if (!o.passed) { gateFlash(RED); if (!o.quiet) { burst(new V(P.gate.x, 1.9, P.gate.z + 0.6), RED); pop(o.text || "BLOCKED", "#a3261b", new V(P.gate.x, 4.6, P.gate.z)); } if (o.arrive) o.arrive(); return; }
         gateFlash(o.from === "hacker" ? RED : GREEN);
-        if (o.noRobot) { if (!o.quiet) pop(o.text || "OK", o.from === "hacker" ? "#ff8a95" : "#9dffc4", new V(P.gate.x, 4.6, P.gate.z)); if (o.arrive) o.arrive(); return; }
+        if (o.noRobot) { if (!o.quiet) pop(o.text || "OK", o.from === "hacker" ? "#a3261b" : "#17674c", new V(P.gate.x, 4.6, P.gate.z)); if (o.arrive) o.arrive(); return; }
         packet(gate, new V(P.home.x + 1, 1.6, P.home.z + 1), color, o.fast ? 0.5 : 0.9, () => { if (o.arrive) o.arrive(); });
       });
     },
@@ -270,7 +270,7 @@ const Scene3D = (function () {
       packet(from, gate, RED, 0.9, () => {
         gateFlash(o.passed ? RED : GREEN);
         if (!o.passed) burst(new V(P.gate.x, 1.9, P.gate.z + 0.6), GREEN);
-        pop(o.text || (o.passed ? "WARD RECORDS CORRUPTED" : "DROPPED"), o.passed ? "#ff8a95" : "#9dffc4", new V(P.gate.x, 4.6, P.gate.z));
+        pop(o.text || (o.passed ? "WARD RECORDS CORRUPTED" : "DROPPED"), o.passed ? "#a3261b" : "#17674c", new V(P.gate.x, 4.6, P.gate.z));
         tween(1.2, () => {}, () => { if (!robotBusy) setRobot("ok"); });
         if (o.arrive) o.arrive();
       });
@@ -281,12 +281,12 @@ const Scene3D = (function () {
       const x = DEST_X[dest] != null ? DEST_X[dest] : 4, g = new THREE.Group();
       g.add(mesh(THREE.CapsuleGeometry ? new THREE.CapsuleGeometry(0.35, 0.7, 4, 10) : new THREE.CylinderGeometry(0.35, 0.35, 1.1, 10), M(0xffa94d), 0, 0.9, 0));
       g.add(mesh(new THREE.SphereGeometry(0.3, 12, 10), M(0xffd9b8), 0, 1.75, 0)); g.add(mesh(new THREE.BoxGeometry(0.4, 0.3, 0.4), M(0xd9a441), 0, 1.0, 0.45));
-      const t = label("by hand", {size: 30, color: "#ffd9a0"}); t.position.y = 2.6; g.add(t);
+      const t = label("by hand", {size: 30, color: "#98421a"}); t.position.y = 2.6; g.add(t);
       g.position.set(P.nurse.x + 2, 0, P.nurse.z - 2); scene.add(g);
       moveAlong(g, [new V(P.nurse.x + 2, 0, P.nurse.z - 2), new V(P.nurse.x + 2, 0, 2.9), new V(x, 0, 2.9), new V(x, 0, -2.4)], 8, () => { tween(0.5, () => {}, () => { scene.remove(g); dispose(g); runners--; }); });
     },
     view(name) { if (VIEWS[name]) Object.assign(goal, VIEWS[name]); },
-    setIsolated(b) { if (b === isolated) return; isolated = b; if (!ready) return; dome.visible = b; isoLabel.visible = b; cable.material.color.setHex(b ? 0x555a66 : GREEN); cable.visible = !b; gateColor(gateBase()); },
+    setIsolated(b) { if (b === isolated) return; isolated = b; if (!ready) return; dome.visible = b; isoLabel.visible = b; cable.material.color.setHex(b ? 0x8a978f : GREEN); cable.visible = !b; gateColor(gateBase()); },
     hackerSay(text) {
       if (!ready) return;
       if (hackerBubble) { scene.remove(hackerBubble); dispose(hackerBubble); }

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smart RoboWard | IFOHRA Challenge 9</title>
+<style>
+/*__THEME__*/
+.page-card{display:flex;flex-direction:column}
+.page-card .body{padding:0 15px 14px;flex:1}
+.page-card .body p{margin:0}
+.page-card .card-foot{justify-content:flex-end}
+.page-card .card-foot span{margin-right:auto}
+</style>
+</head>
+<body><main>
+<!--__HEADER__-->
+<div class="ops-heading">
+  <div><h1>Project overview</h1><p class="lede">IFOHRA Challenge 9: secure robotics in clinical environments · Healthcare Hackathon Bayern 2026</p></div>
+  <dl class="ops-counts"><div><dt>Robots</dt><dd>3</dd></div><div><dt>Security methods</dt><dd>5</dd></div><div><dt>Test requests</dt><dd>20</dd></div></dl>
+</div>
+<p class="note"><strong>Simulation only.</strong> Robots, devices, scanner events and deliveries are simulated, and all ward data is fictional. Nothing here is clinical evidence. The gate results were measured by our own script on rows we wrote ourselves.</p>
+<div class="card-grid" style="margin-top:14px">
+  <section class="ops-card page-card">
+    <div class="card-heading"><h2>3D fleet console</h2><span class="device-ref">WebGL · offline</span></div>
+    <div class="body"><p>Dispatch a delivery, run a security alert, isolate and restore a robot.</p></div>
+    <div class="card-foot"><span>Imported, AI-generated</span><a class="btn primary" href="Clinic-World.html">Open console</a></div>
+  </section>
+  <section class="ops-card page-card">
+    <div class="card-heading"><h2>Shared-lift replay</h2><span class="device-ref">Offline</span></div>
+    <div class="body"><p>Step through the A01 and U02 cases event by event and see who holds the parcel at each handover.</p></div>
+    <div class="card-foot"><span>Fixture timeline</span><a class="btn primary" href="Smart-RoboWard-replay.html">Open replay</a></div>
+  </section>
+  <section class="ops-card page-card">
+    <div class="card-heading"><h2>Live hack demo</h2><span class="device-ref">WebGL · offline</span></div>
+    <div class="body"><p>Press a button and a hacker attacks the ward at random. Watch the gate block or miss each attack, and check the system live.</p></div>
+    <div class="card-foot"><span>Runs the real gate code</span><a class="btn primary" href="hacker-demo.html">Open demo</a></div>
+  </section>
+  <section class="ops-card page-card">
+    <div class="card-heading"><h2>Gate benchmark results</h2><span class="device-ref">Measured · synthetic</span></div>
+    <div class="body"><p>Five security methods compared on 20 test requests and an attack-flood test, with plain-English explanations.</p></div>
+    <div class="card-foot"><span>Measured by our own script</span><a class="btn primary" href="gate-results.html">Open results</a></div>
+  </section>
+  <section class="ops-card page-card">
+    <div class="card-heading"><h2>Clinic World 3D model</h2><span class="device-ref">GLB · 1.5 MB</span></div>
+    <div class="body"><p>Download the model for another 3D tool.</p></div>
+    <div class="card-foot"><span>Open-RMF geometry</span><a class="btn" href="Clinic-World.glb" download>Download .glb</a></div>
+  </section>
+</div>
+<footer class="console-footer"><span>The console, controller and fleet replay were generated with an AI coding assistant and imported into this project; their results are unverified. Third-party: Three.js (MIT) and Open-RMF clinic map (Apache-2.0).</span><a href="https://github.com/prostoNastya12/smart-roboward-healthcare-26-11">Source code, scenarios and licenses (GitHub)</a></footer>
+</main>
+</body>
+</html>

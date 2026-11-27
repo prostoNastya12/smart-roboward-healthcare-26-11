@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smart RoboWard | Shared lift replay</title>
+<style>
+/*__THEME__*/
+.controls{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:6px 14px;padding:0 15px 14px;border-bottom:1px solid var(--line)}
+.controls label{display:grid;gap:4px;color:var(--muted);font-size:11px;font-weight:600}
+.controls label span{display:flex;justify-content:space-between}
+.controls input[type=range]{width:100%;margin:6px 0 0}
+.event{padding:16px 15px 18px;display:grid;gap:8px}
+.event .action{font-size:clamp(20px,2.2vw,26px);font-weight:620;letter-spacing:-.035em;line-height:1.2;color:var(--ink)}
+.custody{display:flex;align-items:center;flex-wrap:wrap;gap:6px;list-style:none;padding:0;margin:6px 0 0}
+.custody li{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+.custody li+li::before{content:"→";color:#8aa197}
+.custody .who{padding:5px 9px;border:1px solid var(--line);border-radius:5px;background:#f7faf6}
+.custody li[aria-current] .who{background:#193e34;color:#fff;border-color:#193e34;font-weight:600}
+.steps{display:flex;gap:6px;padding:0 15px 14px}
+.timeline{height:100%;max-height:420px;padding:0 15px 10px}
+.timeline li{grid-template-columns:62px 1fr auto;cursor:pointer}
+.timeline li[aria-current]{background:#edf4eb;outline:1px solid #a9c5af;border-radius:4px}
+.timeline li strong{font-weight:600}
+.timeline .holder{font:10px var(--mono);color:#586a63}
+.timeline li.deny .log-tag{color:var(--warn)}
+@media(max-width:760px){.controls{grid-template-columns:1fr}}
+</style>
+</head>
+<body><main>
+<!--__HEADER__-->
+<div class="ops-heading">
+  <h1>Shared lift replay</h1>
+  <dl class="ops-counts"><div><dt>Event</dt><dd id="count-step">–</dd></div><div><dt>Elapsed</dt><dd id="count-time">–</dd></div><div><dt>Parcel with</dt><dd id="count-holder">–</dd></div></dl>
+</div>
+<div class="ops-grid">
+  <section class="ops-card" aria-label="Shared lift and parcel custody replay">
+    <div class="card-heading"><h2>Parcel custody</h2><span class="device-ref" id="case-ref">U02</span></div>
+    <div class="controls">
+      <label for="case">Delivery<select id="case"><option value="U02">U02 · Urgent patient transfer</option><option value="A01">A01 · Routine pharmacy delivery</option></select></label>
+      <label for="step"><span>Event <span class="mono" id="step-label">–</span></span><input id="step" type="range" min="1" max="10" step="1" value="5"></label>
+    </div>
+    <div class="event" aria-live="polite" aria-atomic="true">
+      <span class="small-label" id="time">–</span>
+      <p class="action" id="action"></p>
+      <ol class="custody" id="chain" aria-label="Parcel custody"></ol>
+    </div>
+    <div class="steps"><button type="button" id="prev">Previous event</button><button type="button" id="next" class="primary">Next event</button></div>
+    <div class="card-foot"><span>The fixture timestamps drive the replay. Movement between events is not simulated.</span><a href="Clinic-World.html">See the route in the 3D console</a></div>
+  </section>
+  <aside class="ops-card" aria-label="All events">
+    <div class="card-heading"><h2>Event log</h2><span class="small-label">Select an event</span></div>
+    <ol class="log-list timeline" id="timeline"></ol>
+  </aside>
+</div>
+<div class="monitor-grid">
+  <section class="ops-card pad"><div class="card-heading"><h2>A01 · Routine delivery</h2><span class="device-ref">ALLOW</span></div>
+    <p>The lift is ready, the robot is authorized, and it carries the pharmacy parcel to Ward B. The ward scan closes the delivery.</p></section>
+  <section class="ops-card pad"><div class="card-heading"><h2>U02 · Urgent patient transfer</h2><span class="device-ref warn">DENY</span></div>
+    <p>The hospital revokes the robot's permission while the lift serves an urgent patient call. A porter takes custody of the parcel and the ward scan closes the delivery.</p></section>
+</div>
+<footer class="console-footer"><span>Fictional fixture cases A01 and U02 from <code>output/simulation/smart-roboward-scenarios.json</code>. Simulated devices and events.</span><a href="index.html">Back to overview</a></footer>
+<script>
+"use strict";
+(() => {
+  const $ = id => document.getElementById(id);
+  // Same timelines as output/visualizations/shared-lift-replay.html: [seconds, action, parcel holder].
+  const cases = {"A01":[[0,"Pharmacy loaded the parcel","SIM-R1"],[118,"Lift reported ready","SIM-R1"],[120,"ALLOW robot trip (authorized)","SIM-R1"],[1240,"Parcel arrived. Awaiting the ward scan","SIM-R1"],[1260,"Ward scan closed the delivery","WARD-B"]],"U02":[[0,"Pharmacy loaded the parcel","SIM-R1"],[118,"Lift reported ready","SIM-R1"],[119,"Hospital revoked the robot's permission","SIM-R1"],[119,"Lift accepted the urgent patient call","SIM-R1"],[120,"DENY robot trip (robot revoked)","SIM-R1"],[128,"Handoff offered. The robot still holds the parcel","SIM-R1"],[150,"Facilities confirmed the urgent transfer finished","SIM-R1"],[160,"Porter accepted custody","SIM-PORTER"],[900,"Parcel arrived. Awaiting the ward scan","SIM-PORTER"],[920,"Ward scan closed the delivery","WARD-B"]]};
+  const names = {"SIM-R1": "Robot", "SIM-PORTER": "Porter", "WARD-B": "Ward B"};
+  const decisions = {
+    "DENY robot trip (robot revoked)": "Lift denied the robot after its permission was revoked.",
+    "ALLOW robot trip (authorized)": "Lift approved the assigned pharmacy delivery."
+  };
+  const clock = s => Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+  const long = s => Math.floor(s / 60) + " min " + String(s % 60).padStart(2, "0") + " s elapsed";
+  function display() {
+    const frames = cases[$("case").value], current = Number($("step").value) - 1;
+    const [seconds, action, holder] = frames[current];
+    $("step-label").textContent = (current + 1) + " of " + frames.length;
+    $("count-step").textContent = (current + 1) + "/" + frames.length;
+    $("count-time").textContent = clock(seconds);
+    $("count-holder").textContent = names[holder] || holder;
+    $("time").textContent = long(seconds);
+    $("action").textContent = decisions[action] || action;
+    $("step").setAttribute("aria-valuetext", "Event " + (current + 1) + " of " + frames.length + ", " + long(seconds));
+    $("prev").disabled = current === 0; $("next").disabled = current === frames.length - 1;
+    $("chain").replaceChildren(...[...new Set(frames.map(f => f[2]))].map(id => {
+      const li = document.createElement("li"), who = document.createElement("span");
+      who.className = "who"; who.textContent = names[id] || id; li.appendChild(who);
+      if (id === holder) { li.setAttribute("aria-current", "step"); li.append("holds parcel"); }
+      return li;
+    }));
+    [...$("timeline").children].forEach((li, i) => li.toggleAttribute("aria-current", i === current));
+  }
+  function select(key) {
+    const frames = cases[key];
+    $("case-ref").textContent = key;
+    $("step").max = frames.length;
+    $("step").value = key === "U02" ? 5 : 3;
+    $("timeline").replaceChildren(...frames.map(([s, a, h], i) => {
+      const li = document.createElement("li"), t = document.createElement("time"), body = document.createElement("span"), who = document.createElement("span");
+      t.textContent = clock(s); body.innerHTML = "<strong></strong>"; body.firstChild.textContent = decisions[a] || a;
+      who.className = "holder"; who.textContent = names[h] || h;
+      if (a.startsWith("DENY")) li.className = "deny";
+      li.tabIndex = 0; li.append(t, body, who);
+      const go = () => { $("step").value = i + 1; display(); };
+      li.addEventListener("click", go); li.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+      return li;
+    }));
+    display();
+  }
+  $("case").addEventListener("change", () => select($("case").value));
+  $("step").addEventListener("input", display);
+  $("prev").addEventListener("click", () => { $("step").value = Number($("step").value) - 1; display(); });
+  $("next").addEventListener("click", () => { $("step").value = Number($("step").value) + 1; display(); });
+  select("U02");
+})();
+</script>
+</main>
+</body>
+</html>

@@ -1,69 +1,69 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Smart RoboWard | Live hack demo</title>
 <style>
-:root{--bg:#0b111c;--panel:#121a29;--card:#17213a;--line:#2a3652;--fg:#e8eef9;--dim:#9aa9c4;--green:#39ff88;--red:#ff6b7a;--orange:#ffb347;--blue:#6bd3ff}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,"Segoe UI",sans-serif}
-header{padding:14px 20px 4px;display:flex;flex-wrap:wrap;gap:6px 18px;align-items:baseline}
-header h1{margin:0;font-size:1.35rem}header p{margin:0;color:var(--dim)}
-a{color:var(--green)}
-.layout{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:14px;padding:10px 20px 28px;align-items:start}
-@media(max-width:980px){.layout{grid-template-columns:1fr}}
-.stage{position:relative;background:#0b111c;border:1px solid var(--line);border-radius:14px;overflow:hidden;height:min(74vh,700px);min-height:360px}
-.stage canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
-.stage canvas:focus-visible{outline:3px solid var(--green);outline-offset:-3px}
-.views{position:absolute;left:10px;top:10px;display:flex;gap:6px;flex-wrap:wrap}
-.views button{padding:5px 10px;font-size:.82rem;background:rgba(18,26,41,.88)}
-.hint{position:absolute;left:10px;bottom:8px;font-size:.8rem;color:var(--dim);background:rgba(11,17,28,.75);padding:3px 8px;border-radius:6px;pointer-events:none}
-#nogl{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;background:var(--bg)}
-#nogl[hidden]{display:none}
-.panel{display:grid;gap:12px}
-.box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
-.box h2{margin:0 0 8px;font-size:.95rem;color:var(--dim);text-transform:uppercase;letter-spacing:.04em}
-label{display:block;font-weight:600;margin-bottom:4px}
-select{width:100%;font:inherit;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg)}
-#defdesc{margin:.4rem 0 0;color:var(--dim);font-size:.9rem}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
-button{font:inherit;font-weight:600;padding:9px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
-button:hover{border-color:var(--green)}button:focus-visible{outline:3px solid var(--green);outline-offset:2px}
-button.primary{background:#7a1c2a;border-color:#ff6b7a}button.primary.on{background:#c0283c}
-button.good{background:#0d3a2e;border-color:#2cd48a}
-.cards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.cardx{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
-.cardx .k{font-size:.78rem;color:var(--dim)}
-.val{font-weight:700}.ok{color:var(--green)}.warn{color:var(--orange)}.bad{color:var(--red)}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
-.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 8px;text-align:center}
-.stat b{display:block;font-size:1.5rem;line-height:1.1}.stat span{font-size:.76rem;color:var(--dim)}
-.stat.bad b{color:var(--red)}.stat.warn b{color:var(--orange)}
-.sub{margin:4px 0;color:var(--dim);font-size:.82rem}
-ul#log,ul#inbox{list-style:none;margin:0;padding:0;font-size:.86rem}
-ul#log{max-height:230px;overflow:auto}
-#log li{padding:4px 6px;border-left:3px solid var(--line);margin:3px 0;background:rgba(255,255,255,.02)}
-#log li time{color:var(--dim);font-variant-numeric:tabular-nums;margin-right:4px}
-#log li.good{border-color:var(--green)}#log li.bad{border-color:var(--red);color:#ffc2c8}#log li.warn{border-color:var(--orange);color:#ffd9a0}#log li.bad2{border-color:var(--orange);color:#ffd9a0}#log li.ok{border-color:var(--blue)}#log li.info{color:var(--dim)}
-#inbox li{font-family:ui-monospace,Consolas,monospace;font-size:.78rem;word-break:break-all;padding:2px 0}#inbox li.bad{color:var(--red);font-weight:700}#inbox li.dim{color:var(--dim)}
-.legend{font-size:.82rem;color:var(--dim);margin:0}
-.sr{position:absolute;left:-9999px}
-</style></head><body>
-<header>
-  <a href="index.html">&larr; Back</a>
-  <h1>Live hack demo</h1>
-  <p>Pick a defence, press <b>Start hacker</b>, and watch the gate decide on every request.</p>
-</header>
-<main class="layout">
-  <section class="stage" aria-label="3D ward scene">
-    <canvas id="scene" tabindex="0" aria-label="3D scene of the ward: a hacker outside the network, the gate, the delivery robot and the nurse station. Drag to rotate, scroll to zoom, arrow keys also rotate."></canvas>
-    <div class="views" role="group" aria-label="Camera view">
-      <button type="button" data-view="ward">Whole ward</button><button type="button" data-view="hacker">Hacker</button><button type="button" data-view="gate">Gate</button><button type="button" data-view="robot">Robot</button>
+/*__THEME__*/
+.map-head{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap;padding:10px 15px;border-bottom:1px solid var(--line)}
+.map-name,.views{display:flex;align-items:center;gap:8px}.views{gap:4px;flex-wrap:wrap}
+.views button{font-size:12px;padding:5px 9px}
+.floor-glyph{display:inline-block;width:12px;height:12px;border:1.5px solid #277c62;transform:rotate(45deg) skew(-10deg,-10deg);box-shadow:2px 2px 0 #eef4eb,3px 3px 0 #277c62}
+.stage-card{display:flex;flex-direction:column}
+.stage{position:relative;flex:1 1 auto;min-height:360px;height:clamp(360px,62vh,640px);background:var(--frame);isolation:isolate}
+.stage canvas{position:absolute;inset:0;display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+.stage canvas:active{cursor:grabbing}.stage canvas:focus-visible{outline-offset:-4px}
+#nogl{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;background:var(--frame);color:var(--muted);font-size:14px}
+.control-card{display:flex;flex-direction:column}
+.control-body{padding:0 15px 14px}
+.control-body label{display:block;color:var(--muted);font-size:11px;font-weight:600;margin-bottom:4px}
+.control-body select{width:100%}
+#defdesc{font-size:12px;color:var(--muted);margin:7px 0 0;min-height:3em}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px}
+.btn-row button{font-size:12px;padding:7px 9px}
+.check-panel{border-top:1px solid var(--line);padding:0 15px 14px}
+.check-panel .card-heading{padding:11px 0 8px}
+.checks{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.check{border:1px solid #dfe7de;border-radius:5px;padding:6px 8px;background:#fbfdfa}
+.check.wide{grid-column:1/-1}
+.check .k{font-size:11px;color:var(--muted)}
+.val{font:600 13px var(--mono);color:#225640}.val.ok{color:#225640}.val.warn{color:var(--warn)}.val.bad{color:var(--bad)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:6px}
+.stat{border:1px solid #dfe7de;border-radius:5px;padding:6px 8px;background:#fbfdfa}
+.stat b{display:block;font:600 22px/1.15 var(--mono);color:var(--ink)}.stat span{font-size:11px;color:var(--muted)}
+.stat.bad{border-color:#e4b9ae;background:#fff4f0}.stat.bad b{color:var(--bad)}.stat.warn{border-color:#e0c3ae;background:#fff6ec}.stat.warn b{color:var(--warn)}
+.score-card .sub{font-size:11px;font-weight:600;color:var(--muted);margin:2px 0 5px}
+.legend{font-size:12px;color:var(--muted);margin:4px 0 0}
+#inbox{list-style:none;margin:0;padding:0}
+#inbox li{font:11px var(--mono);word-break:break-all;padding:4px 0;border-top:1px solid #e4e9e2;color:#284c39}#inbox li:first-child{border-top:0}
+#inbox li.bad{color:var(--bad);font-weight:600}#inbox li.dim{color:var(--muted)}
+#log{height:300px;padding:0 15px 10px}
+#log li{display:block;padding:5px 0 5px 9px;border-left:3px solid var(--line);border-top:1px solid #e4e9e2;margin:0;font-size:12px;color:var(--ink)}
+#log li time{font:11px var(--mono);color:var(--muted);margin-right:6px}
+#log li.good{border-left-color:#2f8a63}#log li.ok{border-left-color:#5b8fbd}#log li.info{color:var(--muted)}
+#log li.warn,#log li.bad2{border-left-color:#c8773f;color:#6b3415}
+#log li.bad{border-left-color:#b8412f;color:var(--bad);font-weight:600}
+</style></head><body><main>
+<!--__HEADER__-->
+<div class="ops-heading">
+  <div><h1>Live hack demo</h1><p class="lede">Pick a defence, press <b>Start hacker</b>, and watch the gate decide on every request.</p></div>
+  <dl class="ops-counts"><div><dt>Defences</dt><dd>4</dd></div><div><dt>Attack types</dt><dd>11</dd></div><div><dt>Gate capacity</dt><dd>20/s</dd></div></dl>
+</div>
+<div class="ops-grid">
+  <section class="ops-card stage-card" aria-label="3D ward scene">
+    <div class="map-head"><div class="map-name"><span class="floor-glyph" aria-hidden="true"></span><h2>Ward network</h2></div>
+      <div class="views" role="group" aria-label="Camera view">
+        <button type="button" data-view="ward">Whole ward</button><button type="button" data-view="hacker">Hacker</button><button type="button" data-view="gate">Gate</button><button type="button" data-view="robot">Robot</button>
+      </div>
     </div>
-    <div class="hint">Drag to rotate &middot; scroll to zoom</div>
-    <div id="nogl" hidden><p>3D view is not available in this browser (WebGL is off). The demo still works: use the buttons and read the log.</p></div>
+    <div class="stage">
+      <canvas id="scene" tabindex="0" aria-label="3D scene of the ward: a hacker outside the network, the gate, the delivery robot and the nurse station. Drag to rotate, scroll to zoom, arrow keys also rotate."></canvas>
+      <div id="nogl" hidden><p>3D view is not available in this browser (WebGL is off). The demo still works: use the buttons and read the log.</p></div>
+    </div>
+    <div class="card-foot"><span>Every allow/block decision comes from the real gate code (<code>gate/gate.cjs</code>)</span><span>Drag to orbit · Scroll to zoom</span></div>
   </section>
-  <aside class="panel">
-    <div class="box">
-      <label for="def">Defence</label>
+  <aside class="ops-card control-card" aria-label="Defence and system controls">
+    <div class="card-heading"><h2>Defence</h2><span class="small-label">Choose a method</span></div>
+    <div class="control-body">
+      <label for="def">Active defence</label>
       <select id="def">
         <option value="M0">M0 &ndash; No real protection (starting point)</option>
         <option value="M1">M1 &ndash; Signed tickets only</option>
@@ -73,39 +73,41 @@ ul#log{max-height:230px;overflow:auto}
         <option value="ALL" selected>ALL &ndash; Full protection (M1+M2+M3+M4)</option>
       </select>
       <p id="defdesc"></p>
-      <div class="row"><button id="hackBtn" class="primary" aria-pressed="false">Start hacker</button><button id="oneBtn">One random hack</button></div>
-      <div class="row"><button id="nurseBtn" class="good">Nurse sends a delivery</button><button id="autoBtn" aria-pressed="true">Automatic nurse: on</button></div>
-      <div class="row"><button id="zoneBtn">Switch robot back on (supervisor)</button><button id="restartBtn">Restart demo</button></div>
+      <div class="btn-row"><button type="button" id="hackBtn" class="danger" aria-pressed="false">Start hacker</button><button type="button" id="oneBtn">One random hack</button></div>
+      <div class="btn-row"><button type="button" id="nurseBtn" class="primary">Nurse sends a delivery</button><button type="button" id="autoBtn" class="toggle" aria-pressed="true">Automatic nurse: on</button></div>
+      <div class="btn-row"><button type="button" id="zoneBtn">Switch robot back on (supervisor)</button><button type="button" id="restartBtn">Restart demo</button></div>
     </div>
-    <div class="box">
-      <h2>System check (live)</h2>
-      <div class="cards">
-        <div class="cardx"><div class="k">Robot zone</div><div class="val ok" id="c-zone">Connected</div></div>
-        <div class="cardx"><div class="k">Deliveries now go</div><div class="val ok" id="c-mode">By robot</div></div>
-        <div class="cardx"><div class="k">Patient names leaked</div><div class="val ok" id="c-leak">None</div></div>
-        <div class="cardx"><div class="k">Ward records</div><div class="val ok" id="c-rec">Intact</div></div>
-        <div class="cardx" style="grid-column:1/-1"><div class="k">Audit log (tamper-proof chain)</div><div class="val ok" id="c-audit">Intact</div>
-          <div class="row"><button id="verifyBtn">Check the log</button><button id="tamperBtn">Hacker edits the log</button></div></div>
+    <div class="check-panel">
+      <div class="card-heading"><h3 style="margin:0">System check</h3><span class="device-ref">Live</span></div>
+      <div class="checks">
+        <div class="check"><div class="k">Robot zone</div><div class="val ok" id="c-zone">Connected</div></div>
+        <div class="check"><div class="k">Deliveries now go</div><div class="val ok" id="c-mode">By robot</div></div>
+        <div class="check"><div class="k">Patient names leaked</div><div class="val ok" id="c-leak">None</div></div>
+        <div class="check"><div class="k">Ward records</div><div class="val ok" id="c-rec">Intact</div></div>
+        <div class="check wide"><div class="k">Audit log (tamper-proof chain)</div><div class="val ok" id="c-audit">Intact</div>
+          <div class="btn-row"><button type="button" id="verifyBtn">Check the log</button><button type="button" id="tamperBtn" class="danger">Hacker edits the log</button></div></div>
       </div>
     </div>
-    <div class="box">
-      <h2>Score</h2>
-      <p class="sub">Hacker</p>
-      <div class="stats"><div class="stat"><b id="n-att">0</b><span>attempts</span></div><div class="stat"><b id="n-blk">0</b><span>blocked</span></div><div class="stat"><b id="n-thr">0</b><span>got through</span></div></div>
-      <p class="sub">Real nurse tasks</p>
-      <div class="stats"><div class="stat"><b id="n-robot">0</b><span>by robot</span></div><div class="stat"><b id="n-hand">0</b><span>by hand</span></div><div class="stat"><b id="n-ref">0</b><span>refused</span></div></div>
-      <p class="legend">A good defence keeps &ldquo;got through&rdquo; and &ldquo;refused&rdquo; at 0.</p>
-    </div>
-    <div class="box">
-      <h2>What the robot received (last 4)</h2>
-      <ul id="inbox"><li class="dim">Nothing yet</li></ul>
-    </div>
-    <div class="box">
-      <h2>Live log</h2>
-      <ul id="log"></ul>
-      <div class="sr" id="live" role="status" aria-live="polite"></div>
-    </div>
   </aside>
+</div>
+<div class="monitor-grid">
+  <section class="ops-card pad score-card" aria-label="Score">
+    <div class="card-heading"><h2>Score</h2><span class="small-label">Since the last restart</span></div>
+    <p class="sub">Hacker</p>
+    <div class="stats"><div class="stat"><b id="n-att">0</b><span>attempts</span></div><div class="stat"><b id="n-blk">0</b><span>blocked</span></div><div class="stat"><b id="n-thr">0</b><span>got through</span></div></div>
+    <p class="sub">Real nurse tasks</p>
+    <div class="stats"><div class="stat"><b id="n-robot">0</b><span>by robot</span></div><div class="stat"><b id="n-hand">0</b><span>by hand</span></div><div class="stat"><b id="n-ref">0</b><span>refused</span></div></div>
+    <p class="legend">A good defence keeps &ldquo;got through&rdquo; and &ldquo;refused&rdquo; at 0.</p>
+    <div class="divider"><div class="card-heading" style="padding:4px 0 6px"><h3 style="margin:0">What the robot received</h3><span class="small-label">Last 4</span></div>
+      <ul id="inbox"><li class="dim">Nothing yet</li></ul></div>
+  </section>
+  <section class="ops-card" aria-label="Live log">
+    <div class="card-heading"><h2>Live log</h2><span class="small-label">Newest first</span></div>
+    <ul id="log" class="log-list"></ul>
+    <div class="sr-only" id="live" role="status" aria-live="polite"></div>
+  </section>
+</div>
+<footer class="console-footer"><span>Simulated ward, fictional patients. The gate code is the same code the benchmark runs (checked by <code>gate/hacker.test.cjs</code>).</span><a href="gate-results.html">See the measured benchmark</a></footer>
 </main>
 <script>/*__THREE__*/</script>
 <script>/*__GATE__*/</script>

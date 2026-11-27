@@ -1,69 +1,173 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Smart RoboWard | Live hack demo</title>
 <style>
-:root{--bg:#0b111c;--panel:#121a29;--card:#17213a;--line:#2a3652;--fg:#e8eef9;--dim:#9aa9c4;--green:#39ff88;--red:#ff6b7a;--orange:#ffb347;--blue:#6bd3ff}
+/* Smart RoboWard shared theme: the Fleet control console's design (clinic3d/fleet.css + clinic-template.html), shared by every page.
+   Inlined into each page at build time (node site/build-site.cjs) so pages stay single-file and work offline. */
+:root{color-scheme:light;--paper:#f1f4ef;--ink:#142d2a;--muted:#4a625c;--green:#08664f;--line:#ced8d0;--soft:#edf4eb;--frame:#e1e8e3;--head:#142f2b;--warn:#98421a;--bad:#a3261b;--blue:#285f91;--mono:"IBM Plex Mono",Consolas,monospace}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,"Segoe UI",sans-serif}
-header{padding:14px 20px 4px;display:flex;flex-wrap:wrap;gap:6px 18px;align-items:baseline}
-header h1{margin:0;font-size:1.35rem}header p{margin:0;color:var(--dim)}
-a{color:var(--green)}
-.layout{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:14px;padding:10px 20px 28px;align-items:start}
-@media(max-width:980px){.layout{grid-template-columns:1fr}}
-.stage{position:relative;background:#0b111c;border:1px solid var(--line);border-radius:14px;overflow:hidden;height:min(74vh,700px);min-height:360px}
-.stage canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
-.stage canvas:focus-visible{outline:3px solid var(--green);outline-offset:-3px}
-.views{position:absolute;left:10px;top:10px;display:flex;gap:6px;flex-wrap:wrap}
-.views button{padding:5px 10px;font-size:.82rem;background:rgba(18,26,41,.88)}
-.hint{position:absolute;left:10px;bottom:8px;font-size:.8rem;color:var(--dim);background:rgba(11,17,28,.75);padding:3px 8px;border-radius:6px;pointer-events:none}
-#nogl{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;background:var(--bg)}
-#nogl[hidden]{display:none}
-.panel{display:grid;gap:12px}
-.box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
-.box h2{margin:0 0 8px;font-size:.95rem;color:var(--dim);text-transform:uppercase;letter-spacing:.04em}
-label{display:block;font-weight:600;margin-bottom:4px}
-select{width:100%;font:inherit;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg)}
-#defdesc{margin:.4rem 0 0;color:var(--dim);font-size:.9rem}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
-button{font:inherit;font-weight:600;padding:9px 10px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
-button:hover{border-color:var(--green)}button:focus-visible{outline:3px solid var(--green);outline-offset:2px}
-button.primary{background:#7a1c2a;border-color:#ff6b7a}button.primary.on{background:#c0283c}
-button.good{background:#0d3a2e;border-color:#2cd48a}
-.cards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.cardx{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
-.cardx .k{font-size:.78rem;color:var(--dim)}
-.val{font-weight:700}.ok{color:var(--green)}.warn{color:var(--orange)}.bad{color:var(--red)}
-.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px}
-.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 8px;text-align:center}
-.stat b{display:block;font-size:1.5rem;line-height:1.1}.stat span{font-size:.76rem;color:var(--dim)}
-.stat.bad b{color:var(--red)}.stat.warn b{color:var(--orange)}
-.sub{margin:4px 0;color:var(--dim);font-size:.82rem}
-ul#log,ul#inbox{list-style:none;margin:0;padding:0;font-size:.86rem}
-ul#log{max-height:230px;overflow:auto}
-#log li{padding:4px 6px;border-left:3px solid var(--line);margin:3px 0;background:rgba(255,255,255,.02)}
-#log li time{color:var(--dim);font-variant-numeric:tabular-nums;margin-right:4px}
-#log li.good{border-color:var(--green)}#log li.bad{border-color:var(--red);color:#ffc2c8}#log li.warn{border-color:var(--orange);color:#ffd9a0}#log li.bad2{border-color:var(--orange);color:#ffd9a0}#log li.ok{border-color:var(--blue)}#log li.info{color:var(--dim)}
-#inbox li{font-family:ui-monospace,Consolas,monospace;font-size:.78rem;word-break:break-all;padding:2px 0}#inbox li.bad{color:var(--red);font-weight:700}#inbox li.dim{color:var(--dim)}
-.legend{font-size:.82rem;color:var(--dim);margin:0}
-.sr{position:absolute;left:-9999px}
-</style></head><body>
-<header>
-  <a href="index.html">&larr; Back</a>
-  <h1>Live hack demo</h1>
-  <p>Pick a defence, press <b>Start hacker</b>, and watch the gate decide on every request.</p>
+body{margin:0;color:var(--ink);background:var(--paper);font:16px/1.45 Inter,"Segoe UI",sans-serif}
+main{max-width:1540px;margin:auto;padding:0 clamp(15px,3vw,46px) 20px}
+h1,h2,h3,p{margin:0}
+a{color:var(--green);text-underline-offset:3px}
+button,select,.btn{border:1px solid #91a4a0;background:white;border-radius:5px;color:var(--ink);font:inherit;font-size:13px;padding:7px 10px}
+button,.btn{cursor:pointer}
+.btn{display:inline-flex;align-items:center;gap:6px;text-decoration:none;font-weight:550;white-space:nowrap}
+button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible,canvas:focus-visible{outline:3px solid #2565b1;outline-offset:3px}
+button:hover:not(:disabled),.btn:hover{filter:brightness(.96)}
+button:disabled,select:disabled{cursor:default;opacity:.52}
+input[type=range]{accent-color:var(--green)}
+[hidden]{display:none!important}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* App header (identical to the Fleet console header) */
+.app-head{margin:0 calc(-1 * clamp(15px,3vw,46px));padding:12px clamp(15px,3vw,46px);background:var(--head);color:#f1f8ef;display:flex;align-items:center;gap:20px}
+.brand{display:flex;align-items:center;gap:10px;font-size:20px;font-weight:650;letter-spacing:-.04em;white-space:nowrap;color:inherit;text-decoration:none}
+.brand-mark{position:relative;display:block;width:27px;height:27px;transform:rotate(-7deg)}
+.brand-mark::before,.brand-mark::after{content:"";position:absolute;background:#9ce4b9;border-radius:2px}
+.brand-mark::before{inset:0 9px}.brand-mark::after{inset:9px 0}
+.mode{display:flex;align-items:center;gap:3px}
+.mode a{color:#d6e4db;border:1px solid transparent;font-size:13px;font-weight:550;padding:7px 11px;border-radius:5px;text-decoration:none;white-space:nowrap}
+.mode a:hover{background:#1e3d35}
+.mode a[aria-current=page]{background:#29483e;color:#fff;border-color:#456252}
+.sim-bar{margin-left:auto;display:flex;gap:11px;align-items:center;font-size:12px;white-space:nowrap}.sim-bar .mono{color:#d3e6d9}
+.sim-ind{height:7px;width:7px;background:#9be8b1;border-radius:50%;display:inline-block;margin-right:5px}
+
+/* Page heading with counters */
+.ops-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:23px 0 18px}
+.ops-heading h1{font-size:clamp(30px,3.5vw,45px);font-weight:620;letter-spacing:-.055em;line-height:1.05}
+.ops-heading .lede{color:var(--muted);font-size:14px;margin-top:6px;max-width:70ch}
+.ops-counts{display:flex;margin:0}.ops-counts div{display:grid;grid-template-columns:auto auto;gap:8px;align-items:baseline;padding:0 15px;border-left:1px solid var(--line)}.ops-counts div:first-child{border:0}.ops-counts div:last-child{padding-right:0}
+.ops-counts dt{font-size:12px;color:var(--muted)}.ops-counts dd{margin:0;font:600 18px var(--mono);color:var(--ink)}.ops-counts dd.attention{color:var(--warn)}
+
+/* Cards and grids */
+.ops-grid,.monitor-grid,.card-grid{display:grid;gap:14px;align-items:stretch}
+.ops-grid{grid-template-columns:minmax(0,1fr) minmax(305px,32%)}
+.monitor-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);margin-top:14px}
+.card-grid{grid-template-columns:repeat(auto-fit,minmax(270px,1fr))}
+.stack{display:grid;gap:14px;margin-top:14px}
+.ops-card{min-width:0;background:white;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.ops-card.pad{padding:0 15px 14px}
+.card-heading{display:flex;align-items:center;justify-content:space-between;gap:9px;padding:14px 15px 11px}
+.ops-card.pad .card-heading{padding:14px 0 10px}
+.ops-card h2{font-size:17px;font-weight:620;letter-spacing:-.027em;line-height:1.2}
+.ops-card h3{font-size:15px;font-weight:650;margin:12px 0 4px}
+.ops-card p{font-size:14px;color:var(--muted);margin:.35rem 0}
+.ops-card p b,.ops-card li b{color:var(--ink)}
+.ops-card ul{padding-left:1.15rem;margin:.4rem 0;font-size:14px;color:var(--muted)}.ops-card li{margin:.3rem 0}
+.small-label,.device-ref,.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.small-label,.device-ref{font-size:11px;color:var(--muted)}
+.device-ref{padding:2px 6px;border:1px solid #cad7cb;border-radius:4px;color:#305b48;background:#f0f5ed;white-space:nowrap}
+.device-ref.warn{color:#7a3a17;border-color:#e0c3ae;background:#fff3e8}
+.card-foot{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding:9px 14px}
+.divider{border-top:1px solid #dfe7de;margin-top:10px;padding-top:8px}
+
+/* Buttons */
+.primary,.primary:disabled{background:#17674c;color:white;border-color:#17674c;font-weight:600}
+.danger{color:#8e3b22;border-color:#cbb4a6}
+.danger.on,.danger[aria-pressed=true]{background:#8e3b22;color:#fff;border-color:#8e3b22}
+.toggle[aria-pressed=true]{border-color:#6b947b;background:#e8f2e8;color:#16492f;font-weight:600}
+
+/* Readings, stats, states */
+.readings{display:flex;gap:12px 19px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+.readings strong{display:block;font:600 14px var(--mono);color:var(--ink)}
+.stat-big{font:600 clamp(28px,3vw,38px)/1.1 var(--mono);color:var(--green);letter-spacing:-.03em;margin:4px 0 6px}
+.ok,.pass{color:#225640}.warn{color:var(--warn)}.bad,.fail{color:var(--bad)}.na{color:var(--muted)}
+.pass,.fail{font-weight:600}
+
+/* Callouts */
+.note{background:white;border:1px solid var(--line);border-left:3px solid var(--green);border-radius:9px;padding:11px 15px;font-size:14px;color:var(--muted)}
+.note b,.note strong{color:var(--ink)}
+.evidence{font-size:13px;line-height:1.45;background:#fff3e6;color:#5d381c;border-left:3px solid #bd622d;padding:8px 11px;border-radius:0 5px 5px 0}
+.evidence b{color:#813c1a}
+.formula{background:var(--soft);border:1px solid #cfe0d1;border-left:3px solid var(--green);border-radius:0 5px 5px 0;padding:10px 13px;margin:8px 0;font-size:14px}
+
+/* Tables */
+.tablewrap{overflow-x:auto}
+table.data{border-collapse:collapse;width:100%;font-size:13px}
+table.data th{font:600 11px var(--mono);color:var(--muted);text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);background:#f7faf6;vertical-align:bottom}
+table.data td{padding:7px 10px;border-top:1px solid #e4e9e2;vertical-align:top;text-align:left}
+table.data td.num,table.data td .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+table.data tr.grp td{background:var(--soft);font-weight:600;font-size:12px;color:#305b48}
+table.data tbody tr:hover td{background:#f7faf6}
+code{font:12px var(--mono);background:#f0f5ed;border:1px solid #dbe5dc;padding:1px 5px;border-radius:4px}
+
+/* Log rows (Communication log style) */
+.log-list{list-style:none;margin:0;padding:0;overflow:auto;scrollbar-width:thin}
+.log-list li{display:grid;grid-template-columns:52px 1fr;align-items:baseline;gap:7px;border-top:1px solid #e4e9e2;padding:5px 0;font-size:12px}
+.log-list li:first-child{border-top:0}
+.log-list time,.log-list .log-tag{font:11px var(--mono);color:var(--muted)}
+
+.console-footer{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:14px 0}
+
+@media(max-width:975px){.app-head{gap:10px}.ops-grid{grid-template-columns:minmax(0,1fr) minmax(280px,35%)}.ops-counts div{padding:0 9px}.sim-bar{gap:6px}}
+@media(max-width:760px){.app-head{flex-wrap:wrap}.app-head .mode{order:3;width:100%;overflow:auto}.mode a{padding:5px 9px}.ops-heading{padding:13px 0}.ops-heading h1{font-size:29px}.ops-counts div{display:flex;gap:4px}.ops-counts dt{font-size:10px}.ops-counts dd{font-size:14px}.ops-counts div:first-child{padding-left:0}.ops-grid,.monitor-grid{grid-template-columns:1fr;gap:9px}.monitor-grid,.stack{margin-top:9px}}
+@media(max-width:420px){.ops-heading{align-items:flex-start;gap:6px}.ops-counts{width:100%}.sim-bar .mono{display:none}.brand{font-size:18px}}
+
+.map-head{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap;padding:10px 15px;border-bottom:1px solid var(--line)}
+.map-name,.views{display:flex;align-items:center;gap:8px}.views{gap:4px;flex-wrap:wrap}
+.views button{font-size:12px;padding:5px 9px}
+.floor-glyph{display:inline-block;width:12px;height:12px;border:1.5px solid #277c62;transform:rotate(45deg) skew(-10deg,-10deg);box-shadow:2px 2px 0 #eef4eb,3px 3px 0 #277c62}
+.stage-card{display:flex;flex-direction:column}
+.stage{position:relative;flex:1 1 auto;min-height:360px;height:clamp(360px,62vh,640px);background:var(--frame);isolation:isolate}
+.stage canvas{position:absolute;inset:0;display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+.stage canvas:active{cursor:grabbing}.stage canvas:focus-visible{outline-offset:-4px}
+#nogl{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;background:var(--frame);color:var(--muted);font-size:14px}
+.control-card{display:flex;flex-direction:column}
+.control-body{padding:0 15px 14px}
+.control-body label{display:block;color:var(--muted);font-size:11px;font-weight:600;margin-bottom:4px}
+.control-body select{width:100%}
+#defdesc{font-size:12px;color:var(--muted);margin:7px 0 0;min-height:3em}
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px}
+.btn-row button{font-size:12px;padding:7px 9px}
+.check-panel{border-top:1px solid var(--line);padding:0 15px 14px}
+.check-panel .card-heading{padding:11px 0 8px}
+.checks{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.check{border:1px solid #dfe7de;border-radius:5px;padding:6px 8px;background:#fbfdfa}
+.check.wide{grid-column:1/-1}
+.check .k{font-size:11px;color:var(--muted)}
+.val{font:600 13px var(--mono);color:#225640}.val.ok{color:#225640}.val.warn{color:var(--warn)}.val.bad{color:var(--bad)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:6px}
+.stat{border:1px solid #dfe7de;border-radius:5px;padding:6px 8px;background:#fbfdfa}
+.stat b{display:block;font:600 22px/1.15 var(--mono);color:var(--ink)}.stat span{font-size:11px;color:var(--muted)}
+.stat.bad{border-color:#e4b9ae;background:#fff4f0}.stat.bad b{color:var(--bad)}.stat.warn{border-color:#e0c3ae;background:#fff6ec}.stat.warn b{color:var(--warn)}
+.score-card .sub{font-size:11px;font-weight:600;color:var(--muted);margin:2px 0 5px}
+.legend{font-size:12px;color:var(--muted);margin:4px 0 0}
+#inbox{list-style:none;margin:0;padding:0}
+#inbox li{font:11px var(--mono);word-break:break-all;padding:4px 0;border-top:1px solid #e4e9e2;color:#284c39}#inbox li:first-child{border-top:0}
+#inbox li.bad{color:var(--bad);font-weight:600}#inbox li.dim{color:var(--muted)}
+#log{height:300px;padding:0 15px 10px}
+#log li{display:block;padding:5px 0 5px 9px;border-left:3px solid var(--line);border-top:1px solid #e4e9e2;margin:0;font-size:12px;color:var(--ink)}
+#log li time{font:11px var(--mono);color:var(--muted);margin-right:6px}
+#log li.good{border-left-color:#2f8a63}#log li.ok{border-left-color:#5b8fbd}#log li.info{color:var(--muted)}
+#log li.warn,#log li.bad2{border-left-color:#c8773f;color:#6b3415}
+#log li.bad{border-left-color:#b8412f;color:var(--bad);font-weight:600}
+</style></head><body><main>
+<header class="app-head"><a class="brand" href="index.html"><i class="brand-mark" aria-hidden="true"></i>Smart RoboWard</a>
+  <nav class="mode" aria-label="Pages"><a href="index.html">Overview</a><a href="Clinic-World.html">Fleet console</a><a href="Smart-RoboWard-replay.html">Lift replay</a><a href="hacker-demo.html" aria-current="page">Live hack demo</a><a href="gate-results.html">Gate results</a></nav>
+  <div class="sim-bar"><span><i class="sim-ind" aria-hidden="true"></i>Real gate code · local simulation</span></div>
 </header>
-<main class="layout">
-  <section class="stage" aria-label="3D ward scene">
-    <canvas id="scene" tabindex="0" aria-label="3D scene of the ward: a hacker outside the network, the gate, the delivery robot and the nurse station. Drag to rotate, scroll to zoom, arrow keys also rotate."></canvas>
-    <div class="views" role="group" aria-label="Camera view">
-      <button type="button" data-view="ward">Whole ward</button><button type="button" data-view="hacker">Hacker</button><button type="button" data-view="gate">Gate</button><button type="button" data-view="robot">Robot</button>
+<div class="ops-heading">
+  <div><h1>Live hack demo</h1><p class="lede">Pick a defence, press <b>Start hacker</b>, and watch the gate decide on every request.</p></div>
+  <dl class="ops-counts"><div><dt>Defences</dt><dd>4</dd></div><div><dt>Attack types</dt><dd>11</dd></div><div><dt>Gate capacity</dt><dd>20/s</dd></div></dl>
+</div>
+<div class="ops-grid">
+  <section class="ops-card stage-card" aria-label="3D ward scene">
+    <div class="map-head"><div class="map-name"><span class="floor-glyph" aria-hidden="true"></span><h2>Ward network</h2></div>
+      <div class="views" role="group" aria-label="Camera view">
+        <button type="button" data-view="ward">Whole ward</button><button type="button" data-view="hacker">Hacker</button><button type="button" data-view="gate">Gate</button><button type="button" data-view="robot">Robot</button>
+      </div>
     </div>
-    <div class="hint">Drag to rotate &middot; scroll to zoom</div>
-    <div id="nogl" hidden><p>3D view is not available in this browser (WebGL is off). The demo still works: use the buttons and read the log.</p></div>
+    <div class="stage">
+      <canvas id="scene" tabindex="0" aria-label="3D scene of the ward: a hacker outside the network, the gate, the delivery robot and the nurse station. Drag to rotate, scroll to zoom, arrow keys also rotate."></canvas>
+      <div id="nogl" hidden><p>3D view is not available in this browser (WebGL is off). The demo still works: use the buttons and read the log.</p></div>
+    </div>
+    <div class="card-foot"><span>Every allow/block decision comes from the real gate code (<code>gate/gate.cjs</code>)</span><span>Drag to orbit · Scroll to zoom</span></div>
   </section>
-  <aside class="panel">
-    <div class="box">
-      <label for="def">Defence</label>
+  <aside class="ops-card control-card" aria-label="Defence and system controls">
+    <div class="card-heading"><h2>Defence</h2><span class="small-label">Choose a method</span></div>
+    <div class="control-body">
+      <label for="def">Active defence</label>
       <select id="def">
         <option value="M0">M0 &ndash; No real protection (starting point)</option>
         <option value="M1">M1 &ndash; Signed tickets only</option>
@@ -73,39 +177,41 @@ ul#log{max-height:230px;overflow:auto}
         <option value="ALL" selected>ALL &ndash; Full protection (M1+M2+M3+M4)</option>
       </select>
       <p id="defdesc"></p>
-      <div class="row"><button id="hackBtn" class="primary" aria-pressed="false">Start hacker</button><button id="oneBtn">One random hack</button></div>
-      <div class="row"><button id="nurseBtn" class="good">Nurse sends a delivery</button><button id="autoBtn" aria-pressed="true">Automatic nurse: on</button></div>
-      <div class="row"><button id="zoneBtn">Switch robot back on (supervisor)</button><button id="restartBtn">Restart demo</button></div>
+      <div class="btn-row"><button type="button" id="hackBtn" class="danger" aria-pressed="false">Start hacker</button><button type="button" id="oneBtn">One random hack</button></div>
+      <div class="btn-row"><button type="button" id="nurseBtn" class="primary">Nurse sends a delivery</button><button type="button" id="autoBtn" class="toggle" aria-pressed="true">Automatic nurse: on</button></div>
+      <div class="btn-row"><button type="button" id="zoneBtn">Switch robot back on (supervisor)</button><button type="button" id="restartBtn">Restart demo</button></div>
     </div>
-    <div class="box">
-      <h2>System check (live)</h2>
-      <div class="cards">
-        <div class="cardx"><div class="k">Robot zone</div><div class="val ok" id="c-zone">Connected</div></div>
-        <div class="cardx"><div class="k">Deliveries now go</div><div class="val ok" id="c-mode">By robot</div></div>
-        <div class="cardx"><div class="k">Patient names leaked</div><div class="val ok" id="c-leak">None</div></div>
-        <div class="cardx"><div class="k">Ward records</div><div class="val ok" id="c-rec">Intact</div></div>
-        <div class="cardx" style="grid-column:1/-1"><div class="k">Audit log (tamper-proof chain)</div><div class="val ok" id="c-audit">Intact</div>
-          <div class="row"><button id="verifyBtn">Check the log</button><button id="tamperBtn">Hacker edits the log</button></div></div>
+    <div class="check-panel">
+      <div class="card-heading"><h3 style="margin:0">System check</h3><span class="device-ref">Live</span></div>
+      <div class="checks">
+        <div class="check"><div class="k">Robot zone</div><div class="val ok" id="c-zone">Connected</div></div>
+        <div class="check"><div class="k">Deliveries now go</div><div class="val ok" id="c-mode">By robot</div></div>
+        <div class="check"><div class="k">Patient names leaked</div><div class="val ok" id="c-leak">None</div></div>
+        <div class="check"><div class="k">Ward records</div><div class="val ok" id="c-rec">Intact</div></div>
+        <div class="check wide"><div class="k">Audit log (tamper-proof chain)</div><div class="val ok" id="c-audit">Intact</div>
+          <div class="btn-row"><button type="button" id="verifyBtn">Check the log</button><button type="button" id="tamperBtn" class="danger">Hacker edits the log</button></div></div>
       </div>
     </div>
-    <div class="box">
-      <h2>Score</h2>
-      <p class="sub">Hacker</p>
-      <div class="stats"><div class="stat"><b id="n-att">0</b><span>attempts</span></div><div class="stat"><b id="n-blk">0</b><span>blocked</span></div><div class="stat"><b id="n-thr">0</b><span>got through</span></div></div>
-      <p class="sub">Real nurse tasks</p>
-      <div class="stats"><div class="stat"><b id="n-robot">0</b><span>by robot</span></div><div class="stat"><b id="n-hand">0</b><span>by hand</span></div><div class="stat"><b id="n-ref">0</b><span>refused</span></div></div>
-      <p class="legend">A good defence keeps &ldquo;got through&rdquo; and &ldquo;refused&rdquo; at 0.</p>
-    </div>
-    <div class="box">
-      <h2>What the robot received (last 4)</h2>
-      <ul id="inbox"><li class="dim">Nothing yet</li></ul>
-    </div>
-    <div class="box">
-      <h2>Live log</h2>
-      <ul id="log"></ul>
-      <div class="sr" id="live" role="status" aria-live="polite"></div>
-    </div>
   </aside>
+</div>
+<div class="monitor-grid">
+  <section class="ops-card pad score-card" aria-label="Score">
+    <div class="card-heading"><h2>Score</h2><span class="small-label">Since the last restart</span></div>
+    <p class="sub">Hacker</p>
+    <div class="stats"><div class="stat"><b id="n-att">0</b><span>attempts</span></div><div class="stat"><b id="n-blk">0</b><span>blocked</span></div><div class="stat"><b id="n-thr">0</b><span>got through</span></div></div>
+    <p class="sub">Real nurse tasks</p>
+    <div class="stats"><div class="stat"><b id="n-robot">0</b><span>by robot</span></div><div class="stat"><b id="n-hand">0</b><span>by hand</span></div><div class="stat"><b id="n-ref">0</b><span>refused</span></div></div>
+    <p class="legend">A good defence keeps &ldquo;got through&rdquo; and &ldquo;refused&rdquo; at 0.</p>
+    <div class="divider"><div class="card-heading" style="padding:4px 0 6px"><h3 style="margin:0">What the robot received</h3><span class="small-label">Last 4</span></div>
+      <ul id="inbox"><li class="dim">Nothing yet</li></ul></div>
+  </section>
+  <section class="ops-card" aria-label="Live log">
+    <div class="card-heading"><h2>Live log</h2><span class="small-label">Newest first</span></div>
+    <ul id="log" class="log-list"></ul>
+    <div class="sr-only" id="live" role="status" aria-live="polite"></div>
+  </section>
+</div>
+<footer class="console-footer"><span>Simulated ward, fictional patients. The gate code is the same code the benchmark runs (checked by <code>gate/hacker.test.cjs</code>).</span><a href="gate-results.html">See the measured benchmark</a></footer>
 </main>
 <script>console.warn('Scripts "build/three.js" and "build/three.min.js" are deprecated with r150+, and will be removed with r160. Please use ES Modules or alternatives: https://threejs.org/docs/index.html#manual/en/introduction/Installation'),
 /**
@@ -465,7 +571,7 @@ const Scene3D = (function () {
   const reduce = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
   const DEST_X = {"Pharmacy": -12, "Lab": -4, "Room 12": 4, "Room 7": 12, "Storage": 19};
   const P = {nurse: new V(-14, 0, 10), gate: new V(0, 0, 6.5), hacker: new V(15, 0, 10), home: new V(-18, 0, 1)};
-  const GREEN = 0x39ff88, RED = 0xff4d5e, ORANGE = 0xffa31a, BLUE = 0x4cc9f0;
+  const GREEN = 0x17a06a, RED = 0xd9452b, ORANGE = 0xe08a1e, BLUE = 0x2a7fc1;
   let renderer, scene, camera, canvas, ready = false, lastT = 0, time = 0;
   const tweens = [];
   let labels = [];
@@ -486,7 +592,7 @@ const Scene3D = (function () {
   const rotX = (o, v) => { o.rotation.x = v; return o; }, rotZ = (o, v) => { o.rotation.z = v; return o; };
   function roundRect(x, a, b, w, h, r) { x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r); x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath(); }
   function label(text, opt) {
-    const o = Object.assign({size: 44, color: "#ffffff", bg: "rgba(13,17,23,.82)", pad: 14, scale: 0.017}, opt || {});
+    const o = Object.assign({size: 44, color: "#18382e", bg: "rgba(255,255,255,.93)", pad: 14, scale: 0.017}, opt || {});
     const c = document.createElement("canvas"), x = c.getContext("2d"), font = "700 " + o.size + "px system-ui, Segoe UI, sans-serif";
     x.font = font;
     const w = Math.ceil(x.measureText(text).width) + o.pad * 2, h = Math.ceil(o.size * 1.4) + o.pad;
@@ -589,7 +695,7 @@ const Scene3D = (function () {
   // ---------- world ----------
   function room(name, x, color, prop) {
     scene.add(mesh(new THREE.BoxGeometry(6.6, 0.2, 6.6), M(color), x, 0.1, -6));
-    const wall = M(0x2b3a52);
+    const wall = M(0xc3cfc7);
     scene.add(mesh(new THREE.BoxGeometry(6.6, 2.2, 0.2), wall, x, 1.1, -9.3));
     scene.add(mesh(new THREE.BoxGeometry(0.2, 2.2, 6.6), wall, x - 3.3, 1.1, -6));
     scene.add(mesh(new THREE.BoxGeometry(0.2, 2.2, 6.6), wall, x + 3.3, 1.1, -6));
@@ -598,23 +704,23 @@ const Scene3D = (function () {
   }
   function box(w, h, d, c, x, y, z) { return mesh(new THREE.BoxGeometry(w, h, d), M(c), x, y, z); }
   function buildWorld() {
-    scene.add(new THREE.HemisphereLight(0xdfe9ff, 0x1a2233, 0.95));
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x9fb3a8, 1.0));
     const sun = new THREE.DirectionalLight(0xffffff, 0.6); sun.position.set(10, 25, 15); scene.add(sun);
-    scene.add(rotX(mesh(new THREE.PlaneGeometry(70, 46), M(0x141c2b), 0, 0, 2), -Math.PI / 2));
-    scene.add(box(46, 0.06, 6.4, 0x25354d, 0, 0.03, 0.9));
-    room("Pharmacy", -12, 0x2f6f6a, x => { const g = new THREE.Group(); g.add(box(4.5, 1.8, 0.7, 0x8ec5c0, x, 1.0, -8.6)); return g; });
-    room("Lab", -4, 0x3a5a8c, x => { const g = new THREE.Group(); g.add(box(3.6, 0.9, 1.4, 0xbcd0ee, x, 0.65, -6.5)); return g; });
-    room("Room 12", 4, 0x5a4a78, x => { const g = new THREE.Group(); g.add(box(2.2, 0.6, 3.4, 0xf1f1f6, x, 0.5, -6.2)); g.add(box(2.2, 0.9, 0.4, 0xd9d9ea, x, 0.7, -7.7)); return g; });
-    room("Room 7", 12, 0x6a4a58, x => { const g = new THREE.Group(); g.add(box(2.2, 0.6, 3.4, 0xf1f1f6, x, 0.5, -6.2)); g.add(box(2.2, 0.9, 0.4, 0xd9d9ea, x, 0.7, -7.7)); return g; });
-    room("Storage", 19, 0x6b5b3a, x => { const g = new THREE.Group(); g.add(box(1.6, 1.4, 1.6, 0xb99a5b, x - 1, 0.9, -7)); g.add(box(1.4, 1.0, 1.4, 0xcdae70, x + 1.2, 0.7, -6.4)); return g; });
+    scene.add(rotX(mesh(new THREE.PlaneGeometry(70, 46), M(0xd3ddd5), 0, 0, 2), -Math.PI / 2));
+    scene.add(box(46, 0.06, 6.4, 0xeef3ec, 0, 0.03, 0.9));
+    room("Pharmacy", -12, 0x9fcdbb, x => { const g = new THREE.Group(); g.add(box(4.5, 1.8, 0.7, 0x8ec5c0, x, 1.0, -8.6)); return g; });
+    room("Lab", -4, 0xb4c8e0, x => { const g = new THREE.Group(); g.add(box(3.6, 0.9, 1.4, 0xbcd0ee, x, 0.65, -6.5)); return g; });
+    room("Room 12", 4, 0xc9c0dc, x => { const g = new THREE.Group(); g.add(box(2.2, 0.6, 3.4, 0xf1f1f6, x, 0.5, -6.2)); g.add(box(2.2, 0.9, 0.4, 0xd9d9ea, x, 0.7, -7.7)); return g; });
+    room("Room 7", 12, 0xdcc3cc, x => { const g = new THREE.Group(); g.add(box(2.2, 0.6, 3.4, 0xf1f1f6, x, 0.5, -6.2)); g.add(box(2.2, 0.9, 0.4, 0xd9d9ea, x, 0.7, -7.7)); return g; });
+    room("Storage", 19, 0xdccfae, x => { const g = new THREE.Group(); g.add(box(1.6, 1.4, 1.6, 0xb99a5b, x - 1, 0.9, -7)); g.add(box(1.4, 1.0, 1.4, 0xcdae70, x + 1.2, 0.7, -6.4)); return g; });
     // nurse station
-    scene.add(box(8, 0.3, 5.5, 0x1d3b4f, P.nurse.x, 0.15, P.nurse.z));
+    scene.add(box(8, 0.3, 5.5, 0xb8d2c4, P.nurse.x, 0.15, P.nurse.z));
     const nl = label("Nurse station", {size: 38}); nl.position.set(P.nurse.x, 5.4, P.nurse.z); scene.add(nl);
     nurse = makeNurse(); nurse.position.copy(P.nurse); nurse.position.y = 0.3; nurse.rotation.y = 0.5; nurse.scale.setScalar(0.9); scene.add(nurse);
     // hacker island
-    const isl = mesh(new THREE.CylinderGeometry(5.6, 5.9, 0.5, 40), M(0x2a1233), P.hacker.x, 0.25, P.hacker.z); scene.add(isl);
+    const isl = mesh(new THREE.CylinderGeometry(5.6, 5.9, 0.5, 40), M(0xf2d6cd), P.hacker.x, 0.25, P.hacker.z); scene.add(isl);
     scene.add(rotX(mesh(new THREE.TorusGeometry(5.7, 0.09, 8, 60), B(RED), P.hacker.x, 0.52, P.hacker.z), Math.PI / 2));
-    const hl = label("OUTSIDE NETWORK", {size: 38, color: "#ff8a95"}); hl.position.set(P.hacker.x, 6.6, P.hacker.z); scene.add(hl);
+    const hl = label("OUTSIDE NETWORK", {size: 38, color: "#a3261b"}); hl.position.set(P.hacker.x, 6.6, P.hacker.z); scene.add(hl);
     hacker = makeHacker(); hacker.position.set(P.hacker.x, 0.5, P.hacker.z - 0.6); hacker.rotation.y = -0.62; hacker.scale.setScalar(0.95); scene.add(hacker);
     // robot
     robot = makeRobot(); robot.position.copy(P.home); robot.rotation.y = 0.3; scene.add(robot);
@@ -629,7 +735,7 @@ const Scene3D = (function () {
     gateObj.userData = {ring, shield, flash: 0};
     // dome that shows the isolated robot zone
     dome = mesh(new THREE.SphereGeometry(13, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2), B(RED, {transparent: true, opacity: 0.09, side: THREE.DoubleSide}), -4, 0, -1); dome.scale.set(1.9, 0.35, 0.65); dome.visible = false; scene.add(dome);
-    isoLabel = label("ROBOT ZONE CUT OFF", {size: 40, color: "#ffd3d8", bg: "rgba(160,20,40,.9)"}); isoLabel.position.set(-8, 6, 1); isoLabel.visible = false; scene.add(isoLabel);
+    isoLabel = label("ROBOT ZONE CUT OFF", {size: 40, color: "#ffffff", bg: "rgba(142,59,34,.95)"}); isoLabel.position.set(-8, 6, 1); isoLabel.visible = false; scene.add(isoLabel);
     // links (cables)
     const link = (a, b, c) => { const g = new THREE.BufferGeometry().setFromPoints([a, b]); const l = new THREE.Line(g, new THREE.LineDashedMaterial({color: c, dashSize: 0.5, gapSize: 0.35})); l.computeLineDistances(); scene.add(l); return l; };
     link(new V(P.nurse.x + 3, 0.5, P.nurse.z), new V(P.gate.x - 2.9, 0.5, P.gate.z), BLUE);
@@ -673,7 +779,7 @@ const Scene3D = (function () {
     const out = [P.home.clone(), new V(x, 0, 1), new V(x, 0, -2.4)];
     robot.userData.parcel.visible = true; setRobot(job.hacked ? "hacked" : "ok");
     moveAlong(robot, out, 9, () => {
-      if (job.hacked) pop("HACKED!", "#ff8a95", new V(x, 4.5, -2), true);
+      if (job.hacked) pop("HACKED!", "#a3261b", new V(x, 4.5, -2), true);
       tween(job.hacked && !reduce ? 0.9 : 0.4, p => { if (job.hacked && !reduce) robot.rotation.y += 0.35; }, () => {
         robot.userData.parcel.visible = false;
         moveAlong(robot, out.slice().reverse(), 9, () => { robot.rotation.y = 0.3; setRobot("ok"); robotBusy = false; runRobot(); });
@@ -687,8 +793,8 @@ const Scene3D = (function () {
     init(c) {
       canvas = c;
       try { renderer = new THREE.WebGLRenderer({canvas, antialias: true}); } catch (e) { return false; }
-      renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); renderer.setClearColor(0x0b111c);
-      scene = new THREE.Scene(); scene.fog = new THREE.Fog(0x0b111c, 55, 110);
+      renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); renderer.setClearColor(0xe1e8e3);
+      scene = new THREE.Scene(); scene.fog = new THREE.Fog(0xe1e8e3, 60, 120);
       camera = new THREE.PerspectiveCamera(42, 1, 0.1, 250);
       buildWorld(); api.resize(); ready = true;
       const ro = window.ResizeObserver ? new ResizeObserver(() => api.resize()) : null; if (ro) ro.observe(canvas.parentElement); else window.addEventListener("resize", api.resize);
@@ -715,9 +821,9 @@ const Scene3D = (function () {
       const from = o.from === "hacker" ? new V(P.hacker.x - 1, 2.4, P.hacker.z) : new V(P.nurse.x + 1, 2.4, P.nurse.z);
       const gate = new V(P.gate.x, 1.9, P.gate.z + 0.4), color = o.from === "hacker" ? (o.color || RED) : GREEN;
       packet(from, gate, color, o.fast ? 0.35 : 0.6, () => {
-        if (!o.passed) { gateFlash(RED); if (!o.quiet) { burst(new V(P.gate.x, 1.9, P.gate.z + 0.6), RED); pop(o.text || "BLOCKED", "#ff8a95", new V(P.gate.x, 4.6, P.gate.z)); } if (o.arrive) o.arrive(); return; }
+        if (!o.passed) { gateFlash(RED); if (!o.quiet) { burst(new V(P.gate.x, 1.9, P.gate.z + 0.6), RED); pop(o.text || "BLOCKED", "#a3261b", new V(P.gate.x, 4.6, P.gate.z)); } if (o.arrive) o.arrive(); return; }
         gateFlash(o.from === "hacker" ? RED : GREEN);
-        if (o.noRobot) { if (!o.quiet) pop(o.text || "OK", o.from === "hacker" ? "#ff8a95" : "#9dffc4", new V(P.gate.x, 4.6, P.gate.z)); if (o.arrive) o.arrive(); return; }
+        if (o.noRobot) { if (!o.quiet) pop(o.text || "OK", o.from === "hacker" ? "#a3261b" : "#17674c", new V(P.gate.x, 4.6, P.gate.z)); if (o.arrive) o.arrive(); return; }
         packet(gate, new V(P.home.x + 1, 1.6, P.home.z + 1), color, o.fast ? 0.5 : 0.9, () => { if (o.arrive) o.arrive(); });
       });
     },
@@ -729,7 +835,7 @@ const Scene3D = (function () {
       packet(from, gate, RED, 0.9, () => {
         gateFlash(o.passed ? RED : GREEN);
         if (!o.passed) burst(new V(P.gate.x, 1.9, P.gate.z + 0.6), GREEN);
-        pop(o.text || (o.passed ? "WARD RECORDS CORRUPTED" : "DROPPED"), o.passed ? "#ff8a95" : "#9dffc4", new V(P.gate.x, 4.6, P.gate.z));
+        pop(o.text || (o.passed ? "WARD RECORDS CORRUPTED" : "DROPPED"), o.passed ? "#a3261b" : "#17674c", new V(P.gate.x, 4.6, P.gate.z));
         tween(1.2, () => {}, () => { if (!robotBusy) setRobot("ok"); });
         if (o.arrive) o.arrive();
       });
@@ -740,12 +846,12 @@ const Scene3D = (function () {
       const x = DEST_X[dest] != null ? DEST_X[dest] : 4, g = new THREE.Group();
       g.add(mesh(THREE.CapsuleGeometry ? new THREE.CapsuleGeometry(0.35, 0.7, 4, 10) : new THREE.CylinderGeometry(0.35, 0.35, 1.1, 10), M(0xffa94d), 0, 0.9, 0));
       g.add(mesh(new THREE.SphereGeometry(0.3, 12, 10), M(0xffd9b8), 0, 1.75, 0)); g.add(mesh(new THREE.BoxGeometry(0.4, 0.3, 0.4), M(0xd9a441), 0, 1.0, 0.45));
-      const t = label("by hand", {size: 30, color: "#ffd9a0"}); t.position.y = 2.6; g.add(t);
+      const t = label("by hand", {size: 30, color: "#98421a"}); t.position.y = 2.6; g.add(t);
       g.position.set(P.nurse.x + 2, 0, P.nurse.z - 2); scene.add(g);
       moveAlong(g, [new V(P.nurse.x + 2, 0, P.nurse.z - 2), new V(P.nurse.x + 2, 0, 2.9), new V(x, 0, 2.9), new V(x, 0, -2.4)], 8, () => { tween(0.5, () => {}, () => { scene.remove(g); dispose(g); runners--; }); });
     },
     view(name) { if (VIEWS[name]) Object.assign(goal, VIEWS[name]); },
-    setIsolated(b) { if (b === isolated) return; isolated = b; if (!ready) return; dome.visible = b; isoLabel.visible = b; cable.material.color.setHex(b ? 0x555a66 : GREEN); cable.visible = !b; gateColor(gateBase()); },
+    setIsolated(b) { if (b === isolated) return; isolated = b; if (!ready) return; dome.visible = b; isoLabel.visible = b; cable.material.color.setHex(b ? 0x8a978f : GREEN); cable.visible = !b; gateColor(gateBase()); },
     hackerSay(text) {
       if (!ready) return;
       if (hackerBubble) { scene.remove(hackerBubble); dispose(hackerBubble); }

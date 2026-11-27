@@ -1,68 +1,48 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Smart RoboWard | Gate results</title>
 <style>
-:root{color-scheme:light dark;--fg:#14202b;--bg:#f6f8fa;--card:#fff;--line:#d0d7de;--accent:#0b6b5c;--bad:#b42318;--ok:#0b6b5c;--warn:#9a5b00;--soft:#eef3f6}
-@media(prefers-color-scheme:dark){:root{--fg:#e6edf3;--bg:#0d1117;--card:#161b22;--line:#30363d;--accent:#3ecfb2;--bad:#ff8a80;--ok:#3ecfb2;--warn:#ffc266;--soft:#1c232c}}
-*{box-sizing:border-box}
-body{margin:0;font:16px/1.55 system-ui,"Segoe UI",sans-serif;color:var(--fg);background:var(--bg)}
-main{max-width:1040px;margin:0 auto;padding:32px 20px 64px}
-h1{margin:0 0 .25rem}h2{margin:2.4rem 0 .5rem}h3{margin:1.2rem 0 .3rem}
-a{color:var(--accent)}p{margin:.5rem 0}
-.top{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin:.5rem 0 1rem}
-.cta{display:inline-block;padding:8px 14px;border-radius:8px;background:var(--accent);color:#06251f;font-weight:700;text-decoration:none}
-@media(prefers-color-scheme:light){.cta{color:#fff}}
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
-.tile{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
-.tile .t{font-weight:600}.tile .big{font-size:2.3rem;font-weight:800;color:var(--accent);line-height:1.2}.tile .s{font-size:.92rem;opacity:.85}
-.tablewrap{overflow-x:auto}
-table{border-collapse:collapse;width:100%;background:var(--card);font-size:.95rem}
-th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
-th{background:var(--soft)}
-.pass{color:var(--ok);font-weight:700}.fail{color:var(--bad);font-weight:700}.na{opacity:.7}
-.badge{display:inline-block;padding:1px 8px;border-radius:999px;font-size:.82rem;font-weight:700;white-space:nowrap}
-.b-no{background:rgba(180,35,24,.14);color:var(--bad)}.b-yes{background:rgba(11,107,92,.16);color:var(--ok)}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:10px 0}
-.card h3{margin:0 0 .2rem}.card .blk{font-size:.92rem;opacity:.9}
-.formula{background:var(--soft);border-left:4px solid var(--accent);border-radius:8px;padding:14px 16px;margin:12px 0;font-size:1.05rem}
-.formula b{color:var(--accent)}
-.explain{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px 18px 12px}
-ul{padding-left:1.2rem}li{margin:.25rem 0}
-code{background:var(--soft);padding:1px 5px;border-radius:4px}
-select{font:inherit;padding:5px 8px}
-tr.grp td{background:var(--soft);font-weight:700}
-footer{margin-top:2.5rem;font-size:.88rem;opacity:.75}
+/*__THEME__*/
+.tile .card-heading{padding-bottom:0}
+.tile .body{padding:0 15px 14px}
+.tile .body p{margin:0}
+.def-card .card-heading{align-items:flex-start}
+.def-card .blk{border-top:1px solid #dfe7de;margin-top:10px;padding-top:8px;font-size:12px;color:var(--muted)}
+.def-card .blk b{font-family:var(--mono);font-size:11px}
+.select-row{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);font-weight:600}
+.section-note{font-size:13px;color:var(--muted);padding:0 15px 12px;margin:0}
+.ops-card .tablewrap{border-top:1px solid var(--line)}
+.section-title{display:flex;align-items:baseline;justify-content:space-between;gap:9px;flex-wrap:wrap;padding:10px 0 0}
+.section-title h2{font-size:22px;font-weight:620;letter-spacing:-.04em}
 </style></head><body><main>
-<h1>Gate results</h1>
-<div class="top"><a href="index.html">&larr; Back</a><a class="cta" href="hacker-demo.html">Watch the hacker attack live &rarr;</a></div>
+<!--__HEADER__-->
+<div class="ops-heading">
+  <div><h1>Gate results</h1><p class="lede">Five security methods, the same 20 requests and the same attack flood. Synthetic rows written by the team, measured by our own script.</p></div>
+  <a class="btn primary" href="hacker-demo.html">Watch the hacker attack live</a>
+</div>
 
-<div class="tiles" id="tiles"></div>
+<div class="card-grid" id="tiles"></div>
 
-<h2>Comparison of the five methods</h2>
-<p>We sent the same 20 requests and the same attack flood to every method. M0 is the starting point; M1 to M4 each add one defence; ALL uses M1 to M4 together.</p>
-<div class="tablewrap"><table id="cmp"><thead><tr><th>Method</th><th>Unauthorized blocked</th><th>Legitimate completed</th><th>Containment rows</th><th>Retained service under attack</th><th>Robot / manual during attack</th></tr></thead><tbody></tbody></table></div>
+<section class="ops-card" style="margin-top:14px">
+  <div class="card-heading"><h2>Comparison of the five methods</h2><span class="device-ref">M0 baseline · M1–M4 · ALL</span></div>
+  <p class="section-note">We sent the same 20 requests and the same attack flood to every method. M0 is the starting point; M1 to M4 each add one defence; ALL uses M1 to M4 together.</p>
+  <div class="tablewrap"><table class="data" id="cmp"><thead><tr><th>Method</th><th>Unauthorized blocked</th><th>Legitimate completed</th><th>Containment rows</th><th>Retained service under attack</th><th>Robot / manual during attack</th></tr></thead><tbody></tbody></table></div>
+</section>
 
-<div class="explain">
-<h3>How to read this table</h3>
+<div class="monitor-grid">
+<section class="ops-card pad">
+<div class="card-heading"><h2>How to read this table</h2></div>
 <ul>
 <li><b>Unauthorized blocked</b> (for example <b id="ex-m0"></b> for M0): we sent 10 attack requests. The number is how many were stopped before the robot moved or any patient data leaked. For M0, <span id="m0-through"></span> of the 10 attacks reached the robot, so only <span id="m0-blocked"></span> was blocked. For M1, <span id="m1-blocked"></span> of 10 were blocked. Higher is better; 10/10 means every attack was stopped.</li>
 <li><b>Legitimate completed</b>: we also sent 10 real requests from nurses and a porter. The number is how many were delivered. A good defence must not block real work, so this should stay 10/10.</li>
 <li><b>Containment rows</b>: 4 extra tests about what happens after an attack has started. Explained below.</li>
-<li><b>Retained service under attack</b>: how much of the normal work still gets done while the hospital is being flooded. The formula is below.</li>
-<li><b>Robot / manual during attack</b>: of the real tasks that got done during the attack, the first number is delivered by the robot and the second number is delivered by hand. Explained below.</li>
+<li><b>Retained service under attack</b>: how much of the normal work still gets done while the hospital is being flooded. The formula is in the next card.</li>
+<li><b>Robot / manual during attack</b>: of the real tasks that got done during the attack, the first number is delivered by the robot and the second number is delivered by hand. Explained in the next card.</li>
 </ul>
-</div>
+</section>
 
-<h2>What each method is</h2>
-<div id="defs"></div>
-<p>No single method stops all 10 attacks. Each one blocks different attacks, and only the combination (ALL) blocks every one.</p>
-
-<h2>Containment rows</h2>
-<p>The first defences try to stop one bad request at a time. Containment answers a different question: <b>if an attack is already going on, can the hospital keep working?</b> There are 4 tests (C01 to C04). They only make sense for a method that has a circuit breaker, which cuts the robot off when it sees an attack.</p>
-<div class="tablewrap"><table id="cont"><thead></thead><tbody></tbody></table></div>
-<p>The cell <b>x/y</b> in the comparison table means: x tests passed out of y tests that could be run. M0, M1 and M2 show 0/1 because only one of the four tests (C03, the hacked robot) can be run on a system without a breaker, and it failed. M4 and ALL show 4/4.</p>
-
-<h2>Retained service under attack</h2>
+<section class="ops-card pad">
+<div class="card-heading"><h2>Retained service under attack</h2></div>
 <div class="formula">
 <b>Retained service (%)</b> = (real tasks completed <i>during</i> the attack &divide; real tasks completed in the <i>same 30 seconds without</i> an attack) &times; 100
 </div>
@@ -71,20 +51,34 @@ footer{margin-top:2.5rem;font-size:.88rem;opacity:.75}
 <li><b>M0 to M3:</b> the gate is overloaded and drops requests, including real ones. They completed <span id="a0"></span> of <span id="t0"></span> real tasks, so <span id="a0b"></span> &divide; <span id="t0b"></span> &times; 100 = <b id="p0"></b>%.</li>
 <li><b>M4 and ALL:</b> the circuit breaker spots the flood and cuts the hacker off. They completed <span id="a4"></span> of <span id="t4"></span> real tasks, so <span id="a4b"></span> &divide; <span id="t4b"></span> &times; 100 = <b id="p4"></b>%.</li>
 </ul>
-
 <h3>What "76 / 0" and "1 / 149" mean</h3>
 <ul>
 <li><b><span id="x0r"></span> / <span id="x0m"></span></b> (M0 to M3): <span id="x0r2"></span> tasks were delivered by the robot and <span id="x0m2"></span> by hand.</li>
 <li><b><span id="x4r"></span> / <span id="x4m"></span></b> (M4 and ALL): <span id="x4r2"></span> task was delivered by the robot and <span id="x4m2"></span> by hand. The breaker cut off the robot zone after <b id="trip"></b> milliseconds. After that the robot could not be used, so nurses carried on in manual mode. <b id="shed"></b> attack requests were dropped without being checked.</li>
-<li><b>Be careful with the 100%:</b> it counts deliveries by hand on purpose, because the goal is that patient care continues. It does not mean the robot kept working. The robot only did <span id="x4r3"></span> task; the hospital kept going without it.</li>
 </ul>
+<p class="evidence"><b>Be careful with the 100%:</b> it counts deliveries by hand on purpose, because the goal is that patient care continues. It does not mean the robot kept working. The robot only did <span id="x4r3"></span> task; the hospital kept going without it.</p>
+</section>
+</div>
 
-<h2>Test rows</h2>
-<p>Every request we sent, who sent it, and whether the sender was allowed to do it. Pick a method to see how it handled each one.</p>
-<p><label>Method <select id="sel"></select></label></p>
-<div class="tablewrap"><table id="rows"><thead><tr><th>ID</th><th>What was sent</th><th>Sent by</th><th>Authorized?</th><th>What should happen</th><th>Result</th><th>What happened</th></tr></thead><tbody></tbody></table></div>
+<section class="stack" aria-labelledby="defs-title">
+<div class="section-title"><h2 id="defs-title">What each method is</h2><span class="small-label">No single method stops all 10 attacks. Only the combination (ALL) blocks every one.</span></div>
+<div class="card-grid" id="defs"></div>
+</section>
 
-<footer>To reproduce these numbers: <code id="cmd"></code> (seed <span id="seed"></span>, Node <span id="node"></span>). Raw data: <code>experiments/runs/latest/results.json</code>.</footer>
+<section class="ops-card" style="margin-top:14px">
+<div class="card-heading"><h2>Containment rows</h2><span class="device-ref">C01–C04</span></div>
+<p class="section-note">The first defences try to stop one bad request at a time. Containment answers a different question: <b>if an attack is already going on, can the hospital keep working?</b> There are 4 tests (C01 to C04). They only make sense for a method that has a circuit breaker, which cuts the robot off when it sees an attack.</p>
+<div class="tablewrap"><table class="data" id="cont"><thead></thead><tbody></tbody></table></div>
+<div class="card-foot"><span>The cell <b>x/y</b> in the comparison table means: x tests passed out of y tests that could be run. M0, M1 and M2 show 0/1 because only one of the four tests (C03, the hacked robot) can be run on a system without a breaker, and it failed. M4 and ALL show 4/4.</span></div>
+</section>
+
+<section class="ops-card" style="margin-top:14px">
+<div class="card-heading"><h2>Test rows</h2><label class="select-row">Method <select id="sel"></select></label></div>
+<p class="section-note">Every request we sent, who sent it, and whether the sender was allowed to do it. Pick a method to see how it handled each one.</p>
+<div class="tablewrap"><table class="data" id="rows"><thead><tr><th>ID</th><th>What was sent</th><th>Sent by</th><th>Authorized?</th><th>What should happen</th><th>Result</th><th>What happened</th></tr></thead><tbody></tbody></table></div>
+</section>
+
+<footer class="console-footer"><span>To reproduce these numbers: <code id="cmd"></code> (seed <span id="seed"></span>, Node <span id="node"></span>). Raw data: <code>experiments/runs/latest/results.json</code>.</span><a href="index.html">Back to overview</a></footer>
 
 <script id="data" type="application/json">/*__DATA__*/null</script>
 <script>
@@ -109,9 +103,9 @@ $("tiles").innerHTML=[
  ["Unauthorized blocked before disclosure",ALL.summary.blocked+"/10 ("+ALL.summary.blocked*10+"%)","We sent 10 attack requests. With all four defences, the robot did nothing and no patient data leaked for "+ALL.summary.blocked+" of them."],
  ["Legitimate tasks completed",ALL.summary.completed+"/10","We sent 10 real requests from nurses and a porter. "+ALL.summary.completed+" were delivered, so the defences did not get in the way of real work."],
  ["Retained service under attack",ALL.retained.retained_pct+"%",ALL.retained.attack.handled+" of "+ALL.retained.no_attack.handled+" real tasks were still done during a flood of fake requests. "+ALL.retained.attack.manual+" of them were done by hand because the robot zone was cut off."]
-].map(t=>'<div class="tile"><div class="t">'+t[0]+'</div><div class="big">'+t[1]+'</div><div class="s">'+t[2]+'</div></div>').join("");
+].map(t=>'<section class="ops-card tile"><div class="card-heading"><h2>'+t[0]+'</h2><span class="device-ref">ALL</span></div><div class="body"><div class="stat-big">'+t[1]+'</div><p>'+t[2]+'</p></div></section>').join("");
 
-$("cmp").tBodies[0].innerHTML=Object.entries(R).map(([id,r])=>'<tr><td><b>'+NAME[id]+'</b></td><td>'+r.summary.blocked+'/10</td><td>'+r.summary.completed+'/10</td><td>'+(r.summary.containment_applicable?r.summary.containment_passed+'/'+r.summary.containment_applicable:'n/a')+'</td><td>'+r.retained.retained_pct+'%</td><td>'+r.retained.attack.robot+' / '+r.retained.attack.manual+'</td></tr>').join("");
+$("cmp").tBodies[0].innerHTML=Object.entries(R).map(([id,r])=>'<tr><td><b>'+NAME[id]+'</b></td><td class="num">'+r.summary.blocked+'/10</td><td class="num">'+r.summary.completed+'/10</td><td class="num">'+(r.summary.containment_applicable?r.summary.containment_passed+'/'+r.summary.containment_applicable:'n/a')+'</td><td class="num">'+r.retained.retained_pct+'%</td><td class="num">'+r.retained.attack.robot+' / '+r.retained.attack.manual+'</td></tr>').join("");
 
 const DEF={
  M0:["Starting point (no real protection).","The gate only checks that the task number is on today's list. It never asks who is sending the request. Anyone who knows or guesses a task number can order the robot."],
@@ -122,7 +116,7 @@ const DEF={
  ALL:["All four defences together.","M1, M2, M3 and M4 run on every request. This is reported as its own row, not as a fifth method."]};
 $("defs").innerHTML=Object.keys(R).map(id=>{
  const bl=Object.entries(R[id].rows).filter(([k,v])=>k[0]==="U"&&v.pass).map(([k])=>k);
- return '<div class="card"><h3>'+NAME[id]+' &mdash; '+DEF[id][0]+'</h3><p>'+DEF[id][1]+'</p><p class="blk"><b>Attacks it blocked in our tests ('+bl.length+'/10):</b> '+(bl.length?bl.join(", "):"none")+'</p></div>';}).join("");
+ return '<section class="ops-card pad def-card"><div class="card-heading"><h2>'+DEF[id][0]+'</h2><span class="device-ref">'+id+'</span></div><p>'+DEF[id][1]+'</p><p class="blk">Attacks it blocked in our tests ('+bl.length+'/10): <b>'+(bl.length?bl.join(", "):"none")+'</b></p></section>';}).join("");
 
 const CONT={C01:"Attack burst: does the system cut off the robot?",C02:"While cut off: can nurses still view the ward, order, check status and cancel?",C03:"A hacked robot sends oversized or forged messages: are they dropped?",C04:"Only a supervisor can switch the robot back on (a nurse cannot)"};
 $("cont").tHead.innerHTML='<tr><th>Test</th><th>What it checks</th>'+Object.keys(R).map(id=>'<th>'+id+'</th>').join("")+'</tr>';
@@ -178,7 +172,7 @@ function show(){
   out.push('<tr class="grp"><td colspan="7">'+title+'</td></tr>');
   for(const [k,v] of list){
    const m=META[k],res=result(k,v),yes=m[2].indexOf("Yes")===0;
-   out.push('<tr><td><b>'+k+'</b></td><td>'+esc(m[0])+'</td><td>'+esc(m[1])+'</td><td><span class="badge '+(yes?'b-yes':'b-no')+'">'+esc(m[2])+'</span></td><td>'+esc(m[3])+'</td><td class="'+res[0]+'">'+res[1]+'</td><td>'+nice(v.detail)+'</td></tr>');}}
+   out.push('<tr><td><b>'+k+'</b></td><td>'+esc(m[0])+'</td><td>'+esc(m[1])+'</td><td><span class="device-ref'+(yes?'':' warn')+'">'+esc(m[2])+'</span></td><td>'+esc(m[3])+'</td><td class="'+res[0]+'">'+res[1]+'</td><td>'+nice(v.detail)+'</td></tr>');}}
  $("rows").tBodies[0].innerHTML=out.join("");}
 $("sel").onchange=show;show();
 </script></main></body></html>
