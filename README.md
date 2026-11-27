@@ -2,6 +2,13 @@
 
 **Start here.** Open the [3D fleet console](output/visualizations/Clinic-World.html) in Edge, Chrome or Firefox. A laptop with WebGL can run the console offline. The prototype uses fictional ward deliveries, a local robot controller and a shared lift.
 
+## Provenance and disclosure
+
+- **AI-assisted code and content.** The 3D console, fleet controller, scenario fixtures, replay runner and replay pages in `clinic3d/` and `output/` were generated with an AI coding assistant (ChatGPT / Codex) before this repository was created. The git history shows the author "Codex". `docs/C09-design-cards.md` and the incident-response PDF came from the same AI-assisted workspace, and the team has **not** verified their sources.
+- **Third-party code and data.** Three.js r160 and OrbitControls (MIT) and the Open-RMF clinic map files (Apache-2.0). Details and license locations: [NOTICE.md](NOTICE.md).
+- **Written by the team.** `HACKATHON.md`, `experiments/`, `site/`, `.github/workflows/pages.yml` and this section.
+- **Not included.** The organizer's brief image (it carries third-party logos and has no redistribution licence). Read the brief and rules on the [event page](https://www.bayern-innovativ.de/events-termine/detail/events-termine/healthcare-hackathon-bayern-hacken-bis-der-arzt-kommt-november2026).
+
 ## Try a delivery and a security alert
 
 1. Select **RX-01**, choose **Ward B**, and click **Dispatch**. Select **Follow robot** for a close-up. Drag to rotate, right-drag to pan, and scroll or pinch to zoom. Use the floor selector or **Full screen** for a different view. With the canvas focused, the arrow keys rotate, +/− zoom and Home resets the view.
@@ -13,7 +20,7 @@
 
 | What you need | Where to find it |
 | --- | --- |
-| Original challenge and design work | [IFOHRA Challenge 9 brief](docs/IFOHRA-Challenge-9.png) · [121 design cards](docs/C09-design-cards.md) |
+| Original challenge and design work | [IFOHRA Challenge 9 rules (event page)](https://www.bayern-innovativ.de/events-termine/detail/events-termine/healthcare-hackathon-bayern-hacken-bis-der-arzt-kommt-november2026) · [121 design cards](docs/C09-design-cards.md) (sources unverified) |
 | Hospital incident and response research | [Hospital AGV incident response](output/pdf/hospital-agv-incident-response.pdf) |
 | Shared-lift and parcel-custody walkthrough | [Open the replay](output/visualizations/Smart-RoboWard-replay.html) · [Editable replay fragment](output/visualizations/shared-lift-replay.html) |
 | Model for another 3D tool and preview for a presentation | [Clinic World GLB](output/visualizations/Clinic-World.glb) · [Fleet screenshot](output/visualizations/Clinic-World-3D.png) |
@@ -28,7 +35,9 @@ The **Case replay** tab in the 3D console draws two routes on the floor plans. A
 
 The four team roles are product manager, robot developer, data scientist and a manager experienced with Claude. The project budget is €0. Robot speeds, devices, scanner events and deliveries are simulated. The scenarios use fictional ward data. [Event rules and schedule](https://www.bayern-innovativ.de/events-termine/detail/events-termine/healthcare-hackathon-bayern-hacken-bis-der-arzt-kommt-november2026)
 
-The primary metric is **unauthorized requests stopped (%)**. Count each test case once. The saved Python run stopped **10 of 10** unauthorized cases and completed **10 of 10** legitimate deliveries. These counts apply to the fictional access-control cases. The three interactive sensor examples in the 3D console demonstrate how the operator sees and responds to an anomaly.
+The primary metric is **unauthorized requests stopped (%)**. Count each test case once.
+
+> **Status of these numbers: imported fixture replay, unverified.** The saved Python run reports **10 of 10** unauthorized cases stopped and **10 of 10** legitimate deliveries completed. Those counts come from replaying 20 scripted fixture cases and comparing them with expected outcomes that were written together with the fixtures. They show that the fixtures and the replay logic agree. They are **not** an independent security measurement, and the replay's checks are not a real authentication gate. The team has not yet independently measured any security method. The planned five-method benchmark is in [HACKATHON.md](HACKATHON.md) and [experiments/](experiments/). The three interactive sensor examples in the 3D console demonstrate how the operator sees and responds to an anomaly. All data is fictional and simulated.
 
 ## Rebuild and run the tests
 
