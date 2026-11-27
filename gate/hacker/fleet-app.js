@@ -39,6 +39,22 @@
     const free = s.robots.filter(r => !r.mission && !r.isolated && !r.alert);
     return pick(free.length ? free : s.robots).id;
   }
+  // The fleet declines an order to a station that is occupied or assigned (including the robot's own). When a hacked order
+  // gets through the gate, send it to a station the console will accept, so the hijack visibly moves a real robot.
+  function hijackStation(preferred) {
+    const s = snap(); if (!s) return preferred;
+    const taken = new Set(s.robots.map(r => r.mission ? r.mission.dest : r.station).filter(Boolean));
+    const open = Object.keys(STATION_TO_DEST).filter(k => !taken.has(k));
+    return open.includes(preferred) || !open.length ? preferred : pick(open);
+  }
+  function hijack(robot, preferred) {   // send a hacker order to the real fleet and be honest if the console declines it
+    const station = hijackStation(preferred);
+    fleetSend({id: newId("H"), robot, action: "dispatch", destination: station});
+    setTimeout(() => {
+      const r = snap() && snap().robots.find(x => x.id === robot);
+      if (r && !(r.mission && r.mission.dest === station)) addLog("info", "The fleet console declined that order (" + robot + " is busy or on hold), so nothing moved.");
+    }, 1200);
+  }
   function mk(user, task, dest, extra) {
     return Object.assign({type: "deliver", user, task_id: task, destination: dest, token: issueToken(user, task, dest, clock.t), source: "HACKER-1"}, extra || {});
   }
@@ -132,7 +148,7 @@
     DemoLayer.request({
       from: "hacker", passed: res.ok, noRobot: res.ok && res.mode === "manual", target, text: res.ok ? "ACCEPTED" : (res.shed ? "CUT OFF" : "BLOCKED: " + res.reason),
       arrive() {
-        if (res.ok && res.mode === "robot") fleetSend({id: newId("H"), robot: target, action: "dispatch", destination: station});
+        if (res.ok && res.mode === "robot") hijack(target, station);
         if (!res.ok) DemoLayer.hackerRage();   // blocked: the hacker is furious
       }
     });
@@ -159,7 +175,7 @@
         if (n++ % 6 === 0) {
           const target = pickRobot();
           DemoLayer.request({from: "hacker", passed: res.ok, noRobot: res.ok && res.mode === "manual", target, quiet: true, fast: true,
-            arrive() { if (res.ok && res.mode === "robot" && floodStats && floodStats.through % 25 < 6) fleetSend({id: newId("H"), robot: target, action: "dispatch", destination: "WARD-A"}); }});
+            arrive() { if (res.ok && res.mode === "robot" && floodStats && floodStats.through % 25 < 6) hijack(target, "WARD-A"); }});
         }
       }
       syncIso(); refresh();
