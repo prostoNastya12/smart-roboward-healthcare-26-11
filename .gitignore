@@ -2,3 +2,15 @@
 /output/simulation/Smart-RoboWard-simulation-data.zip
 __pycache__/
 *.py[cod]
+
+# Secrets and local state (added for public repo)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.venv/
+venv/
+node_modules/
+.pytest_cache/
+.hackathon-backups/

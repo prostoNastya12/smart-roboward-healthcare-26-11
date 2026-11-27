@@ -1,0 +1,59 @@
+# Hackathon Control Board — Smart RoboWard
+
+## Brief
+- Challenge: IFOHRA Challenge #9 — Secure integration of robotics in clinical environments (Healthcare Hackathon Bayern). Rules: https://www.bayern-innovativ.de/events-termine/detail/events-termine/healthcare-hackathon-bayern-hacken-bis-der-arzt-kommt-november2026 (user-supplied brief; not independently re-read)
+- Judging: creativity, technical skill, feasibility; no published rubric or weights (external-source, per user). Our priority: practical patient/ward-staff impact.
+- Deadline: 28 Nov 2026, 11:00 CET. **Assumption flag:** brief also says "submission noon"; we plan to 11:00.
+- Team (4): Product manager (scope, pitch) · Robotics dev (mock robot workflow) · Data scientist (synthetic data, metrics) · Claude-proficient manager (prototype, demo integration).
+- Constraints: €0, open-source only, local synthetic data, no physical robot or simulator. Reused code must respect licenses, be disclosed to the jury, and code/results made available for review.
+- Target user and pain: ward nurse tracking a delivery; robots can leak patient data or be commanded by attackers.
+- **Core problem (user, 2026-11-27, from on-site discussion; not yet checked against the official brief):** if the system is hacked, the *whole hospital* has to stop: patients cannot be treated and staff cannot work. So the main risk is **losing the whole hospital (availability)**, not only a data leak. A compromised robot system must be contained so that patient care can continue.
+- Objective: Let ward nurses track robot deliveries while the robot sees only task ID and destination, blocking unauthorized requests before any disclosure or action, with a local synthetic-data demo.
+
+## Objective & acceptance
+- Primary metric (higher better): unauthorized requests blocked before disclosure or action, of 10. Acceptance (proposed, team to confirm): 10/10.
+- Co-primary: legitimate tasks completed, of 10. Proposed: 10/10.
+- Evaluation set: `experiments/test-matrix.md` (20 rows, fictional). Results: **blank, not measured**.
+- **Proposed new co-primary (team to confirm): containment under attack.** While the robot subsystem is under attack or compromised, ward workflows keep running (the nurse view stays up and switches to manual/degraded mode), and the attack does not spread beyond the robot zone. Measured as: **retained service level** = legitimate ward tasks handled during an attack window (robot or manual fallback) ÷ tasks handled in an equal no-attack window, plus time to isolate the subsystem. Perfect service is not required: **proposed acceptance ≥ 80% retained (team to confirm)**, versus the whole-hospital shutdown (0%) we are preventing. Robot-delivered and manual tasks are reported separately so the 80% is not inflated. Whether M0 really drops to 0% is a hypothesis until measured.
+- Secondary: decision latency, audit-log completeness, zero patient fields in robot payload/logs.
+- Demo journey: nurse requests delivery → robot receives task ID + destination → status in nurse view → attacker replay/forgery blocked with audit entry.
+
+## Five methods (all planned, none tested)
+| ID | Candidate / distinct hypothesis | Status | Evidence | Blocker |
+|---|---|---|---|---|
+| M0 | Baseline: static allowlist of task IDs, no auth | planned | — | — |
+| M1 | Signed, expiring, single-use task tokens (HMAC) | planned | — | — |
+| M2 | Role/ward policy check (RBAC/ABAC) on requester | planned | — | — |
+| M3 | Data-minimization gate: strict schema allowing only task_id + destination | planned | — | — |
+| M4 | Containment: circuit breaker, robot-zone isolation, degraded manual mode | planned | — | — |
+
+Details: `experiments/methods.md`. The hash-chained audit log is now shared plumbing for all methods, not a candidate.
+
+Honest risk: all five in under a day is tight. Priority: M0, M1, M3 first, then M4 (it carries the core "hospital keeps working" story, so move it ahead of M2 if time is short), then M2. Any unmeasured method is shown as `not-tested`.
+
+## Systems Engineering Lite
+- Needs/requirements/architecture/contracts: `docs/` not created yet. Draft REQ-001..006 inside this file if time is short.
+- Top risks: (1) five-method scope vs deadline; (2) synthetic results mistaken for clinical evidence, so label every claim as synthetic; (3) integration left late, so a smoke test runs from hour one.
+
+## Reuse vs on-site (license check required before use)
+- **Clinic simulator (disclose to jury):** `clinic3d/` and `output/` (3D fleet console, scenario fixtures, Python replay runner) were generated earlier with an AI coding assistant (commit author "Codex") and imported into this repo on 2026-11-27. Third-party: Three.js (MIT, `clinic3d/vendor/`), Open-RMF map files (Apache-2.0, `output/simulation/open-rmf/LICENSE`). We have **not** independently re-run its results; its numbers are `unverified` until we do.
+- Reused (proposed, nothing installed yet): Python standard library (hmac, hashlib, http.server, json), pytest if already present. Plain HTML/JS UI. Zero third-party runtime dependencies, so no install approval needed.
+- Built on site: task/token service, policy and minimization gate, mock robot, audit log, synthetic data generator, test runner, nurse dashboard, pitch.
+
+## Integration heartbeat
+- Input fixture: NO · Algorithm invoked: NO · Backend health: NO · Frontend on real API: NO · One-command start: NO · Live demo tested: NO · Offline fallback: NO
+
+## Pitch and submission
+- Core proof: filled only from measured results. Format/duration: TODO (unknown). Slides: `presentation/`. Submission links: TODO.
+
+## Latest decisions
+| Date | Decision | Why | Next test |
+|---|---|---|---|
+| 2026-11-27 | Software-only mock robot, stdlib stack | No hardware, €0, no installs | Smoke test baseline |
+| 2026-11-27 | Recorded "hack → whole hospital stops" as the core problem; containment proposed as co-primary | Raised by the user from on-site discussion | Team confirms |
+| 2026-11-27 | M4 changed from rate limiting + audit log to containment (breaker, isolation, manual mode); audit log became shared plumbing; rows C01–C04 added | User approved the swap; none of the methods had been run, so no result was affected | Build breaker and degraded mode after M0/M1/M3 |
+
+## Next 3 actions
+1. Confirm owners, the 10/10 acceptance bar and the 11:00 cutoff.
+2. Freeze the JSON contract (task request, robot payload, status, audit entry) and synthetic dataset.
+3. Build the thin slice: request → M0 → mock robot → nurse view → smoke test.
