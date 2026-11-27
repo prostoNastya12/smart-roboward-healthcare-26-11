@@ -14,12 +14,12 @@ concurrency:
   group: pages
   cancel-in-progress: false
 
+# Two jobs: "build" uploads the site, "deploy" publishes it once that job has finished.
+# Uploading and deploying in one job sometimes failed with "No artifacts named github-pages were found",
+# because the uploaded artifact was not listed yet when the deploy step asked for it.
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -43,5 +43,12 @@ jobs:
         with:
           path: _site
 
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4

@@ -1,43 +1,76 @@
-/* Live hack demo: control bar above the 3D view and the system-check panel below it. Matches the console's light theme. */
-.hk-bar{padding:9px 15px;border-bottom:1px solid var(--line);background:#fff6f3;display:grid;gap:7px}
-.hk-row{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center}
-.hk-title{color:#8a1c2b;margin-right:4px;white-space:nowrap}
-.hk-bar select{max-width:270px}
-.hk-bar button{white-space:nowrap}
-.hk-danger{background:#b3202f!important;color:#fff!important;border-color:#8a1c2b!important}
-.hk-danger.on{background:#7d1420!important}
-.hk-good{background:#e6f4ec!important;border-color:#9fcfb1!important}
-.hk-sub{font-size:13px;color:var(--muted,#55645c)}
-.hk-views{display:inline-flex;gap:5px;align-items:center;flex-wrap:wrap}
-.hk-views button{padding:3px 9px;font-size:12.5px}
-.hk-chip{display:inline-block;padding:2px 10px;border-radius:999px;border:1px solid #ccd6d0;background:#fff;font-size:12.5px;white-space:nowrap}
-.hk-chip.ok{color:#0b6b5c;border-color:#9fcfb1;background:#eaf6ef}
-.hk-chip.warn{color:#8a5200;border-color:#f0c78a;background:#fff3de}
-.hk-chip.bad{color:#a11a2a;border-color:#f0a8b2;background:#fde9ec}
-.hk-link{margin-left:auto;font-size:13px}
+/* Live hack demo: three control blocks above the console (nurse left, simulation middle, hacker right),
+   camera views floating on the 3D view, and the live system panel below. Uses the console's own tokens. */
+.hk-bar{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,230px) minmax(0,1fr);gap:14px;margin:0 0 14px}
+.hk-block{background:#fff;border:1px solid var(--line);border-radius:9px;padding:12px 15px;min-width:0;display:flex;flex-direction:column;gap:9px}
+.hk-nurse{border-top:3px solid #17674c}
+.hk-hacker{border-top:3px solid #b3202f}
+.hk-sim{justify-content:center;background:#f7faf6}
+.hk-head{display:flex;align-items:center;gap:8px}
+.hk-head h2{font-size:17px;font-weight:620;letter-spacing:-.027em;margin:0}
+.hk-dot{width:9px;height:9px;border-radius:50%;background:#17674c;flex:none}
+.hk-hacker .hk-dot{background:#b3202f}
+.hk-switch{margin-left:auto;display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--ink);cursor:pointer;user-select:none}
+.hk-switch input{position:absolute;opacity:0;width:1px;height:1px}
+.hk-track{position:relative;width:36px;height:20px;border-radius:999px;background:#c8d3cc;transition:background .15s}
+.hk-track::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px #0003;transition:transform .15s}
+.hk-switch input:checked+.hk-track{background:#17674c}
+.hk-hacker .hk-switch input:checked+.hk-track{background:#b3202f}
+.hk-switch input:checked+.hk-track::after{transform:translateX(16px)}
+.hk-switch input:focus-visible+.hk-track{outline:3px solid #2565b1;outline-offset:2px}
+.hk-stats{display:flex;margin:0}
+.hk-stats div{padding:0 12px;border-left:1px solid var(--line)}.hk-stats div:first-child{padding-left:0;border:0}
+.hk-stats dt{font-size:11px;color:var(--muted)}
+.hk-stats dd{margin:0;font:600 18px var(--mono);color:var(--ink)}
+.hk-stats div.bad dd{color:#a3261b}
+.hk-actions{display:flex;flex-wrap:wrap;gap:6px}
+.hk-actions button{font-size:12px;padding:6px 10px}
+.hk-sim label{font-size:11px;font-weight:600;color:var(--muted)}
+.hk-sim select{width:100%;font-size:13px}
+.hk-restart{width:100%;font-weight:600}
+.hk-note{margin:0;font-size:12px;color:var(--muted);min-height:1.45em}
+.hk-note.ok{color:#225640}.hk-note.bad{color:#a3261b;font-weight:600}
+.hk-holds{display:grid;gap:6px}
+.hk-holds:empty{display:none}
+.hk-hold{border:1px solid #e3c08f;background:#fff8ec;border-radius:6px;padding:8px 10px}
+.hk-hold p{margin:0 0 6px;font-size:12px;color:#5d381c}.hk-hold p span{color:#8a6a4b}
+.hk-hold-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.hk-hold-actions button{font-size:12px;padding:5px 9px}
+.hk-timer{flex:1;min-width:50px;height:4px;border-radius:2px;background:#f0dfc4;overflow:hidden}
+.hk-timer i{display:block;height:100%;background:#c8773f}
+/* camera views: one quiet segmented control on the 3D view */
+.hk-views{position:absolute;z-index:3;top:10px;right:10px;display:flex;padding:3px;gap:2px;background:#ffffffe6;border:1px solid #c5d2c8;border-radius:7px;box-shadow:0 1px 3px #1239251c}
+.hk-views button{border:0;background:transparent;font-size:12px;font-weight:550;padding:4px 10px;border-radius:5px;color:#305b48}
+.hk-views button:hover{background:#edf4eb}
+.hk-views button[aria-pressed=true]{background:#193e34;color:#fff}
 .hk-back{color:#d6e4db;font-size:13px;font-weight:550;text-decoration:none;white-space:nowrap;padding:6px 10px;border:1px solid #456252;border-radius:5px}
 .hk-back:hover{background:#1e3d35}
+/* live system panel */
 .hk-panel{margin-top:14px}
-.hk-desc{margin:0;padding:0 15px 10px;color:var(--muted,#55645c);font-size:14px}
-.hk-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px;padding:0 15px 15px}
-.hk-box{border:1px solid var(--line);border-radius:9px;padding:10px 12px;background:#fff;min-width:0}
-.hk-box h3{margin:0 0 8px;font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted,#55645c)}
-.hk-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.hk-cards>div{border:1px solid var(--line);border-radius:8px;padding:6px 9px;background:#fafcfb;min-width:0}
-.hk-wide{grid-column:1/-1}
-.hk-k{display:block;font-size:12px;color:var(--muted,#55645c);margin:0 0 2px}
-.hk-val{font-weight:700;font-size:14px}
-.hk-val.ok{color:#0b6b5c}.hk-val.warn{color:#8a5200}.hk-val.bad{color:#a11a2a}
-.hk-btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
-.hk-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:4px 0 9px}
-.hk-stat{border:1px solid var(--line);border-radius:8px;padding:5px 6px;text-align:center;background:#fafcfb}
-.hk-stat b{display:block;font-size:22px;line-height:1.1}.hk-stat span{font-size:11.5px;color:var(--muted,#55645c)}
-.hk-stat.bad b{color:#a11a2a}.hk-stat.warn b{color:#8a5200}
-.hk-inbox,.hk-log{list-style:none;margin:0;padding:0;font-size:13px}
-.hk-inbox li{font-family:ui-monospace,Consolas,monospace;font-size:12px;word-break:break-all;padding:2px 0}
-.hk-inbox li.bad{color:#a11a2a;font-weight:700}.hk-inbox li.dim{color:#6b7a72}
-.hk-log{max-height:230px;overflow:auto}
-.hk-log li{padding:4px 6px;border-left:3px solid #ccd6d0;margin:3px 0;background:#fafcfb}
-.hk-log li time{color:#6b7a72;font-variant-numeric:tabular-nums;margin-right:4px}
-.hk-log li.good{border-color:#1fbf6b}.hk-log li.bad{border-color:#e5384f;color:#8a1422}.hk-log li.warn,.hk-log li.bad2{border-color:#ff9f1c;color:#7a4a00}.hk-log li.ok{border-color:#2aa8e0}.hk-log li.info{color:#55645c}
-@media(max-width:700px){.hk-link{margin-left:0}.hk-cards{grid-template-columns:1fr}}
+.hk-desc{margin:0;padding:0 15px 10px;color:var(--muted);font-size:13px}
+.hk-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:0 15px 15px}
+.hk-box{border:1px solid #dfe7de;border-radius:7px;padding:10px 12px;background:#fbfdfa;min-width:0;display:flex;flex-direction:column;gap:8px}
+.hk-box h3{margin:0;font-size:14px;font-weight:650}
+.hk-k{margin:0;font-size:11px;color:var(--muted)}.hk-k .mono{font-size:11px;color:#284c39;word-break:break-all}.hk-k .bad{color:#a3261b}
+.hk-tasks{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.hk-tasks li{display:grid;grid-template-columns:52px minmax(0,1fr) auto;grid-template-rows:auto auto;column-gap:8px;align-items:baseline;padding:6px 0;border-top:1px solid #e4e9e2;font-size:12px}
+.hk-tasks li:first-child{border-top:0}
+.hk-tasks b{font:650 12px var(--mono)}
+.hk-tasks small{grid-column:2/4;color:var(--muted);font-size:11px}
+.hk-tag{font-style:normal;font-size:11px;font-weight:600;padding:1px 7px;border-radius:999px;white-space:nowrap;border:1px solid}
+.hk-tag.nurse{color:#16492f;background:#e3f1e6;border-color:#a9c5af}
+.hk-tag.auto{color:#3f5550;background:#eef2ef;border-color:#cbd6cf}
+.hk-tag.operator{color:#21507a;background:#e7f0f8;border-color:#b5cbe0}
+.hk-tag.hacker{color:#8a1c2b;background:#fde9ec;border-color:#efb3bc}
+.hk-tag.idle{color:var(--muted);background:#fff;border-color:#dfe7de}
+.hk-log{list-style:none;margin:0;padding:0;max-height:260px;overflow:auto;scrollbar-width:thin}
+.hk-log li{display:grid;grid-template-columns:38px 1fr;gap:6px;padding:5px 0 5px 8px;border-left:3px solid #cfd9d1;border-top:1px solid #e4e9e2;font-size:12px;line-height:1.4}
+.hk-log li time{font:11px var(--mono);color:var(--muted)}
+.hk-log li.good{border-left-color:#2f8a63}.hk-log li.warn{border-left-color:#c8773f;color:#6b3415}.hk-log li.bad{border-left-color:#b8412f;color:#a3261b;font-weight:600}.hk-log li.info{color:var(--muted)}
+.hk-checks{margin:0;display:grid;gap:6px}
+.hk-checks div{display:flex;justify-content:space-between;gap:8px;align-items:baseline;border-top:1px solid #e4e9e2;padding-top:6px}
+.hk-checks div:first-child{border:0;padding-top:0}
+.hk-checks dt{font-size:12px;color:var(--muted)}
+.hk-val{margin:0;font:600 12px var(--mono);text-align:right}
+.hk-val.ok{color:#225640}.hk-val.warn{color:#98421a}.hk-val.bad{color:#a3261b}
+@media(max-width:975px){.hk-bar{grid-template-columns:1fr 1fr}.hk-sim{grid-column:1/-1;flex-direction:row;align-items:center;order:3}.hk-sim select{width:auto;flex:1}.hk-restart{width:auto}.hk-grid{grid-template-columns:1fr 1fr}.hk-grid .hk-box:first-child{grid-column:1/-1}}
+@media(max-width:700px){.hk-bar,.hk-grid{grid-template-columns:1fr}.hk-sim{flex-direction:column;align-items:stretch}.hk-views{top:auto;bottom:52px;right:10px}.hk-views button{padding:4px 7px}}
