@@ -51,7 +51,7 @@ Honest risk: all five in under a day is tight. Priority: M0, M1, M3 first, then 
 |---|---|---|---|
 | 2026-11-27 | Software-only mock robot, stdlib stack | No hardware, €0, no installs | Smoke test baseline |
 | 2026-11-27 | Recorded "hack → whole hospital stops" as the core problem; containment proposed as co-primary | Raised by the user from on-site discussion | Team confirms |
-| 2026-11-27 | Claims fixed in public repo: README 10/10 relabelled "imported fixture replay, unverified"; AI-generated/third-party disclosure added (README, NOTICE.md, landing page); organizer brief image removed from the repo (logos, no redistribution licence) | Release audit found overclaim and disclosure gaps | Re-check README before submission; image remains in git history (commits c58cbe6 onward) |
+| 2026-11-27 | Claims fixed in public repo: README 10/10 relabelled "imported fixture replay, unverified"; AI-generated/third-party disclosure added (README, NOTICE.md, landing page); organizer brief image removed from the repo (logos, no redistribution licence) | Release audit found overclaim and disclosure gaps | Re-check README before submission. Image later purged from git history (history rewritten and force-pushed 2026-11-27, so older commit IDs changed); GitHub may keep old commits reachable by exact ID until its own cleanup |
 | 2026-11-27 | M4 changed from rate limiting + audit log to containment (breaker, isolation, manual mode); audit log became shared plumbing; rows C01–C04 added | User approved the swap; none of the methods had been run, so no result was affected | Build breaker and degraded mode after M0/M1/M3 |
 
 ## Next 3 actions
