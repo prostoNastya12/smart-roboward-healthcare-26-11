@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smart RoboWard | Nine approaches, one winner</title>
+<style>
+/*__THEME__*/
+/*__PAGE_CSS__*/
+</style></head><body><main>
+<!--__HEADER__-->
+<header class="hero">
+  <p class="eyebrow">Smart RoboWard · secure robot communication</p>
+  <h1>Which protection keeps hospital robots safe?</h1>
+  <p class="hero-lede">We built nine and attacked each one the same way. One stopped everything.</p>
+  <dl class="hero-facts">
+    <div><dd id="n-pipes">9</dd><dt>approaches built</dt></div>
+    <div><dd id="n-attacks">29</dd><dt>attacks on each</dt></div>
+    <div class="win"><dd id="n-win">–</dd><dt>stopped by number one</dt></div>
+  </dl>
+  <p class="hero-note">Simulated devices, real cryptography. We wrote the attacks ourselves, and a second reviewer attacked our code.</p>
+</header>
+
+<section class="block">
+  <h2><span class="step">1</span>The nine approaches, best first</h2>
+  <p class="block-lede">Select any row to see what it stops and what it leaves open.</p>
+  <ol class="ladder" id="ladder"></ol>
+</section>
+
+<section class="block">
+  <h2><span class="step">2</span>How number one works</h2>
+  <p class="block-lede">It combines the best part of every other approach into four rules.</p>
+  <ol class="pillars" id="pillars"></ol>
+</section>
+
+<section class="block">
+  <h2><span class="step">3</span>See it happen</h2>
+  <p class="block-lede">Pick an attack. It runs live in your browser, once against an encrypted connection alone and once against number one.</p>
+  <div class="scenes" id="scenes" role="group" aria-label="Attack to run"></div>
+  <div class="duel" id="duel" aria-live="polite"></div>
+</section>
+
+<section class="block">
+  <h2><span class="step">4</span>What still gets through</h2>
+  <p class="block-lede">No design stops everything. These attacks still work against number one.</p>
+  <ul class="open-list" id="limits"></ul>
+</section>
+
+<details class="expert">
+  <summary><span class="step">5</span>All the detail<small>every attack against every approach, who sees what, supplier requirements</small></summary>
+  <section class="ops-card decision" id="decision"></section>
+<section class="ops-card" style="margin-top:14px">
+  <div class="card-heading"><h2>Every attack against every pipeline</h2><span class="device-ref" id="matrix-source">saved run</span></div>
+  <p class="section-note">A to G are the seven candidates. H and I were built on the winner afterwards. A tick means the attack had no effect. A cross means the design has no defence against it, or its defence failed. Select a cell to see what happened and to run it again in this browser.</p>
+  <div class="tablewrap"><table class="data matrix" id="matrix"><thead></thead><tbody></tbody><tfoot></tfoot></table></div>
+  <div class="matrix-actions"><button type="button" id="rerun">Run all attacks again in this browser</button><output id="rerun-status" aria-live="polite"></output></div>
+</section>
+
+<section class="ops-card" style="margin-top:14px" id="wire">
+  <div class="card-heading"><h2>Live wire</h2><span class="device-ref" id="wire-ref">select a cell above</span></div>
+  <div class="wire-body">
+    <div class="wire-pick"><label>Pipeline <select id="wire-pipe"></select></label><label>Case <select id="wire-case"></select></label><button type="button" class="primary" id="wire-run">Run now</button></div>
+    <p id="wire-what" class="wire-what"></p>
+    <p id="wire-verdict" class="wire-verdict" aria-live="polite"></p>
+    <h3>What an attacker on the network sees</h3>
+    <ol id="wire-frames" class="frames"></ol>
+    <h3>What the lift received</h3>
+    <p id="wire-lift" class="mono"></p>
+  </div>
+</section>
+
+<section class="ops-card" style="margin-top:14px">
+  <div class="card-heading"><h2>Who sees what during one delivery</h2><label class="see-pick">Pipeline <select id="see-pipe"></select></label></div>
+  <p class="section-note">Measured by searching what each party handled during a routine delivery. The sender's software attaches a medication order and a private marker, as careless software does. The mission the fleet manager delivers to the robot is included.</p>
+  <div class="tablewrap"><table class="data see" id="see"><thead></thead><tbody></tbody></table></div>
+</section>
+
+<div class="section-title"><h2>The approaches in technical terms</h2><span class="device-ref">source · idea · what it needs</span></div>
+<div class="card-grid pipes" id="pipes"></div>
+
+<section class="ops-card" style="margin-top:14px">
+  <div class="card-heading"><h2>What each layer of the adopted pipeline is for</h2><span class="device-ref">I = G + H + three more</span></div>
+  <div class="tablewrap"><table class="data"><thead><tr><th>Layer</th><th>Stops</th><th>Taken from</th></tr></thead><tbody>
+    <tr><th>Encrypted, mutually authenticated hops with fresh keys</th><td>Eavesdropping, tampering, replay, impersonating the adapter, later decryption with stolen keys</td><td>E</td></tr>
+    <tr><th>Trip grant bound to the robot's key</th><td>A compromised fleet manager, another robot, a stolen grant, a wrong floor, a call with no delivery behind it</td><td>F, our proposal</td></tr>
+    <tr><th>Field allowlist at sender and adapter</th><td>Private data reaching the lift side</td><td>Teammate's gate, M3</td></tr>
+    <tr><th>Circuit breaker per authenticated robot</th><td>One flooding device starving the others</td><td>Teammate's gate, M4</td></tr>
+    <tr><th>Lift admission: floor mapping, patient priority, fresh status</th><td>Acting on stale or ambiguous information</td><td>Ward safety controller</td></tr>
+    <tr><th>Presence reading from a lobby sensor</th><td>A valid robot calling the lift when it is not there</td><td>New</td></tr>
+    <tr><th>Hash-chained log, each entry signed by the adapter, head held by an outside witness</th><td>Rewriting or cutting the record afterwards</td><td>Extends the teammate's audit chain</td></tr>
+    <tr><th>Second signature from the clinical order system</th><td>A compromised dispatcher issuing a grant nobody ordered</td><td>H</td></tr>
+    <tr><th>Robot and lift adapter share their own encrypted session through the fleet manager</th><td>A compromised fleet manager reading or changing calls</td><td>I</td></tr>
+    <tr><th>Missions signed by the dispatcher, checked by the robot before it moves</th><td>A compromised fleet manager sending a robot somewhere else</td><td>I</td></tr>
+    <tr><th>Breaker at the adapter, and a firewall rule that only the relay reaches it (modelled)</th><td>A flood aimed straight at the adapter</td><td>I</td></tr>
+  </tbody></table></div>
+</section>
+
+
+  <section class="ops-card recipe-card">
+    <div class="card-heading"><h2>Where each part of number one comes from</h2><span class="device-ref">piece by piece</span></div>
+    <ol class="recipe" id="recipe"></ol>
+  </section>
+</details>
+
+<footer class="console-footer"><span>Pipeline C runs the teammate's request gate unchanged. Pipeline G runs the ward safety controller's admission check unchanged. Reproduce with <code>node secure-comms/run.cjs</code>.</span><a href="https://github.com/prostoNastya12/smart-roboward-healthcare-26-11">Source code and results (GitHub)</a></footer>
+</main>
+<script type="application/json" id="saved">/*__DATA__*/null</script>
+<!--__SCRIPTS__-->
+</body></html>

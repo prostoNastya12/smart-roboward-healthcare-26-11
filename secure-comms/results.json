@@ -1,0 +1,2334 @@
+{
+ "meta": {
+  "label": "measured on simulated devices with fictional data; attacks written by the team",
+  "node": "v26.13.1",
+  "command": "node secure-comms/run.cjs",
+  "inputs": {
+   "comms.js": "a99671e88e29dbe87106d49eb0717b951b94580c57f03da64b33ef8c7ae62c9c",
+   "attacks.js": "a74c07bd7527f897e45f4241a554ccb674a1312ac25c0198ec1b89d1b5b2c6c1"
+  },
+  "flood": {
+   "adapterFramesPerSecond": 20,
+   "junkPerSecond": 100,
+   "legitimatePerSecond": 4,
+   "seconds": 5
+  }
+ },
+ "attacks": [
+  {
+   "id": "T01",
+   "name": "Eavesdrop on a delivery",
+   "position": "PATH",
+   "wins": "Captured frames reveal the trip, the floor or a private marker",
+   "limit": false
+  },
+  {
+   "id": "T02",
+   "name": "Inject a lift call from outside",
+   "position": "OUT",
+   "wins": "The lift receives a call",
+   "limit": false
+  },
+  {
+   "id": "T03",
+   "name": "Replay a recorded lift call a minute later",
+   "position": "PATH",
+   "wins": "The lift receives a second call",
+   "limit": false
+  },
+  {
+   "id": "T04",
+   "name": "Change the floor in transit",
+   "position": "PATH",
+   "wins": "The lift is called for a floor the robot did not ask for",
+   "limit": false
+  },
+  {
+   "id": "T05",
+   "name": "One robot pretends to be another",
+   "position": "DEV",
+   "wins": "The lift receives a call in RX-01's name",
+   "limit": false
+  },
+  {
+   "id": "T06",
+   "name": "A robot calls the lift with no delivery of its own",
+   "position": "DEV",
+   "wins": "The lift receives a call",
+   "limit": false
+  },
+  {
+   "id": "T07",
+   "name": "Compromised fleet manager invents a lift call",
+   "position": "FLEET",
+   "wins": "The lift receives a call",
+   "limit": false
+  },
+  {
+   "id": "T08",
+   "name": "Genuine robot asks for the wrong floor",
+   "position": "DEV",
+   "wins": "The lift is called for L1 on a trip to L2",
+   "limit": false
+  },
+  {
+   "id": "T09",
+   "name": "A retired robot keeps working",
+   "position": "DEV",
+   "wins": "The lift receives a call",
+   "limit": false
+  },
+  {
+   "id": "T10",
+   "name": "Steal a credential off the wire and use it elsewhere",
+   "position": "PATH",
+   "wins": "The lift receives a call triggered by the attacker's device",
+   "limit": false
+  },
+  {
+   "id": "T11",
+   "name": "Hold a lift call for two minutes, then release it",
+   "position": "PATH",
+   "wins": "The lift receives the stale call",
+   "limit": false
+  },
+  {
+   "id": "T12",
+   "name": "Forge or replay the adapter's reply",
+   "position": "PATH",
+   "wins": "The robot believes a refused call was allowed",
+   "limit": false
+  },
+  {
+   "id": "T13",
+   "name": "Impersonate the lift adapter",
+   "position": "PATH",
+   "wins": "The robot accepts an answer from the attacker",
+   "limit": false
+  },
+  {
+   "id": "T14",
+   "name": "Flood from one compromised robot",
+   "position": "DEV",
+   "wins": "Fewer than 90% of other robots' legitimate calls are served",
+   "limit": false
+  },
+  {
+   "id": "T15",
+   "name": "Decrypt recorded traffic with keys stolen later",
+   "position": "LEAK",
+   "wins": "The recorded lift calls can be read",
+   "limit": false
+  },
+  {
+   "id": "T16",
+   "name": "Rewrite or cut the audit log and repair its hashes",
+   "position": "LOG",
+   "wins": "Verification still passes",
+   "limit": false
+  },
+  {
+   "id": "T17",
+   "name": "Over-sharing",
+   "position": "NONE",
+   "wins": "A private marker reaches the lift-side log",
+   "limit": false
+  },
+  {
+   "id": "T18",
+   "name": "Suppress lift status updates",
+   "position": "PATH",
+   "wins": "The lift receives a call while the adapter's status is older than 10 seconds",
+   "limit": false
+  },
+  {
+   "id": "T19",
+   "name": "Robot calls the lift when it is not at the lift",
+   "position": "DEV",
+   "wins": "The lift receives a call",
+   "limit": false
+  },
+  {
+   "id": "T20",
+   "name": "Compromised dispatcher issues a wrong grant",
+   "position": "DISPATCHER",
+   "wins": "The lift is called for the wrong floor",
+   "limit": true
+  },
+  {
+   "id": "T21",
+   "name": "Traffic analysis",
+   "position": "PATH",
+   "wins": "The attacker can tell when a robot called the lift",
+   "limit": true
+  },
+  {
+   "id": "T22",
+   "name": "Lock out a genuine robot by abusing the breaker",
+   "position": "PATH",
+   "wins": "RX-01's next legitimate call, two minutes later, is refused",
+   "limit": false
+  },
+  {
+   "id": "T23",
+   "name": "Compromised fleet manager reads the deliveries it relays",
+   "position": "FLEET",
+   "wins": "The fleet manager sees the trip and the floor",
+   "limit": true
+  },
+  {
+   "id": "T24",
+   "name": "Flood the lift adapter directly, past the fleet manager",
+   "position": "DEV",
+   "wins": "Fewer than 90% of other robots' legitimate calls are served",
+   "limit": true
+  },
+  {
+   "id": "T25",
+   "name": "Compromised fleet manager reroutes a robot",
+   "position": "FLEET",
+   "wins": "The robot accepts a mission the hospital did not order",
+   "limit": false,
+   "scenario": "Medication theft"
+  },
+  {
+   "id": "T26",
+   "name": "Compromised fleet manager takes the lift hostage",
+   "position": "FLEET",
+   "wins": "The lift receives 10 or more calls nobody ordered",
+   "limit": false,
+   "scenario": "Heart attack, lift not coming"
+  },
+  {
+   "id": "T27",
+   "name": "Compromised fleet manager stops relaying",
+   "position": "FLEET",
+   "wins": "Robots can no longer call the lift",
+   "limit": true
+  },
+  {
+   "id": "T28",
+   "name": "Flood the lift adapter from the wired path, posing as the relay",
+   "position": "PATH",
+   "wins": "Fewer than 90% of other robots' legitimate calls are served",
+   "limit": true
+  },
+  {
+   "id": "T29",
+   "name": "A replaced fleet manager keeps using its old credentials",
+   "position": "FLEET",
+   "wins": "The lift receives a call",
+   "limit": false
+  }
+ ],
+ "fields": [
+  {
+   "key": "patient",
+   "label": "Patient marker"
+  },
+  {
+   "key": "order",
+   "label": "Medication order"
+  },
+  {
+   "key": "ward",
+   "label": "Destination ward"
+  },
+  {
+   "key": "trip",
+   "label": "Trip"
+  },
+  {
+   "key": "floor",
+   "label": "Floor"
+  },
+  {
+   "key": "robot",
+   "label": "Which robot"
+  }
+ ],
+ "legit": [
+  {
+   "id": "L01",
+   "name": "Routine lift call"
+  },
+  {
+   "id": "L02",
+   "name": "Reply lost, robot retries"
+  },
+  {
+   "id": "L03",
+   "name": "Wi-Fi handover mid-trip"
+  },
+  {
+   "id": "L04",
+   "name": "Two robots, two trips"
+  },
+  {
+   "id": "L05",
+   "name": "Key rotation"
+  },
+  {
+   "id": "L06",
+   "name": "Held for a patient transfer, robot keeps retrying"
+  },
+  {
+   "id": "L07",
+   "name": "Recovery: the fleet manager's credentials are revoked and replaced"
+  },
+  {
+   "id": "L08",
+   "name": "The robot accepts the hospital's own mission"
+  },
+  {
+   "id": "L09",
+   "name": "Three robots call at the same moment, five times over"
+  }
+ ],
+ "pipelines": {
+  "A": {
+   "name": "Open network",
+   "short": "Open",
+   "extension": false
+  },
+  "B": {
+   "name": "Network admission only",
+   "short": "Admission",
+   "extension": false
+  },
+  "C": {
+   "name": "Signed single-use tickets",
+   "short": "Tickets",
+   "extension": false
+  },
+  "D": {
+   "name": "Per-device signed messages",
+   "short": "Signed",
+   "extension": false
+  },
+  "E": {
+   "name": "Encrypted channel, mutual authentication",
+   "short": "Channel",
+   "extension": false
+  },
+  "F": {
+   "name": "Trip capability with proof of possession",
+   "short": "Capability",
+   "extension": false
+  },
+  "G": {
+   "name": "Layered pipeline",
+   "short": "Layered",
+   "extension": false
+  },
+  "H": {
+   "name": "Layered pipeline with dual control",
+   "short": "G + dual",
+   "extension": true
+  },
+  "I": {
+   "name": "Zero-trust relay",
+   "short": "Zero-trust",
+   "extension": true
+  }
+ },
+ "results": {
+  "A": {
+   "attacks": {
+    "T01": {
+     "blocked": false,
+     "detail": "Read from the wire: trip, floor, private marker"
+    },
+    "T02": {
+     "blocked": false,
+     "detail": "2 lift call(s) from a device with no hospital credentials"
+    },
+    "T03": {
+     "blocked": false,
+     "detail": "1 extra lift call(s) after replaying 2 recorded frame(s), verbatim and renamed"
+    },
+    "T04": {
+     "blocked": false,
+     "detail": "2 lift call(s) for the attacker's floor"
+    },
+    "T05": {
+     "blocked": false,
+     "detail": "2 lift call(s) in RX-01's name from SUP-03"
+    },
+    "T06": {
+     "blocked": false,
+     "detail": "1 lift call(s) for a robot with no trip"
+    },
+    "T07": {
+     "blocked": false,
+     "detail": "1 lift call(s) the robot never made"
+    },
+    "T08": {
+     "blocked": false,
+     "detail": "1 lift call(s) for L1"
+    },
+    "T09": {
+     "blocked": false,
+     "detail": "3 lift call(s) from a revoked robot"
+    },
+    "T10": {
+     "blocked": false,
+     "detail": "1 lift call(s) from SUP-03. Lifted off the wire: nothing"
+    },
+    "T11": {
+     "blocked": false,
+     "detail": "1 lift call(s) from a message delivered 120 s late"
+    },
+    "T12": {
+     "blocked": false,
+     "detail": "Robot accepted a forged answer: edit, replay, swap"
+    },
+    "T13": {
+     "blocked": false,
+     "detail": "Robot accepted the attacker's answer"
+    },
+    "T14": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 420 frames as overloaded",
+     "retainedPct": 10
+    },
+    "T15": {
+     "blocked": false,
+     "detail": "Nothing to decrypt: the calls were recorded in clear"
+    },
+    "T16": {
+     "blocked": false,
+     "detail": "Undetected: edit and cut of the log"
+    },
+    "T17": {
+     "blocked": false,
+     "detail": "The private marker is stored on the lift side, sent as: extra field, request ID"
+    },
+    "T18": {
+     "blocked": false,
+     "detail": "1 lift call(s) forwarded on 60 s old status"
+    },
+    "T19": {
+     "blocked": false,
+     "detail": "1 lift call(s) with no robot seen at the lift"
+    },
+    "T20": {
+     "blocked": false,
+     "detail": "1 lift call(s) on a grant with no order behind it, 0 on re-issued grants naming another robot's key"
+    },
+    "T21": {
+     "blocked": false,
+     "detail": "Frame timing and sender show when RX-01 called"
+    },
+    "T22": {
+     "blocked": true,
+     "detail": "RX-01's next call was allowed after both attempts"
+    },
+    "T23": {
+     "blocked": false,
+     "detail": "The fleet manager handles in clear: trip, floor, destination"
+    },
+    "T24": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 420 frames as overloaded",
+     "retainedPct": 10
+    },
+    "T25": {
+     "blocked": false,
+     "detail": "Robot accepted: changed destination to BASEMENT; earlier mission replayed inside its time window to LOADING-DOCK; invented mission to BASEMENT; old mission replayed to LOADING-DOCK; another robot's mission to LOADING-DOCK"
+    },
+    "T26": {
+     "blocked": false,
+     "detail": "33 lift call(s) from 50 attempts by the fleet manager"
+    },
+    "T27": {
+     "blocked": false,
+     "detail": "Robot deliveries stop. The lift received 0 calls and stays free for staff. Fallback: porter"
+    },
+    "T28": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 420 frames as overloaded",
+     "retainedPct": 10
+    },
+    "T29": {
+     "blocked": false,
+     "detail": "1 lift call(s) through the retired fleet manager"
+    }
+   },
+   "legit": {
+    "L01": {
+     "pass": true,
+     "detail": "allow, 1 lift call(s)"
+    },
+    "L02": {
+     "pass": true,
+     "detail": "allow, 1 lift call(s)"
+    },
+    "L03": {
+     "pass": true,
+     "detail": "allow after reconnect, 2 lift call(s)"
+    },
+    "L04": {
+     "pass": true,
+     "detail": "allow and allow, 2 lift call(s)"
+    },
+    "L05": {
+     "pass": true,
+     "detail": "allow with the new key, 2 lift call(s)"
+    },
+    "L06": {
+     "pass": true,
+     "detail": "Last answer allow after 0 holds, 1 lift call(s)"
+    },
+    "L07": {
+     "pass": true,
+     "detail": "allow after the replacement, 2 lift call(s)"
+    },
+    "L08": {
+     "pass": true,
+     "detail": "Accepted, destination WARD-B"
+    },
+    "L09": {
+     "pass": true,
+     "detail": "15 of 15 simultaneous calls allowed, 15 lift call(s)"
+    }
+   },
+   "cost": {
+    "bytesPerCall": 480,
+    "setupBytes": 0,
+    "msPerCall": 0.02,
+    "calls": 201
+   },
+   "exposure": {
+    "Network observer": {
+     "patient": true,
+     "order": true,
+     "ward": true,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    },
+    "Fleet manager": {
+     "patient": true,
+     "order": true,
+     "ward": true,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    },
+    "Lift adapter records": {
+     "patient": true,
+     "order": true,
+     "ward": false,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    },
+    "Lift controller": {
+     "patient": false,
+     "order": false,
+     "ward": false,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    }
+   },
+   "summary": {
+    "blocked": 1,
+    "of": 23,
+    "limitsBlocked": 0,
+    "limits": 6,
+    "legitPassed": 9,
+    "legitOf": 9
+   }
+  },
+  "B": {
+   "attacks": {
+    "T01": {
+     "blocked": false,
+     "detail": "Read from the wire: trip, floor, private marker"
+    },
+    "T02": {
+     "blocked": true,
+     "detail": "0 lift call(s) from a device with no hospital credentials"
+    },
+    "T03": {
+     "blocked": false,
+     "detail": "1 extra lift call(s) after replaying 2 recorded frame(s), verbatim and renamed"
+    },
+    "T04": {
+     "blocked": false,
+     "detail": "2 lift call(s) for the attacker's floor"
+    },
+    "T05": {
+     "blocked": false,
+     "detail": "2 lift call(s) in RX-01's name from SUP-03"
+    },
+    "T06": {
+     "blocked": false,
+     "detail": "1 lift call(s) for a robot with no trip"
+    },
+    "T07": {
+     "blocked": false,
+     "detail": "1 lift call(s) the robot never made"
+    },
+    "T08": {
+     "blocked": false,
+     "detail": "1 lift call(s) for L1"
+    },
+    "T09": {
+     "blocked": true,
+     "detail": "0 lift call(s) from a revoked robot"
+    },
+    "T10": {
+     "blocked": false,
+     "detail": "1 lift call(s) from SUP-03. Lifted off the wire: nothing"
+    },
+    "T11": {
+     "blocked": false,
+     "detail": "1 lift call(s) from a message delivered 120 s late"
+    },
+    "T12": {
+     "blocked": false,
+     "detail": "Robot accepted a forged answer: edit, replay, swap"
+    },
+    "T13": {
+     "blocked": false,
+     "detail": "Robot accepted the attacker's answer"
+    },
+    "T14": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 420 frames as overloaded",
+     "retainedPct": 10
+    },
+    "T15": {
+     "blocked": false,
+     "detail": "Nothing to decrypt: the calls were recorded in clear"
+    },
+    "T16": {
+     "blocked": false,
+     "detail": "Undetected: edit and cut of the log"
+    },
+    "T17": {
+     "blocked": false,
+     "detail": "The private marker is stored on the lift side, sent as: extra field, request ID"
+    },
+    "T18": {
+     "blocked": false,
+     "detail": "1 lift call(s) forwarded on 60 s old status"
+    },
+    "T19": {
+     "blocked": false,
+     "detail": "1 lift call(s) with no robot seen at the lift"
+    },
+    "T20": {
+     "blocked": false,
+     "detail": "1 lift call(s) on a grant with no order behind it, 0 on re-issued grants naming another robot's key"
+    },
+    "T21": {
+     "blocked": false,
+     "detail": "Frame timing and sender show when RX-01 called"
+    },
+    "T22": {
+     "blocked": true,
+     "detail": "RX-01's next call was allowed after both attempts"
+    },
+    "T23": {
+     "blocked": false,
+     "detail": "The fleet manager handles in clear: trip, floor, destination"
+    },
+    "T24": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 420 frames as overloaded",
+     "retainedPct": 10
+    },
+    "T25": {
+     "blocked": false,
+     "detail": "Robot accepted: changed destination to BASEMENT; earlier mission replayed inside its time window to LOADING-DOCK; invented mission to BASEMENT; old mission replayed to LOADING-DOCK; another robot's mission to LOADING-DOCK"
+    },
+    "T26": {
+     "blocked": false,
+     "detail": "33 lift call(s) from 50 attempts by the fleet manager"
+    },
+    "T27": {
+     "blocked": false,
+     "detail": "Robot deliveries stop. The lift received 0 calls and stays free for staff. Fallback: porter"
+    },
+    "T28": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 420 frames as overloaded",
+     "retainedPct": 10
+    },
+    "T29": {
+     "blocked": false,
+     "detail": "1 lift call(s) through the retired fleet manager"
+    }
+   },
+   "legit": {
+    "L01": {
+     "pass": true,
+     "detail": "allow, 1 lift call(s)"
+    },
+    "L02": {
+     "pass": true,
+     "detail": "allow, 1 lift call(s)"
+    },
+    "L03": {
+     "pass": true,
+     "detail": "allow after reconnect, 2 lift call(s)"
+    },
+    "L04": {
+     "pass": true,
+     "detail": "allow and allow, 2 lift call(s)"
+    },
+    "L05": {
+     "pass": true,
+     "detail": "allow with the new key, 2 lift call(s)"
+    },
+    "L06": {
+     "pass": true,
+     "detail": "Last answer allow after 0 holds, 1 lift call(s)"
+    },
+    "L07": {
+     "pass": true,
+     "detail": "allow after the replacement, 2 lift call(s)"
+    },
+    "L08": {
+     "pass": true,
+     "detail": "Accepted, destination WARD-B"
+    },
+    "L09": {
+     "pass": true,
+     "detail": "15 of 15 simultaneous calls allowed, 15 lift call(s)"
+    }
+   },
+   "cost": {
+    "bytesPerCall": 480,
+    "setupBytes": 0,
+    "msPerCall": 0.03,
+    "calls": 201
+   },
+   "exposure": {
+    "Network observer": {
+     "patient": true,
+     "order": true,
+     "ward": true,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    },
+    "Fleet manager": {
+     "patient": true,
+     "order": true,
+     "ward": true,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    },
+    "Lift adapter records": {
+     "patient": true,
+     "order": true,
+     "ward": false,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    },
+    "Lift controller": {
+     "patient": false,
+     "order": false,
+     "ward": false,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    }
+   },
+   "summary": {
+    "blocked": 3,
+    "of": 23,
+    "limitsBlocked": 0,
+    "limits": 6,
+    "legitPassed": 9,
+    "legitOf": 9
+   }
+  },
+  "C": {
+   "attacks": {
+    "T01": {
+     "blocked": false,
+     "detail": "Read from the wire: trip, floor, private marker"
+    },
+    "T02": {
+     "blocked": true,
+     "detail": "0 lift call(s) from a device with no hospital credentials"
+    },
+    "T03": {
+     "blocked": true,
+     "detail": "0 extra lift call(s) after replaying 2 recorded frame(s), verbatim and renamed"
+    },
+    "T04": {
+     "blocked": true,
+     "detail": "0 lift call(s) for the attacker's floor"
+    },
+    "T05": {
+     "blocked": true,
+     "detail": "0 lift call(s) in RX-01's name from SUP-03"
+    },
+    "T06": {
+     "blocked": true,
+     "detail": "0 lift call(s) for a robot with no trip"
+    },
+    "T07": {
+     "blocked": false,
+     "detail": "1 lift call(s) the robot never made"
+    },
+    "T08": {
+     "blocked": true,
+     "detail": "0 lift call(s) for L1"
+    },
+    "T09": {
+     "blocked": false,
+     "detail": "1 lift call(s) from a revoked robot"
+    },
+    "T10": {
+     "blocked": false,
+     "detail": "1 lift call(s) from SUP-03. Lifted off the wire: token"
+    },
+    "T11": {
+     "blocked": false,
+     "detail": "1 lift call(s) from a message delivered 120 s late"
+    },
+    "T12": {
+     "blocked": false,
+     "detail": "Robot accepted a forged answer: edit, replay, swap"
+    },
+    "T13": {
+     "blocked": false,
+     "detail": "Robot accepted the attacker's answer"
+    },
+    "T14": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 420 frames as overloaded",
+     "retainedPct": 10
+    },
+    "T15": {
+     "blocked": false,
+     "detail": "Nothing to decrypt: the calls were recorded in clear"
+    },
+    "T16": {
+     "blocked": false,
+     "detail": "Undetected: edit and cut of the log"
+    },
+    "T17": {
+     "blocked": false,
+     "detail": "The private marker is stored on the lift side, sent as: extra field, request ID"
+    },
+    "T18": {
+     "blocked": false,
+     "detail": "1 lift call(s) forwarded on 60 s old status"
+    },
+    "T19": {
+     "blocked": false,
+     "detail": "1 lift call(s) with no robot seen at the lift"
+    },
+    "T20": {
+     "blocked": false,
+     "detail": "1 lift call(s) on a grant with no order behind it, 0 on re-issued grants naming another robot's key"
+    },
+    "T21": {
+     "blocked": false,
+     "detail": "Frame timing and sender show when RX-01 called"
+    },
+    "T22": {
+     "blocked": true,
+     "detail": "RX-01's next call was allowed after both attempts"
+    },
+    "T23": {
+     "blocked": false,
+     "detail": "The fleet manager handles in clear: trip, floor, destination"
+    },
+    "T24": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 420 frames as overloaded",
+     "retainedPct": 10
+    },
+    "T25": {
+     "blocked": false,
+     "detail": "Robot accepted: changed destination to BASEMENT; earlier mission replayed inside its time window to LOADING-DOCK; invented mission to BASEMENT; old mission replayed to LOADING-DOCK; another robot's mission to LOADING-DOCK"
+    },
+    "T26": {
+     "blocked": true,
+     "detail": "1 lift call(s) from 50 attempts by the fleet manager"
+    },
+    "T27": {
+     "blocked": false,
+     "detail": "Robot deliveries stop. The lift received 0 calls and stays free for staff. Fallback: porter"
+    },
+    "T28": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 420 frames as overloaded",
+     "retainedPct": 10
+    },
+    "T29": {
+     "blocked": false,
+     "detail": "1 lift call(s) through the retired fleet manager"
+    }
+   },
+   "legit": {
+    "L01": {
+     "pass": true,
+     "detail": "allow, 1 lift call(s)"
+    },
+    "L02": {
+     "pass": true,
+     "detail": "allow, 1 lift call(s)"
+    },
+    "L03": {
+     "pass": true,
+     "detail": "allow after reconnect, 2 lift call(s)"
+    },
+    "L04": {
+     "pass": true,
+     "detail": "allow and allow, 2 lift call(s)"
+    },
+    "L05": {
+     "pass": true,
+     "detail": "allow with the new key, 2 lift call(s)"
+    },
+    "L06": {
+     "pass": true,
+     "detail": "Last answer allow after 0 holds, 1 lift call(s)"
+    },
+    "L07": {
+     "pass": true,
+     "detail": "allow after the replacement, 2 lift call(s)"
+    },
+    "L08": {
+     "pass": true,
+     "detail": "Accepted, destination WARD-B"
+    },
+    "L09": {
+     "pass": true,
+     "detail": "15 of 15 simultaneous calls allowed, 15 lift call(s)"
+    }
+   },
+   "cost": {
+    "bytesPerCall": 802,
+    "setupBytes": 0,
+    "msPerCall": 0.07,
+    "calls": 201
+   },
+   "exposure": {
+    "Network observer": {
+     "patient": true,
+     "order": true,
+     "ward": false,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    },
+    "Fleet manager": {
+     "patient": true,
+     "order": true,
+     "ward": true,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    },
+    "Lift adapter records": {
+     "patient": true,
+     "order": true,
+     "ward": false,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    },
+    "Lift controller": {
+     "patient": false,
+     "order": false,
+     "ward": false,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    }
+   },
+   "summary": {
+    "blocked": 8,
+    "of": 23,
+    "limitsBlocked": 0,
+    "limits": 6,
+    "legitPassed": 9,
+    "legitOf": 9
+   }
+  },
+  "D": {
+   "attacks": {
+    "T01": {
+     "blocked": false,
+     "detail": "Read from the wire: trip, floor, private marker"
+    },
+    "T02": {
+     "blocked": true,
+     "detail": "0 lift call(s) from a device with no hospital credentials"
+    },
+    "T03": {
+     "blocked": true,
+     "detail": "0 extra lift call(s) after replaying 2 recorded frame(s), verbatim and renamed"
+    },
+    "T04": {
+     "blocked": true,
+     "detail": "0 lift call(s) for the attacker's floor"
+    },
+    "T05": {
+     "blocked": true,
+     "detail": "0 lift call(s) in RX-01's name from SUP-03"
+    },
+    "T06": {
+     "blocked": false,
+     "detail": "1 lift call(s) for a robot with no trip"
+    },
+    "T07": {
+     "blocked": true,
+     "detail": "0 lift call(s) the robot never made"
+    },
+    "T08": {
+     "blocked": false,
+     "detail": "1 lift call(s) for L1"
+    },
+    "T09": {
+     "blocked": true,
+     "detail": "0 lift call(s) from a revoked robot"
+    },
+    "T10": {
+     "blocked": true,
+     "detail": "0 lift call(s) from SUP-03. Lifted off the wire: cert"
+    },
+    "T11": {
+     "blocked": true,
+     "detail": "0 lift call(s) from a message delivered 120 s late"
+    },
+    "T12": {
+     "blocked": true,
+     "detail": "0 of 3 forged answers accepted by the robot"
+    },
+    "T13": {
+     "blocked": true,
+     "detail": "Robot refused the answer: answer is not from the lift adapter"
+    },
+    "T14": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 420 frames as overloaded",
+     "retainedPct": 10
+    },
+    "T15": {
+     "blocked": false,
+     "detail": "Nothing to decrypt: the calls were recorded in clear"
+    },
+    "T16": {
+     "blocked": false,
+     "detail": "Undetected: edit and cut of the log"
+    },
+    "T17": {
+     "blocked": false,
+     "detail": "The private marker is stored on the lift side, sent as: extra field, request ID"
+    },
+    "T18": {
+     "blocked": false,
+     "detail": "1 lift call(s) forwarded on 60 s old status"
+    },
+    "T19": {
+     "blocked": false,
+     "detail": "1 lift call(s) with no robot seen at the lift"
+    },
+    "T20": {
+     "blocked": false,
+     "detail": "1 lift call(s) on a grant with no order behind it, 0 on re-issued grants naming another robot's key"
+    },
+    "T21": {
+     "blocked": false,
+     "detail": "Frame timing and sender show when RX-01 called"
+    },
+    "T22": {
+     "blocked": true,
+     "detail": "RX-01's next call was allowed after both attempts"
+    },
+    "T23": {
+     "blocked": false,
+     "detail": "The fleet manager handles in clear: trip, floor, destination"
+    },
+    "T24": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 420 frames as overloaded",
+     "retainedPct": 10
+    },
+    "T25": {
+     "blocked": false,
+     "detail": "Robot accepted: changed destination to BASEMENT; earlier mission replayed inside its time window to LOADING-DOCK; invented mission to BASEMENT; old mission replayed to LOADING-DOCK; another robot's mission to LOADING-DOCK"
+    },
+    "T26": {
+     "blocked": true,
+     "detail": "0 lift call(s) from 50 attempts by the fleet manager"
+    },
+    "T27": {
+     "blocked": false,
+     "detail": "Robot deliveries stop. The lift received 0 calls and stays free for staff. Fallback: porter"
+    },
+    "T28": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 420 frames as overloaded",
+     "retainedPct": 10
+    },
+    "T29": {
+     "blocked": true,
+     "detail": "0 lift call(s) through the retired fleet manager"
+    }
+   },
+   "legit": {
+    "L01": {
+     "pass": true,
+     "detail": "allow, 1 lift call(s)"
+    },
+    "L02": {
+     "pass": true,
+     "detail": "allow, 1 lift call(s)"
+    },
+    "L03": {
+     "pass": true,
+     "detail": "allow after reconnect, 2 lift call(s)"
+    },
+    "L04": {
+     "pass": true,
+     "detail": "allow and allow, 2 lift call(s)"
+    },
+    "L05": {
+     "pass": true,
+     "detail": "allow with the new key, 2 lift call(s)"
+    },
+    "L06": {
+     "pass": true,
+     "detail": "Last answer allow after 0 holds, 1 lift call(s)"
+    },
+    "L07": {
+     "pass": true,
+     "detail": "allow after the replacement, 2 lift call(s)"
+    },
+    "L08": {
+     "pass": true,
+     "detail": "Accepted, destination WARD-B"
+    },
+    "L09": {
+     "pass": true,
+     "detail": "15 of 15 simultaneous calls allowed, 15 lift call(s)"
+    }
+   },
+   "cost": {
+    "bytesPerCall": 2236,
+    "setupBytes": 0,
+    "msPerCall": 3.09,
+    "calls": 201
+   },
+   "exposure": {
+    "Network observer": {
+     "patient": true,
+     "order": true,
+     "ward": false,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    },
+    "Fleet manager": {
+     "patient": true,
+     "order": true,
+     "ward": true,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    },
+    "Lift adapter records": {
+     "patient": true,
+     "order": true,
+     "ward": false,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    },
+    "Lift controller": {
+     "patient": false,
+     "order": false,
+     "ward": false,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    }
+   },
+   "summary": {
+    "blocked": 13,
+    "of": 23,
+    "limitsBlocked": 0,
+    "limits": 6,
+    "legitPassed": 9,
+    "legitOf": 9
+   }
+  },
+  "E": {
+   "attacks": {
+    "T01": {
+     "blocked": true,
+     "detail": "Nothing readable on the wire"
+    },
+    "T02": {
+     "blocked": true,
+     "detail": "0 lift call(s) from a device with no hospital credentials"
+    },
+    "T03": {
+     "blocked": true,
+     "detail": "0 extra lift call(s) after replaying 6 recorded frame(s), verbatim and renamed"
+    },
+    "T04": {
+     "blocked": true,
+     "detail": "0 lift call(s) for the attacker's floor"
+    },
+    "T05": {
+     "blocked": true,
+     "detail": "0 lift call(s) in RX-01's name from SUP-03"
+    },
+    "T06": {
+     "blocked": false,
+     "detail": "1 lift call(s) for a robot with no trip"
+    },
+    "T07": {
+     "blocked": false,
+     "detail": "1 lift call(s) the robot never made"
+    },
+    "T08": {
+     "blocked": false,
+     "detail": "1 lift call(s) for L1"
+    },
+    "T09": {
+     "blocked": true,
+     "detail": "0 lift call(s) from a revoked robot"
+    },
+    "T10": {
+     "blocked": true,
+     "detail": "0 lift call(s) from SUP-03. Lifted off the wire: nothing"
+    },
+    "T11": {
+     "blocked": false,
+     "detail": "1 lift call(s) from a message delivered 120 s late"
+    },
+    "T12": {
+     "blocked": true,
+     "detail": "0 of 3 forged answers accepted by the robot"
+    },
+    "T13": {
+     "blocked": true,
+     "detail": "Robot refused the answer: no secure channel or no answer"
+    },
+    "T14": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 435 frames as overloaded",
+     "retainedPct": 10
+    },
+    "T15": {
+     "blocked": true,
+     "detail": "Long-term keys sign only. No key-agreement secret or exportable session key was kept"
+    },
+    "T16": {
+     "blocked": false,
+     "detail": "Undetected: edit and cut of the log"
+    },
+    "T17": {
+     "blocked": false,
+     "detail": "The private marker is stored on the lift side, sent as: extra field, request ID"
+    },
+    "T18": {
+     "blocked": false,
+     "detail": "1 lift call(s) forwarded on 60 s old status"
+    },
+    "T19": {
+     "blocked": false,
+     "detail": "1 lift call(s) with no robot seen at the lift"
+    },
+    "T20": {
+     "blocked": false,
+     "detail": "1 lift call(s) on a grant with no order behind it, 0 on re-issued grants naming another robot's key"
+    },
+    "T21": {
+     "blocked": false,
+     "detail": "Frame timing and sender show when RX-01 called"
+    },
+    "T22": {
+     "blocked": true,
+     "detail": "RX-01's next call was allowed after both attempts"
+    },
+    "T23": {
+     "blocked": false,
+     "detail": "The fleet manager handles in clear: trip, floor, destination"
+    },
+    "T24": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 436 frames as overloaded",
+     "retainedPct": 10
+    },
+    "T25": {
+     "blocked": false,
+     "detail": "Robot accepted: changed destination to BASEMENT; earlier mission replayed inside its time window to LOADING-DOCK; invented mission to BASEMENT; old mission replayed to LOADING-DOCK; another robot's mission to LOADING-DOCK"
+    },
+    "T26": {
+     "blocked": false,
+     "detail": "33 lift call(s) from 50 attempts by the fleet manager"
+    },
+    "T27": {
+     "blocked": false,
+     "detail": "Robot deliveries stop. The lift received 0 calls and stays free for staff. Fallback: porter"
+    },
+    "T28": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 436 frames as overloaded",
+     "retainedPct": 10
+    },
+    "T29": {
+     "blocked": true,
+     "detail": "0 lift call(s) through the retired fleet manager"
+    }
+   },
+   "legit": {
+    "L01": {
+     "pass": true,
+     "detail": "allow, 1 lift call(s)"
+    },
+    "L02": {
+     "pass": true,
+     "detail": "allow, 1 lift call(s)"
+    },
+    "L03": {
+     "pass": true,
+     "detail": "allow after reconnect, 2 lift call(s)"
+    },
+    "L04": {
+     "pass": true,
+     "detail": "allow and allow, 2 lift call(s)"
+    },
+    "L05": {
+     "pass": true,
+     "detail": "allow with the new key, 2 lift call(s)"
+    },
+    "L06": {
+     "pass": true,
+     "detail": "Last answer allow after 0 holds, 1 lift call(s)"
+    },
+    "L07": {
+     "pass": true,
+     "detail": "allow after the replacement, 2 lift call(s)"
+    },
+    "L08": {
+     "pass": true,
+     "detail": "Accepted, destination WARD-B"
+    },
+    "L09": {
+     "pass": true,
+     "detail": "15 of 15 simultaneous calls allowed, 15 lift call(s)"
+    }
+   },
+   "cost": {
+    "bytesPerCall": 934,
+    "setupBytes": 1770,
+    "msPerCall": 2.23,
+    "calls": 201
+   },
+   "exposure": {
+    "Network observer": {
+     "patient": false,
+     "order": false,
+     "ward": false,
+     "trip": false,
+     "floor": false,
+     "robot": true
+    },
+    "Fleet manager": {
+     "patient": true,
+     "order": true,
+     "ward": true,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    },
+    "Lift adapter records": {
+     "patient": true,
+     "order": true,
+     "ward": false,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    },
+    "Lift controller": {
+     "patient": false,
+     "order": false,
+     "ward": false,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    }
+   },
+   "summary": {
+    "blocked": 12,
+    "of": 23,
+    "limitsBlocked": 0,
+    "limits": 6,
+    "legitPassed": 9,
+    "legitOf": 9
+   }
+  },
+  "F": {
+   "attacks": {
+    "T01": {
+     "blocked": false,
+     "detail": "Read from the wire: trip, floor, private marker"
+    },
+    "T02": {
+     "blocked": true,
+     "detail": "0 lift call(s) from a device with no hospital credentials"
+    },
+    "T03": {
+     "blocked": true,
+     "detail": "0 extra lift call(s) after replaying 2 recorded frame(s), verbatim and renamed"
+    },
+    "T04": {
+     "blocked": true,
+     "detail": "0 lift call(s) for the attacker's floor"
+    },
+    "T05": {
+     "blocked": true,
+     "detail": "0 lift call(s) in RX-01's name from SUP-03"
+    },
+    "T06": {
+     "blocked": true,
+     "detail": "0 lift call(s) for a robot with no trip"
+    },
+    "T07": {
+     "blocked": true,
+     "detail": "0 lift call(s) the robot never made"
+    },
+    "T08": {
+     "blocked": true,
+     "detail": "0 lift call(s) for L1"
+    },
+    "T09": {
+     "blocked": true,
+     "detail": "0 lift call(s) from a revoked robot"
+    },
+    "T10": {
+     "blocked": true,
+     "detail": "0 lift call(s) from SUP-03. Lifted off the wire: cap, cert"
+    },
+    "T11": {
+     "blocked": true,
+     "detail": "0 lift call(s) from a message delivered 120 s late"
+    },
+    "T12": {
+     "blocked": true,
+     "detail": "0 of 3 forged answers accepted by the robot"
+    },
+    "T13": {
+     "blocked": true,
+     "detail": "Robot refused the answer: answer is not from the lift adapter"
+    },
+    "T14": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 420 frames as overloaded",
+     "retainedPct": 10
+    },
+    "T15": {
+     "blocked": false,
+     "detail": "Nothing to decrypt: the calls were recorded in clear"
+    },
+    "T16": {
+     "blocked": false,
+     "detail": "Undetected: edit and cut of the log"
+    },
+    "T17": {
+     "blocked": false,
+     "detail": "The private marker is stored on the lift side, sent as: extra field, request ID"
+    },
+    "T18": {
+     "blocked": false,
+     "detail": "1 lift call(s) forwarded on 60 s old status"
+    },
+    "T19": {
+     "blocked": false,
+     "detail": "1 lift call(s) with no robot seen at the lift"
+    },
+    "T20": {
+     "blocked": false,
+     "detail": "1 lift call(s) on a grant with no order behind it, 0 on re-issued grants naming another robot's key"
+    },
+    "T21": {
+     "blocked": false,
+     "detail": "Frame timing and sender show when RX-01 called"
+    },
+    "T22": {
+     "blocked": true,
+     "detail": "RX-01's next call was allowed after both attempts"
+    },
+    "T23": {
+     "blocked": false,
+     "detail": "The fleet manager handles in clear: trip, floor, destination"
+    },
+    "T24": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 420 frames as overloaded",
+     "retainedPct": 10
+    },
+    "T25": {
+     "blocked": false,
+     "detail": "Robot accepted: changed destination to BASEMENT; earlier mission replayed inside its time window to LOADING-DOCK; invented mission to BASEMENT; old mission replayed to LOADING-DOCK; another robot's mission to LOADING-DOCK"
+    },
+    "T26": {
+     "blocked": true,
+     "detail": "0 lift call(s) from 50 attempts by the fleet manager"
+    },
+    "T27": {
+     "blocked": false,
+     "detail": "Robot deliveries stop. The lift received 0 calls and stays free for staff. Fallback: porter"
+    },
+    "T28": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 420 frames as overloaded",
+     "retainedPct": 10
+    },
+    "T29": {
+     "blocked": true,
+     "detail": "0 lift call(s) through the retired fleet manager"
+    }
+   },
+   "legit": {
+    "L01": {
+     "pass": true,
+     "detail": "allow, 1 lift call(s)"
+    },
+    "L02": {
+     "pass": true,
+     "detail": "allow, 1 lift call(s)"
+    },
+    "L03": {
+     "pass": true,
+     "detail": "allow after reconnect, 2 lift call(s)"
+    },
+    "L04": {
+     "pass": true,
+     "detail": "allow and allow, 2 lift call(s)"
+    },
+    "L05": {
+     "pass": true,
+     "detail": "allow with the new key, 2 lift call(s)"
+    },
+    "L06": {
+     "pass": true,
+     "detail": "Last answer allow after 0 holds, 1 lift call(s)"
+    },
+    "L07": {
+     "pass": true,
+     "detail": "allow after the replacement, 2 lift call(s)"
+    },
+    "L08": {
+     "pass": true,
+     "detail": "Accepted, destination WARD-B"
+    },
+    "L09": {
+     "pass": true,
+     "detail": "15 of 15 simultaneous calls allowed, 15 lift call(s)"
+    }
+   },
+   "cost": {
+    "bytesPerCall": 3394,
+    "setupBytes": 0,
+    "msPerCall": 2.91,
+    "calls": 201
+   },
+   "exposure": {
+    "Network observer": {
+     "patient": true,
+     "order": true,
+     "ward": false,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    },
+    "Fleet manager": {
+     "patient": true,
+     "order": true,
+     "ward": true,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    },
+    "Lift adapter records": {
+     "patient": true,
+     "order": true,
+     "ward": false,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    },
+    "Lift controller": {
+     "patient": false,
+     "order": false,
+     "ward": false,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    }
+   },
+   "summary": {
+    "blocked": 15,
+    "of": 23,
+    "limitsBlocked": 0,
+    "limits": 6,
+    "legitPassed": 9,
+    "legitOf": 9
+   }
+  },
+  "G": {
+   "attacks": {
+    "T01": {
+     "blocked": true,
+     "detail": "Nothing readable on the wire"
+    },
+    "T02": {
+     "blocked": true,
+     "detail": "0 lift call(s) from a device with no hospital credentials"
+    },
+    "T03": {
+     "blocked": true,
+     "detail": "0 extra lift call(s) after replaying 6 recorded frame(s), verbatim and renamed"
+    },
+    "T04": {
+     "blocked": true,
+     "detail": "0 lift call(s) for the attacker's floor"
+    },
+    "T05": {
+     "blocked": true,
+     "detail": "0 lift call(s) in RX-01's name from SUP-03"
+    },
+    "T06": {
+     "blocked": true,
+     "detail": "0 lift call(s) for a robot with no trip"
+    },
+    "T07": {
+     "blocked": true,
+     "detail": "0 lift call(s) the robot never made"
+    },
+    "T08": {
+     "blocked": true,
+     "detail": "0 lift call(s) for L1"
+    },
+    "T09": {
+     "blocked": true,
+     "detail": "0 lift call(s) from a revoked robot"
+    },
+    "T10": {
+     "blocked": true,
+     "detail": "0 lift call(s) from SUP-03. Lifted off the wire: nothing"
+    },
+    "T11": {
+     "blocked": true,
+     "detail": "0 lift call(s) from a message delivered 120 s late"
+    },
+    "T12": {
+     "blocked": true,
+     "detail": "0 of 3 forged answers accepted by the robot"
+    },
+    "T13": {
+     "blocked": true,
+     "detail": "Robot refused the answer: no secure channel or no answer"
+    },
+    "T14": {
+     "blocked": true,
+     "detail": "20 of 20 legitimate calls served (100%), adapter refused 0 frames as overloaded",
+     "retainedPct": 100
+    },
+    "T15": {
+     "blocked": true,
+     "detail": "Long-term keys sign only. No key-agreement secret or exportable session key was kept"
+    },
+    "T16": {
+     "blocked": true,
+     "detail": "Signatures exposed the edit, and the head held by the outside witness exposed the cut"
+    },
+    "T17": {
+     "blocked": true,
+     "detail": "The private marker was not stored on the lift side"
+    },
+    "T18": {
+     "blocked": true,
+     "detail": "0 lift call(s) forwarded on 60 s old status"
+    },
+    "T19": {
+     "blocked": true,
+     "detail": "0 lift call(s) with no robot seen at the lift"
+    },
+    "T20": {
+     "blocked": false,
+     "detail": "1 lift call(s) on a grant with no order behind it, 0 on re-issued grants naming another robot's key"
+    },
+    "T21": {
+     "blocked": false,
+     "detail": "Frame timing and sender show when RX-01 called"
+    },
+    "T22": {
+     "blocked": true,
+     "detail": "RX-01's next call was allowed after both attempts"
+    },
+    "T23": {
+     "blocked": false,
+     "detail": "The fleet manager handles in clear: trip, floor, destination"
+    },
+    "T24": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 436 frames as overloaded",
+     "retainedPct": 10
+    },
+    "T25": {
+     "blocked": false,
+     "detail": "Robot accepted: changed destination to BASEMENT; earlier mission replayed inside its time window to LOADING-DOCK; invented mission to BASEMENT; old mission replayed to LOADING-DOCK; another robot's mission to LOADING-DOCK"
+    },
+    "T26": {
+     "blocked": true,
+     "detail": "0 lift call(s) from 50 attempts by the fleet manager"
+    },
+    "T27": {
+     "blocked": false,
+     "detail": "Robot deliveries stop. The lift received 0 calls and stays free for staff. Fallback: porter"
+    },
+    "T28": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 436 frames as overloaded",
+     "retainedPct": 10
+    },
+    "T29": {
+     "blocked": true,
+     "detail": "0 lift call(s) through the retired fleet manager"
+    }
+   },
+   "legit": {
+    "L01": {
+     "pass": true,
+     "detail": "allow, 1 lift call(s)"
+    },
+    "L02": {
+     "pass": true,
+     "detail": "allow, 1 lift call(s)"
+    },
+    "L03": {
+     "pass": true,
+     "detail": "allow after reconnect, 2 lift call(s)"
+    },
+    "L04": {
+     "pass": true,
+     "detail": "allow and allow, 2 lift call(s)"
+    },
+    "L05": {
+     "pass": true,
+     "detail": "allow with the new key, 2 lift call(s)"
+    },
+    "L06": {
+     "pass": true,
+     "detail": "Last answer allow after 5 holds, 1 lift call(s)"
+    },
+    "L07": {
+     "pass": true,
+     "detail": "allow after the replacement, 2 lift call(s)"
+    },
+    "L08": {
+     "pass": true,
+     "detail": "Accepted, destination WARD-B"
+    },
+    "L09": {
+     "pass": true,
+     "detail": "15 of 15 simultaneous calls allowed, 15 lift call(s)"
+    }
+   },
+   "cost": {
+    "bytesPerCall": 4728,
+    "setupBytes": 1770,
+    "msPerCall": 5.73,
+    "calls": 201
+   },
+   "exposure": {
+    "Network observer": {
+     "patient": false,
+     "order": false,
+     "ward": false,
+     "trip": false,
+     "floor": false,
+     "robot": true
+    },
+    "Fleet manager": {
+     "patient": false,
+     "order": false,
+     "ward": true,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    },
+    "Lift adapter records": {
+     "patient": false,
+     "order": false,
+     "ward": false,
+     "trip": true,
+     "floor": false,
+     "robot": true
+    },
+    "Lift controller": {
+     "patient": false,
+     "order": false,
+     "ward": false,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    }
+   },
+   "summary": {
+    "blocked": 22,
+    "of": 23,
+    "limitsBlocked": 0,
+    "limits": 6,
+    "legitPassed": 9,
+    "legitOf": 9
+   }
+  },
+  "H": {
+   "attacks": {
+    "T01": {
+     "blocked": true,
+     "detail": "Nothing readable on the wire"
+    },
+    "T02": {
+     "blocked": true,
+     "detail": "0 lift call(s) from a device with no hospital credentials"
+    },
+    "T03": {
+     "blocked": true,
+     "detail": "0 extra lift call(s) after replaying 6 recorded frame(s), verbatim and renamed"
+    },
+    "T04": {
+     "blocked": true,
+     "detail": "0 lift call(s) for the attacker's floor"
+    },
+    "T05": {
+     "blocked": true,
+     "detail": "0 lift call(s) in RX-01's name from SUP-03"
+    },
+    "T06": {
+     "blocked": true,
+     "detail": "0 lift call(s) for a robot with no trip"
+    },
+    "T07": {
+     "blocked": true,
+     "detail": "0 lift call(s) the robot never made"
+    },
+    "T08": {
+     "blocked": true,
+     "detail": "0 lift call(s) for L1"
+    },
+    "T09": {
+     "blocked": true,
+     "detail": "0 lift call(s) from a revoked robot"
+    },
+    "T10": {
+     "blocked": true,
+     "detail": "0 lift call(s) from SUP-03. Lifted off the wire: nothing"
+    },
+    "T11": {
+     "blocked": true,
+     "detail": "0 lift call(s) from a message delivered 120 s late"
+    },
+    "T12": {
+     "blocked": true,
+     "detail": "0 of 3 forged answers accepted by the robot"
+    },
+    "T13": {
+     "blocked": true,
+     "detail": "Robot refused the answer: no secure channel or no answer"
+    },
+    "T14": {
+     "blocked": true,
+     "detail": "20 of 20 legitimate calls served (100%), adapter refused 0 frames as overloaded",
+     "retainedPct": 100
+    },
+    "T15": {
+     "blocked": true,
+     "detail": "Long-term keys sign only. No key-agreement secret or exportable session key was kept"
+    },
+    "T16": {
+     "blocked": true,
+     "detail": "Signatures exposed the edit, and the head held by the outside witness exposed the cut"
+    },
+    "T17": {
+     "blocked": true,
+     "detail": "The private marker was not stored on the lift side"
+    },
+    "T18": {
+     "blocked": true,
+     "detail": "0 lift call(s) forwarded on 60 s old status"
+    },
+    "T19": {
+     "blocked": true,
+     "detail": "0 lift call(s) with no robot seen at the lift"
+    },
+    "T20": {
+     "blocked": true,
+     "detail": "0 lift call(s) on a grant with no order behind it, 0 on re-issued grants naming another robot's key"
+    },
+    "T21": {
+     "blocked": false,
+     "detail": "Frame timing and sender show when RX-01 called"
+    },
+    "T22": {
+     "blocked": true,
+     "detail": "RX-01's next call was allowed after both attempts"
+    },
+    "T23": {
+     "blocked": false,
+     "detail": "The fleet manager handles in clear: trip, floor, destination"
+    },
+    "T24": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 436 frames as overloaded",
+     "retainedPct": 10
+    },
+    "T25": {
+     "blocked": false,
+     "detail": "Robot accepted: changed destination to BASEMENT; earlier mission replayed inside its time window to LOADING-DOCK; invented mission to BASEMENT; old mission replayed to LOADING-DOCK; another robot's mission to LOADING-DOCK"
+    },
+    "T26": {
+     "blocked": true,
+     "detail": "0 lift call(s) from 50 attempts by the fleet manager"
+    },
+    "T27": {
+     "blocked": false,
+     "detail": "Robot deliveries stop. The lift received 0 calls and stays free for staff. Fallback: porter"
+    },
+    "T28": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 436 frames as overloaded",
+     "retainedPct": 10
+    },
+    "T29": {
+     "blocked": true,
+     "detail": "0 lift call(s) through the retired fleet manager"
+    }
+   },
+   "legit": {
+    "L01": {
+     "pass": true,
+     "detail": "allow, 1 lift call(s)"
+    },
+    "L02": {
+     "pass": true,
+     "detail": "allow, 1 lift call(s)"
+    },
+    "L03": {
+     "pass": true,
+     "detail": "allow after reconnect, 2 lift call(s)"
+    },
+    "L04": {
+     "pass": true,
+     "detail": "allow and allow, 2 lift call(s)"
+    },
+    "L05": {
+     "pass": true,
+     "detail": "allow with the new key, 2 lift call(s)"
+    },
+    "L06": {
+     "pass": true,
+     "detail": "Last answer allow after 5 holds, 1 lift call(s)"
+    },
+    "L07": {
+     "pass": true,
+     "detail": "allow after the replacement, 2 lift call(s)"
+    },
+    "L08": {
+     "pass": true,
+     "detail": "Accepted, destination WARD-B"
+    },
+    "L09": {
+     "pass": true,
+     "detail": "15 of 15 simultaneous calls allowed, 15 lift call(s)"
+    }
+   },
+   "cost": {
+    "bytesPerCall": 5824,
+    "setupBytes": 1770,
+    "msPerCall": 7.08,
+    "calls": 201
+   },
+   "exposure": {
+    "Network observer": {
+     "patient": false,
+     "order": false,
+     "ward": false,
+     "trip": false,
+     "floor": false,
+     "robot": true
+    },
+    "Fleet manager": {
+     "patient": false,
+     "order": false,
+     "ward": true,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    },
+    "Lift adapter records": {
+     "patient": false,
+     "order": false,
+     "ward": false,
+     "trip": true,
+     "floor": false,
+     "robot": true
+    },
+    "Lift controller": {
+     "patient": false,
+     "order": false,
+     "ward": false,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    }
+   },
+   "summary": {
+    "blocked": 22,
+    "of": 23,
+    "limitsBlocked": 1,
+    "limits": 6,
+    "legitPassed": 9,
+    "legitOf": 9
+   }
+  },
+  "I": {
+   "attacks": {
+    "T01": {
+     "blocked": true,
+     "detail": "Nothing readable on the wire"
+    },
+    "T02": {
+     "blocked": true,
+     "detail": "0 lift call(s) from a device with no hospital credentials"
+    },
+    "T03": {
+     "blocked": true,
+     "detail": "0 extra lift call(s) after replaying 10 recorded frame(s), verbatim and renamed"
+    },
+    "T04": {
+     "blocked": true,
+     "detail": "0 lift call(s) for the attacker's floor"
+    },
+    "T05": {
+     "blocked": true,
+     "detail": "0 lift call(s) in RX-01's name from SUP-03"
+    },
+    "T06": {
+     "blocked": true,
+     "detail": "0 lift call(s) for a robot with no trip"
+    },
+    "T07": {
+     "blocked": true,
+     "detail": "0 lift call(s) the robot never made"
+    },
+    "T08": {
+     "blocked": true,
+     "detail": "0 lift call(s) for L1"
+    },
+    "T09": {
+     "blocked": true,
+     "detail": "0 lift call(s) from a revoked robot"
+    },
+    "T10": {
+     "blocked": true,
+     "detail": "0 lift call(s) from SUP-03. Lifted off the wire: nothing"
+    },
+    "T11": {
+     "blocked": true,
+     "detail": "0 lift call(s) from a message delivered 120 s late"
+    },
+    "T12": {
+     "blocked": true,
+     "detail": "0 of 3 forged answers accepted by the robot"
+    },
+    "T13": {
+     "blocked": true,
+     "detail": "Robot refused the answer: no secure channel or no answer"
+    },
+    "T14": {
+     "blocked": true,
+     "detail": "20 of 20 legitimate calls served (100%), adapter refused 0 frames as overloaded",
+     "retainedPct": 100
+    },
+    "T15": {
+     "blocked": true,
+     "detail": "Long-term keys sign only. No key-agreement secret or exportable session key was kept"
+    },
+    "T16": {
+     "blocked": true,
+     "detail": "Signatures exposed the edit, and the head held by the outside witness exposed the cut"
+    },
+    "T17": {
+     "blocked": true,
+     "detail": "The private marker was not stored on the lift side"
+    },
+    "T18": {
+     "blocked": true,
+     "detail": "0 lift call(s) forwarded on 60 s old status"
+    },
+    "T19": {
+     "blocked": true,
+     "detail": "0 lift call(s) with no robot seen at the lift"
+    },
+    "T20": {
+     "blocked": true,
+     "detail": "0 lift call(s) on a grant with no order behind it, 0 on re-issued grants naming another robot's key"
+    },
+    "T21": {
+     "blocked": false,
+     "detail": "Frame timing and sender show when RX-01 called"
+    },
+    "T22": {
+     "blocked": true,
+     "detail": "RX-01's next call was allowed after both attempts"
+    },
+    "T23": {
+     "blocked": true,
+     "detail": "The fleet manager carried the mission and the call and could read neither"
+    },
+    "T24": {
+     "blocked": true,
+     "detail": "20 of 20 legitimate calls served (100%), adapter refused 0 frames as overloaded",
+     "retainedPct": 100
+    },
+    "T25": {
+     "blocked": true,
+     "detail": "Robot refused all 5 false missions"
+    },
+    "T26": {
+     "blocked": true,
+     "detail": "0 lift call(s) from 50 attempts by the fleet manager"
+    },
+    "T27": {
+     "blocked": false,
+     "detail": "Robot deliveries stop. The lift received 0 calls and stays free for staff. Fallback: porter"
+    },
+    "T28": {
+     "blocked": false,
+     "detail": "2 of 20 legitimate calls served (10%), adapter refused 440 frames as overloaded",
+     "retainedPct": 10
+    },
+    "T29": {
+     "blocked": true,
+     "detail": "0 lift call(s) through the retired fleet manager"
+    }
+   },
+   "legit": {
+    "L01": {
+     "pass": true,
+     "detail": "allow, 1 lift call(s)"
+    },
+    "L02": {
+     "pass": true,
+     "detail": "allow, 1 lift call(s)"
+    },
+    "L03": {
+     "pass": true,
+     "detail": "allow after reconnect, 2 lift call(s)"
+    },
+    "L04": {
+     "pass": true,
+     "detail": "allow and allow, 2 lift call(s)"
+    },
+    "L05": {
+     "pass": true,
+     "detail": "allow with the new key, 2 lift call(s)"
+    },
+    "L06": {
+     "pass": true,
+     "detail": "Last answer allow after 5 holds, 1 lift call(s)"
+    },
+    "L07": {
+     "pass": true,
+     "detail": "allow after the replacement, 2 lift call(s)"
+    },
+    "L08": {
+     "pass": true,
+     "detail": "Accepted, destination WARD-B"
+    },
+    "L09": {
+     "pass": true,
+     "detail": "15 of 15 simultaneous calls allowed, 15 lift call(s)"
+    }
+   },
+   "cost": {
+    "bytesPerCall": 19018,
+    "setupBytes": 5112,
+    "msPerCall": 10.89,
+    "calls": 201
+   },
+   "exposure": {
+    "Network observer": {
+     "patient": false,
+     "order": false,
+     "ward": false,
+     "trip": false,
+     "floor": false,
+     "robot": true
+    },
+    "Fleet manager": {
+     "patient": false,
+     "order": false,
+     "ward": false,
+     "trip": false,
+     "floor": false,
+     "robot": true
+    },
+    "Lift adapter records": {
+     "patient": false,
+     "order": false,
+     "ward": false,
+     "trip": true,
+     "floor": false,
+     "robot": true
+    },
+    "Lift controller": {
+     "patient": false,
+     "order": false,
+     "ward": false,
+     "trip": true,
+     "floor": true,
+     "robot": true
+    }
+   },
+   "summary": {
+    "blocked": 23,
+    "of": 23,
+    "limitsBlocked": 3,
+    "limits": 6,
+    "legitPassed": 9,
+    "legitOf": 9
+   }
+  }
+ },
+ "variants": {
+  "A": {
+   "summary": {
+    "blocked": 4,
+    "of": 23,
+    "limitsBlocked": 0,
+    "limits": 6,
+    "legitPassed": 9,
+    "legitOf": 9
+   },
+   "through": [
+    "T01",
+    "T02",
+    "T03",
+    "T05",
+    "T07",
+    "T09",
+    "T10",
+    "T11",
+    "T12",
+    "T13",
+    "T14",
+    "T15",
+    "T16",
+    "T17",
+    "T18",
+    "T19",
+    "T25",
+    "T26",
+    "T29"
+   ]
+  },
+  "B": {
+   "summary": {
+    "blocked": 6,
+    "of": 23,
+    "limitsBlocked": 0,
+    "limits": 6,
+    "legitPassed": 9,
+    "legitOf": 9
+   },
+   "through": [
+    "T01",
+    "T03",
+    "T05",
+    "T07",
+    "T10",
+    "T11",
+    "T12",
+    "T13",
+    "T14",
+    "T15",
+    "T16",
+    "T17",
+    "T18",
+    "T19",
+    "T25",
+    "T26",
+    "T29"
+   ]
+  },
+  "D": {
+   "summary": {
+    "blocked": 15,
+    "of": 23,
+    "limitsBlocked": 0,
+    "limits": 6,
+    "legitPassed": 9,
+    "legitOf": 9
+   },
+   "through": [
+    "T01",
+    "T14",
+    "T15",
+    "T16",
+    "T17",
+    "T18",
+    "T19",
+    "T25"
+   ]
+  },
+  "E": {
+   "summary": {
+    "blocked": 14,
+    "of": 23,
+    "limitsBlocked": 0,
+    "limits": 6,
+    "legitPassed": 9,
+    "legitOf": 9
+   },
+   "through": [
+    "T07",
+    "T11",
+    "T14",
+    "T16",
+    "T17",
+    "T18",
+    "T19",
+    "T25",
+    "T26"
+   ]
+  }
+ },
+ "decision": {
+  "eligible": [
+   "G",
+   "F",
+   "D",
+   "E",
+   "C",
+   "B",
+   "A"
+  ],
+  "winner": "G",
+  "adopted": "I"
+ }
+}

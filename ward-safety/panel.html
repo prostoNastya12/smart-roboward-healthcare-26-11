@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#103930">
+  <title>May this robot use the lift? · Smart RoboWard</title>
+  <!--WARD_STYLE-->
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to the decision</a>
+  <header class="site-head"><div class="site-inner">
+    <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M5 9h7V5h8v7h7v8h-7v7h-8v-7H5z"/><path d="M9 13v4h7v6m0-14v7h7"/></svg></span><strong>Smart RoboWard</strong></div>
+    <span class="page-links"><!--WARD_LINKS--></span><span class="local-status"><i></i> Local simulation</span>
+  </div></header>
+  <main id="main" tabindex="-1">
+    <section id="view-control">
+      <header class="hero">
+        <p class="eyebrow">Ward safety · the shared lift</p>
+        <h1>May this robot use the lift?</h1>
+        <p class="hero-lede">A pharmacy robot is taking medication to Ward B on floor 2. Pick what happens on the way.</p>
+      </header>
+
+      <h2 class="step-title"><span class="step">1</span>Pick a situation</h2>
+      <div class="situations" id="situations" role="group" aria-label="Situation">
+        <button type="button" data-round="approved" aria-pressed="true"><b>Normal delivery</b><span>Everything is in order</span></button>
+        <button type="button" data-round="unverified" aria-pressed="false"><b>The map changed</b><span>Floor names not confirmed yet</span></button>
+        <button type="button" data-round="forbidden" aria-pressed="false"><b>Wrong floor</b><span>The robot asks for floor 1</span></button>
+        <button type="button" data-round="priority" aria-pressed="false"><b>A patient needs the lift</b><span>Transfers go first</span></button>
+        <button type="button" data-round="roam" aria-pressed="false"><b>Connection drops</b><span>Lift status is out of date</span></button>
+      </div>
+      <select id="round" hidden aria-hidden="true" tabindex="-1"><option value="approved">approved</option><option value="unverified">unverified</option><option value="forbidden">forbidden</option><option value="priority">priority</option><option value="roam">roam</option></select>
+
+      <h2 class="step-title"><span class="step">2</span>The decision</h2>
+      <div class="decision-grid">
+        <article class="verdict" id="verdict" data-type="pending" aria-live="polite">
+          <p class="verdict-label">The lift says</p>
+          <p class="verdict-word" id="verdict-word">Checking…</p>
+          <p class="verdict-why" id="verdict-why"></p>
+          <dl class="verdict-facts">
+            <div><dt>Lift calls</dt><dd id="calls">0</dd></div>
+            <div><dt>Parcel is with</dt><dd id="holder">—</dd></div>
+            <div><dt>Ward receipts</dt><dd id="receipts">0</dd></div>
+          </dl>
+          <p class="next-label" id="next-label"></p>
+          <div id="actions" class="actions"></div>
+          <div id="receipt-actions" class="actions"></div>
+          <p id="action-status" class="action-status" aria-live="polite"></p>
+        </article>
+        <article class="panel map-card">
+          <div class="map-stage"><div class="map-label"><b id="map-level">L1</b><span id="map-title">Ground floor</span></div><span class="map-north" aria-label="North">↑ N</span><svg id="floor-map" viewBox="-31 -27 62 53" role="img" aria-label="Open-RMF clinic plan with live robot positions and pharmacy route"><title>Clinic floor and fleet positions</title><defs>
+          <pattern id="map-grid" width="2" height="2" patternUnits="userSpaceOnUse"><path d="M2 0H0V2" fill="none" stroke="#ccd9ce" stroke-width=".052"/></pattern>
+          </defs><rect x="-31" y="-27" width="62" height="53" fill="url(#map-grid)"/><g id="architecture"></g><g id="lanes"></g><g id="route"></g><g id="stations"></g><g id="units"></g></svg>
+          <div class="map-key"><span><i class="route-key"></i>Planned route</span><span><i class="rx-key"></i>RX-01</span><span><i class="other-key"></i>Other robots</span></div></div>
+          <div class="playback"><button class="primary" id="play">Play</button><button id="reset" title="Start this situation again">Start again</button><output id="clock" aria-label="Simulation time">00:00</output></div>
+        </article>
+      </div>
+
+      <h2 class="step-title"><span class="step">3</span>Why</h2>
+      <ul class="checks" id="checks"></ul>
+
+      <details class="expert">
+        <summary><span class="step">4</span>All the detail<small>every device on the path, the event log, message security and playback controls</small></summary>
+        <div class="expert-row"><label>Floor shown <select id="floor"><option value="auto">Follow RX-01</option><option value="L1">L1 · Ground</option><option value="L2">L2 · Upper</option></select></label><button id="step">Step 1 s</button><button id="decision">To decision</button><label>Speed <select id="speed"><option value="1">1×</option><option value="4">4×</option><option value="8" selected>8×</option><option value="16">16×</option></select></label></div>
+        <div class="detail-grid">
+          <article class="panel"><div class="panel-head"><div><h2>Lift gate facts</h2></div><span id="outcome" class="outcome">Pending</span></div>
+            <div class="gate-content"><p id="gate-reason"></p><dl class="facts"><div><dt>Reported floor</dt><dd id="raw-floor">—</dd></div><div><dt>Map revision</dt><dd id="map-rev">—</dd></div><div><dt>Facilities priority</dt><dd id="priority">—</dd></div><div><dt>Facilities observation</dt><dd id="feed">—</dd></div><div><dt>Lift landing</dt><dd id="landing">—</dd></div><div><dt>Cabin entries</dt><dd id="entries">0</dd></div><div><dt>Journey phase</dt><dd id="phase">—</dd></div></dl>
+            <h3 class="wire-title">Message security <a id="wire-link" href="#">compare the nine approaches</a></h3>
+            <dl class="facts"><div><dt>Channel</dt><dd id="wire-channel">—</dd></div><div><dt>Trip grant</dt><dd id="wire-grant">—</dd></div><div><dt>Decision over the wire</dt><dd id="wire-decision">—</dd></div></dl></div>
+          </article>
+          <article class="panel"><div class="panel-head"><div><h2>Event log</h2></div><span id="event-count" class="meta"></span></div><ol id="events" class="event-list"></ol></article>
+        </div>
+        <article class="topology panel"><div class="topology-title"><h2>Every device on the path</h2><span class="forge"><output id="forge-status" aria-live="polite"></output><button id="forge" type="button">Send a forged order</button></span></div><ol id="topology" class="topology-steps"></ol></article>
+      </details>
+
+      <details class="expert" id="view-study">
+        <summary><span class="step">5</span>Evidence from 10,000 simulated deliveries<small>how often the early warning was right, and where robots actually drive</small></summary>
+        <article class="panel"><div class="panel-head"><div><h2>Detection performance</h2></div><span class="meta" id="mission-count"></span></div><div class="data-pad"><p id="study-description"></p><div id="metrics"></div><p id="study-note" class="footnote"></p></div></article>
+      <article class="panel study-heat"><div class="panel-head"><div><h2>Route heatmap</h2></div><div class="heat-controls"><label>Coverage <select id="heat-coverage"><option value="all">All transitions</option><option value="observed">Observed</option><option value="none">No coverage</option></select></label><label>Floor <select id="heat-floor"><option>L1</option><option>L2</option><option value="cabin">Lift cabin</option></select></label><label>Color by <select id="heat-mode"><option value="missions">Distinct missions</option><option value="seconds">Exposure time</option><option value="alerts">Alert count</option><option value="alertsPerHour">Alerts / observed hour</option><option value="missionsPer100">Missions / 100</option></select></label></div></div>
+      <div class="heat-layout"><div class="heat-chart"><svg id="heat" viewBox="-31 -27 62 53" role="img" aria-label="Clinic transitions colored by selected study measure"></svg><div class="heat-scale"><span>Low</span><i></i><span>High</span><span class="no-data-key">- - No coverage</span></div></div><div class="heat-table"><h3 id="heat-heading">Transition details</h3><label class="edge-select">Directed transition <select id="heat-edge"></select></label><div id="heat-detail"></div><div id="heat-values"></div><p class="footnote" id="heat-note"></p></div></div></article>
+    </details>
+
+      <details class="expert" id="view-review">
+        <summary><span class="step">6</span>Other checks<small>previewing a rule change, tracking the parcel, sharing the lift between suppliers</small></summary>
+        <article class="panel"><div class="panel-head"><div><h2 id="review-heading">Policy preview</h2></div><label class="floor-control"><span class="sr-only">Workflow</span><select id="workflow"><option value="policy">Policy preview</option><option value="custody">Custody replay</option><option value="queue">Lift queue</option></select></label></div><div class="data-pad"><p id="review-description"></p><div id="review-results"></div></div></article>
+    </details>
+    </section>
+    <noscript>Enable JavaScript to run the local simulation.</noscript>
+  </main>
+  <footer><div><strong>Smart RoboWard</strong><span>Fictional hospital logistics simulation · Open-RMF clinic geometry</span></div></footer>
+  <!--WARD_DATA-->
+  <!--WARD_SCRIPTS-->
+</body>
+</html>

@@ -1,6 +1,73 @@
-# Smart RoboWard · IFOHRA Challenge 9
+<!-- summary:start -->
+# Smart RoboWard · Challenge 9: Secure integration of robotics in clinical environments
 
-**Start here.** Open the [website](https://prostonastya12.github.io/smart-roboward-healthcare-26-11/) (Overview, Live simulation, Lift replay, Incident review, Gate results), or open `site/live-simulation.html` in Edge, Chrome or Firefox. A laptop with WebGL can run the simulation offline. The prototype uses fictional ward deliveries, a local robot controller and a shared lift.
+**Challenge owner:** IFOHRA and OTH Amberg-Weiden · **Event:** Healthcare Hackathon Bayern München, 26 to 28 November 2026
+
+## Project summary
+
+Hospital delivery robots call lifts over the network, often through fleet software in the cloud. That link is a new door into the hospital. Smart RoboWard secures it.
+
+We did not pick one defence and argue for it. We built seven ways for a robot to ask a lift for a floor, attacked each with the same 29 attacks, and let the result choose. Then we built two stronger designs on the winner. The one we adopted is a **zero-trust relay**: nothing in the middle is trusted, and nothing moves without a signed order.
+
+- The robot only accepts a mission signed by the hospital.
+- Every lift call needs a grant for this robot, this lift, this floor and ten minutes, countersigned by the clinical order system.
+- Robot and lift adapter talk in a sealed session that the fleet manager carries and cannot read.
+- The lift adapter also checks patient priority, fresh lift status and a sensor at the lift, and writes every decision to a signed log.
+- A flooding or compromised robot is isolated alone. The rest of the hospital keeps working.
+
+| | Pipeline | Where it comes from | Attacks blocked | Known limits closed |
+| --- | --- | --- | --- | --- |
+| A | Open network | Baseline | 1 of 23 | 0 of 6 |
+| B | Network admission only | Common hospital practice, admission step modelled | 3 of 23 | 0 of 6 |
+| C | Signed single-use tickets | Teammate's gate, method M1, real code | 8 of 23 | 0 of 6 |
+| D | Per-device signed messages | Standard practice | 13 of 23 | 0 of 6 |
+| E | Encrypted channel, mutual authentication | Standard practice, the idea behind mutual TLS | 12 of 23 | 0 of 6 |
+| F | Trip capability with proof of possession | Our proposal | 15 of 23 | 0 of 6 |
+| G | Layered pipeline | Combination of the above, the teammate's M3 and M4, and our lift admission | 22 of 23 | 0 of 6 |
+| H | Layered pipeline with dual control | G plus a second signature from the clinical order system | 22 of 23 | 1 of 6 |
+| I | Zero-trust relay | H plus a sealed robot-to-lift session through the fleet manager, signed missions and an adapter-side breaker | 23 of 23 | 3 of 6 |
+
+All nine pass the 9 normal-operation cases. Under the rule fixed before the first run, **G** won among the seven candidates A to G. **I** is built on it and is what the platform uses. What still gets through I: traffic analysis; compromised fleet manager stops relaying; flood the lift adapter from the wired path, posing as the relay.
+
+The cryptography is real (Ed25519, X25519, HKDF, AES-256-GCM, HMAC-SHA-256 from the standard library). The devices, trips and keys are fictional. We wrote the attacks ourselves, and a second reviewer who did not write the code attacked it twice. This is our own measurement, not an independent audit. More: [how this answers the challenge](CHALLENGE-FIT.md) · [measured results](secure-comms/RESULTS.md) · [plan and decisions](IMPLEMENTATION-PLAN.md).
+
+### If a hack still gets through: keep the hospital working
+
+The request gate in `gate/` is the second half of the story. It answers what happens when an attack is not stopped by a design alone. Five methods (M0 allowlist baseline, M1 signed tokens, M2 role and ward policy, M3 data minimization, M4 containment) were run on the same 20 fictional requests and a 40 requests per second flood against a gate that handles 20 (measured, synthetic, rows written by us; `experiments/runs/latest/results.json`). The full stack blocked 10 of 10 unauthorized requests and completed 10 of 10 legitimate ones. Under the flood, M0 to M3 kept 50.7% of legitimate tasks, M4 and the full stack kept 100%, but 149 of 150 of those went through the manual fallback, not by robot. The 3D **Live simulation** shows it: a hacker attacks, the breaker trips, an alert goes to the Security duty lead, the robots stay isolated, and only a supervisor click restores them. A vendor account that asks for the lift with no delivery is denied and logged. These two scenarios are tested (`gate/incident.test.cjs`, `gate/vendor-lift.test.cjs`) but are not part of the measured benchmark.
+
+## How to run
+
+Needs Node.js 20 or newer and Python 3.9 or newer. No packages are installed. Everything runs offline.
+
+```sh
+node secure-comms/run.cjs            # attack every pipeline, writes secure-comms/results.json
+node secure-comms/network-demo.cjs   # the adopted pipeline over real sockets, with a separate attacker process
+node --test clinic3d/fleet.test.cjs ward-safety/*.test.cjs gate/*.test.cjs secure-comms/*.test.cjs
+```
+
+Then open these files in a current browser:
+
+| Open | To see |
+| --- | --- |
+| [site/security-pipelines.html](site/security-pipelines.html) | The attack matrix. Select any cell to run that attack again in the browser and see the frames on the wire |
+| [site/ward-safety.html](site/ward-safety.html) | One delivery at the shared lift: allow, hold or deny, with recovery and porter handoff |
+| [site/live-simulation.html](site/live-simulation.html) | The 3D clinic with a simulated hacker, the request gate, a 3 to 10 robot slider and a supervisor restore |
+| [site/gate-results.html](site/gate-results.html) | The request gate benchmark |
+| [site/incident-review.html](site/incident-review.html) | What each defence decided for the same request |
+| [site/index.html](site/index.html) | The overview, with links to every page |
+
+## Demo
+
+- Video: [presentation/media/smart-roboward-demo-v2.mp4](presentation/media/smart-roboward-demo-v2.mp4)
+- Slides: [presentation/Smart-RoboWard-security-pipelines.pdf](presentation/Smart-RoboWard-security-pipelines.pdf), and the same deck as one offline file, [presentation/demo.html](presentation/demo.html)
+- Talk track: [presentation/SCRIPT.md](presentation/SCRIPT.md) · German summary: [docs/Zusammenfassung-DE.md](docs/Zusammenfassung-DE.md)
+
+---
+
+# Details
+<!-- summary:end -->
+
+**Start here.** Open the [website](https://prostonastya12.github.io/smart-roboward-healthcare-26-11/) (Overview, Live simulation, Secure pipelines, Ward safety, Lift replay, Incident review, Gate results), or open `site/live-simulation.html` in Edge, Chrome or Firefox. A laptop with WebGL can run the simulation offline. The prototype uses fictional ward deliveries, a local robot controller and a shared lift.
 
 ## Provenance and disclosure
 
@@ -8,6 +75,48 @@
 - **Third-party code and data.** Three.js r160 and OrbitControls (MIT) and the Open-RMF clinic map files (Apache-2.0). Details and license locations: [NOTICE.md](NOTICE.md).
 - **Written by the team.** `HACKATHON.md`, `experiments/`, `gate/` (request gate, benchmark, tests, and the live simulation, written with Claude), `site/` (including the shared page theme `site/theme.css`, copied from the 3D console's design), `.github/workflows/pages.yml` and this section. `output/visualizations/Smart-RoboWard-replay.html` is now rebuilt by the team from `site/replay-template.html`, with the same A01/U02 timelines as the AI-generated fragment `shared-lift-replay.html`. Reproduce the benchmark with `node gate/run.cjs`, run the tests with `node --test gate/`, and rebuild the pages with `node site/build-site.cjs`, `node gate/build-page.cjs` and `node gate/build-hacker.cjs`.
 - **Not included.** The organizer's brief image (it carries third-party logos and has no redistribution licence). Read the brief and rules on the [event page](https://www.bayern-innovativ.de/events-termine/detail/events-termine/healthcare-hackathon-bayern-hacken-bis-der-arzt-kommt-november2026).
+
+## Secure communication pipelines
+
+The comparison lives in `secure-comms/`. `comms.js` holds the protocol code for all nine pipelines, `attacks.js` the 29 attacks and 9 legitimate cases, `run.cjs` the measurement, `report.cjs` the generated report, and `network-demo.cjs` the demo over real sockets. Pipeline C runs the teammate's `gate/gate.cjs` unchanged. Pipelines G, H and I run the ward safety controller's admission check unchanged.
+
+Two reviews by a second reviewer, who did not write the code, are summarised in [secure-comms/RESULTS.md](secure-comms/RESULTS.md) with what each finding changed. Findings that could not be fixed are in the matrix as known limits.
+
+```sh
+node secure-comms/run.cjs          # measure, writes secure-comms/results.json
+node secure-comms/report.cjs       # writes secure-comms/RESULTS.md
+node secure-comms/build-page.cjs   # writes site/security-pipelines.html
+node presentation/build-deck.cjs   # writes presentation/demo.html with the measured numbers
+```
+
+## Ward safety control room
+
+Open [ward-safety/index.html](ward-safety/index.html) in any modern browser. It runs offline from that one file and asks one question: may this robot use the lift?
+
+1. **Pick a situation.** Five buttons: a normal delivery, a changed map, a wrong floor, a patient who needs the lift, a dropped connection.
+2. **Read the decision.** One word (Allowed, Wait or Refused), one sentence why, and what staff can do next. **Play** shows the rest of the trip.
+3. **See why.** Six checks with a tick or a cross.
+
+| Situation | Decision | Lift calls | What staff can do |
+| --- | --- | --- | --- |
+| Normal delivery | Allowed | 1 | Play to the ward, then the ward scans the parcel |
+| The map changed | Wait | 0 | Confirm the floor names, or give the parcel to a porter |
+| Wrong floor | Refused | 0 | Nothing at the lift. Dispatch issues a new order |
+| A patient needs the lift | Wait | 0 | Wait for the transfer, or give the parcel to a porter |
+| Connection drops | Wait | 0 | Wait for the connection, or give the parcel to a porter |
+
+Everything else is behind three expanders at the bottom: all the detail (every device on the path, the event log, message security, playback controls), the evidence from 10,000 simulated deliveries with a route heatmap, and three other checks (previewing a rule change, tracking the parcel, sharing the lift between suppliers).
+
+The control room was written by the team with Claude. It reuses the imported fleet engine and clinic map. Every number comes from local simulation with fictional data. Rebuild with `node ward-safety/build.cjs` (needs Python 3 for the map and policy replay). The nurse's order passes the request gate from `gate/` before the robot is dispatched, and **Send a forged order** shows a refusal. Under **All the detail**, each situation's lift call is also sent for real through the chosen pipeline, and the page shows whether the answer over the wire agrees with the simulation. The plan and current status are in [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md).
+
+## Pitch materials
+
+| File | Use |
+| --- | --- |
+| [presentation/demo.html](presentation/demo.html) | Eleven slides in one offline file, built from the measured results by `node presentation/build-deck.cjs`. Arrows to move, `f` fullscreen, `p` play or pause, `m` sound, `t` timer |
+| [presentation/SCRIPT.md](presentation/SCRIPT.md) | Talk track, about four minutes |
+| [presentation/media/smart-roboward-demo-v1.mp4](presentation/media/smart-roboward-demo-v1.mp4) | 76-second narrated fallback video, recorded from the real pages with a locally generated voice |
+| [docs/Zusammenfassung-DE.md](docs/Zusammenfassung-DE.md) | One-page German summary for the jury |
 
 ## Try a delivery and a security alert
 
@@ -37,7 +146,7 @@ The four team roles are product manager, robot developer, data scientist and a m
 
 The primary metric is **unauthorized requests stopped (%)**. Count each test case once.
 
-> **Status of these numbers: imported fixture replay, unverified.** The saved Python run reports **10 of 10** unauthorized cases stopped and **10 of 10** legitimate deliveries completed. Those counts come from replaying 20 scripted fixture cases and comparing them with expected outcomes that were written together with the fixtures. They show that the fixtures and the replay logic agree. They are **not** an independent security measurement, and the replay's checks are not a real authentication gate. The team has not yet independently measured any security method. The planned five-method benchmark is in [HACKATHON.md](HACKATHON.md) and [experiments/](experiments/). The three interactive sensor examples in the 3D console demonstrate how the operator sees and responds to an anomaly. All data is fictional and simulated.
+> **Status of these numbers: imported fixture replay, unverified.** The saved Python run reports **10 of 10** unauthorized cases stopped and **10 of 10** legitimate deliveries completed. Those counts come from replaying 20 scripted fixture cases and comparing them with expected outcomes that were written together with the fixtures. They show that the fixtures and the replay logic agree. They are **not** an independent security measurement, and the replay's checks are not a real authentication gate. The team has since measured its own five-method request gate with its own script on rows it wrote itself: [results](experiments/runs/latest/results.json), summarised in [HACKATHON.md](HACKATHON.md). That is a separate measurement from this fixture replay. The three interactive sensor examples in the 3D console demonstrate how the operator sees and responds to an anomaly. All data is fictional and simulated.
 
 ## Rebuild and run the tests
 
@@ -45,7 +154,7 @@ Run these commands from the repository root. Python 3.9+ builds the 3D console a
 
 ```sh
 python clinic3d/build_model.py
-node --test clinic3d/fleet.test.cjs
+node --test clinic3d/fleet.test.cjs ward-safety/*.test.cjs gate/*.test.cjs secure-comms/*.test.cjs
 python output/simulation/replay.py --case A01
 python output/simulation/replay.py --case U02
 ```

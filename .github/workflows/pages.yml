@@ -29,7 +29,7 @@ jobs:
       - name: Stage site files
         run: |
           mkdir _site
-          cp site/index.html site/live-simulation.html site/incident-review.html site/gate-results.html _site/
+          cp site/index.html site/live-simulation.html site/incident-review.html site/gate-results.html site/security-pipelines.html site/ward-safety.html _site/
           cp output/visualizations/Smart-RoboWard-replay.html _site/lift-replay.html
           cp output/visualizations/Clinic-World.glb output/visualizations/Clinic-World-3D.png _site/
           touch _site/.nojekyll

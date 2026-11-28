@@ -8,6 +8,8 @@ const path = require("node:path");
 const PAGES = [
   ["index", "index.html", "Overview"],
   ["sim", "live-simulation.html", "Live simulation"],
+  ["secure", "security-pipelines.html", "Secure pipelines"],
+  ["ward", "ward-safety.html", "Ward safety"],
   ["replay", "lift-replay.html", "Lift replay"],
   ["incident", "incident-review.html", "Incident review"],
   ["results", "gate-results.html", "Gate results"]
