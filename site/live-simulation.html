@@ -3820,6 +3820,2114 @@ module.exports = {Gate, makeWorld, issueToken, PATIENT_NAMES, LIMITS};
 
 </script>
 <script>
+(function () {
+// Local fleet controller, simulated devices, and a separate observation-based monitor.
+"use strict";
+
+const ROBOT_PROFILES = [
+  {id:"RX-01", name:"Pharmacy courier", home:"PHARMACY", preferred:"WARD-B", color:"#00856e", speed:1.05, shape:"cabinet"},
+  {id:"LAB-02", name:"Specimen courier", home:"COLLECTION", preferred:"LAB", color:"#ba651e", speed:1.20, shape:"pod"},
+  {id:"SUP-03", name:"Supply carrier", home:"STORES", preferred:"WARD-A", color:"#7363b2", speed:0.90, shape:"shelves"}
+];
+const EXAMPLES = new Set(["spin", "silence", "lift"]);
+const distance = (a, b) => Math.hypot(a.x-b.x, a.y-b.y, a.z-b.z);
+const angleDifference = (a, b) => Math.atan2(Math.sin(a-b), Math.cos(a-b));
+
+class FleetController {
+  constructor(network) {
+    this.net = network;
+    this.time = 0;
+    this.speed = 2;
+    this.serial = 0;
+    this.eventNumber = 0;
+    this.messages = [];
+    this.pending = [];
+    this.acks = [];
+    this.completedCommands = new Map();
+    this.adjacent = new Map(Object.keys(network.nodes).map(k => [k, []]));
+    for (const [a,b] of network.edges) this.adjacent.get(a).push(b);
+    this.liftZone = new Set(network.cabins);
+    for (const cabin of network.cabins) {
+      for (const neighbor of this.adjacent.get(cabin)) this.liftZone.add(neighbor);
+    }
+    this.robots = ROBOT_PROFILES.map(profile => {
+      const at = network.stations[profile.home].node;
+      const pose = {...network.nodes[at], yaw:0};
+      return {...profile, at, pose, intentYaw:0, turnUntil:0, seen:{...pose}, lastBeat:0, nextBeat:1,
+        spinSeconds:0, quiet:0, spinRate:0, measuredSpeed:0, paused:false, isolated:false, alert:null, example:null,
+        mission:null, segment:null, path:[], booked:false, retryAt:0, waitReason:"", completed:0};
+    });
+    for (const r of this.robots) this.log("LINK", r, "Controller", r.id, "Simulated device connected");
+    this.enqueue({id:"DEMO-001", robot:"LAB-02", action:"dispatch", destination:"LAB"});
+  }
+
+  log(kind, r, from, to, text, ref="") {
+    const entry = {seq:++this.eventNumber, time:this.time, kind, robot:r?.id || "", from, to, text, ref};
+    this.messages.push(entry);
+    return entry;
+  }
+
+  enqueue(cmd) {
+    if (!cmd || typeof cmd.id !== "string") return;
+    const previous = this.completedCommands.get(cmd.id);
+    if (previous) { this.acks.push(previous); return; }
+    if (this.pending.some(entry => entry.cmd.id === cmd.id)) return;
+    const robot = this.robots.find(r => r.id === cmd.robot);
+    this.log("CMD", robot, "Console", "Dispatcher", cmd.action === "dispatch"
+      ? "Dispatch to " + (this.net.stations[cmd.destination]?.name || "unknown station")
+      : ({pause:"Pause mission",resume:"Resume mission",isolate:"Isolate device",release:"Restore access",
+          example:"Start test input",end:"End test input",receipt:"Confirm ward receipt",speed:"Set simulation speed"}[cmd.action] || "Unknown command"), cmd.id);
+    this.pending.push({due:this.time+.12, cmd});
+  }
+
+  finish(cmd) {
+    const r = this.robots.find(robot => robot.id === cmd.robot);
+    let error = "";
+    if (cmd.action === "speed") {
+      if ([1,2,4].includes(cmd.value)) this.speed = cmd.value;
+      else error = "Unsupported simulation speed.";
+    } else if (!r) error = "Unknown fleet device.";
+    else error = this.apply(r, cmd);
+    const ack = {id:cmd.id, robot:cmd.robot, ok:!error, reason:error};
+    this.completedCommands.set(cmd.id, ack);
+    if (this.completedCommands.size > 500) this.completedCommands.delete(this.completedCommands.keys().next().value);
+    this.acks.push(ack);
+    this.log(error ? "NACK" : "ACK", r, "Dispatcher", "Console", error || "Command accepted", cmd.id);
+  }
+
+  apply(r, cmd) {
+    switch (cmd.action) {
+      case "dispatch": {
+        const dest = this.net.stations[cmd.destination];
+        if (!dest) return "Unknown destination.";
+        if (r.isolated || r.alert) return "Review this robot before dispatch.";
+        if (r.mission) return "This robot already has a mission.";
+        if (dest.node === r.at) return "The robot is already at that station.";
+        if (this.robots.some(other => other !== r && (other.mission?.dest === cmd.destination ||
+          (!other.mission && other.at === dest.node)))) return "Another robot occupies or is assigned to that destination.";
+        if (!this.pathTo(r.at, dest.node, new Set())) return "No mapped route to that station.";
+        const id = "M" + String(++this.serial).padStart(3, "0");
+        r.mission = {id, dest:cmd.destination, stage:"travel", issued:this.time, traveled:0};
+        r.retryAt = 0;
+        r.paused = false;
+        this.log("TASK", r, "Dispatcher", r.id, id + " assigned to " + dest.name, cmd.id);
+        return "";
+      }
+      case "pause":
+        if (!r.mission || r.mission.stage === "arrived" || r.paused || r.isolated || r.alert) return "No moving mission to pause.";
+        r.paused = true; r.booked = false;
+        return "";
+      case "resume":
+        if (r.isolated || r.alert) return "Release the security hold before resuming.";
+        if (!r.paused || r.mission?.stage !== "travel") return "No paused mission to resume.";
+        r.paused = false; r.retryAt = 0;
+        return "";
+      case "receipt":
+        if (r.mission?.stage !== "arrived" || this.net.stations[r.mission.dest].node !== r.at) return "Wait for a confirmed arrival.";
+        this.log("SCAN", r, "Ward scanner", "Dispatcher", "Receipt confirmed for " + r.mission.id, cmd.id);
+        r.mission = null; r.completed++; r.paused = false;
+        return "";
+      case "isolate":
+        if (r.isolated) return "Device is already isolated.";
+        r.isolated = true; r.booked = false;
+        if (r.mission?.stage === "travel") r.paused = true;
+        this.log("HOLD", r, "Operator", "Access gate", "Device isolated. Dispatch and lift access revoked.", cmd.id);
+        return "";
+      case "release":
+        if (!r.isolated && !r.alert) return "There is no device hold.";
+        if (!this.canRelease(r)) return "End the example and wait for a fresh heartbeat and stable motion.";
+        r.isolated = false; r.alert = null; r.spinSeconds = 0;
+        this.log("REVIEW", r, "Operator", "Access gate", r.paused ? "Access restored. Mission awaits Resume." : "Access restored after review.", cmd.id);
+        return "";
+      case "example":
+        if (!EXAMPLES.has(cmd.example)) return "Unknown example.";
+        if (r.example || r.isolated || r.alert) return "Finish the current example and review the device first.";
+        r.example = {kind:cmd.example, since:this.time, emitted:false};
+        this.log("TEST", r, "Test console", "Simulator", "Synthetic input enabled", cmd.id);
+        return "";
+      case "end":
+        if (!r.example) return "No example is running.";
+        r.example = null; r.quiet = 0;
+        this.log("TEST", r, "Test console", "Simulator", "Normal sensor input restored", cmd.id);
+        return "";
+      default: return "Unknown command.";
+    }
+  }
+
+  canRelease(r) {
+    return !r.example && this.time-r.lastBeat < 2 && r.quiet >= .9;
+  }
+
+  pathTo(start, goal, blocked) {
+    if (start === goal) return [];
+    const costs = new Map([[start,0]]), previous = new Map(), open = new Set([start]);
+    while (open.size) {
+      let current = null;
+      for (const n of open) if (current === null || costs.get(n) < costs.get(current)) current = n;
+      if (current === goal) {
+        const path = [];
+        while (current !== start) { path.push(current); current = previous.get(current); }
+        return path.reverse();
+      }
+      open.delete(current);
+      for (const next of this.adjacent.get(current)) {
+        if (blocked.has(next)) continue;
+        const nextCost = costs.get(current) + distance(this.net.nodes[current],this.net.nodes[next]);
+        if (nextCost >= (costs.get(next) ?? Infinity)) continue;
+        costs.set(next, nextCost); previous.set(next, current); open.add(next);
+      }
+    }
+    return null;
+  }
+
+  claims(r) {
+    const claims = new Set([r.at]);
+    if (r.segment) claims.add(r.segment.to);
+    if (r.booked) for (const n of r.path) claims.add(n);
+    if ([...claims].some(n => this.liftZone.has(n))) for (const n of this.liftZone) claims.add(n);
+    return claims;
+  }
+
+  reserve(r) {
+    const blocked = new Set();
+    for (const other of this.robots) if (other !== r) for (const n of this.claims(other)) blocked.add(n);
+    const base = r.segment?.to || r.at;
+    const dest = this.net.stations[r.mission.dest].node;
+    let path = this.pathTo(base, dest, blocked);
+    // A busy shared lift need not keep another robot at its origin. Reserve the
+    // free approach, then plan again before entering a contested lane.
+    if (path === null && !blocked.has(base)) {
+      const planned = this.pathTo(base, dest, new Set());
+      const firstBusy = planned?.findIndex(n => blocked.has(n)) ?? -1;
+      if (firstBusy > 0) path = planned.slice(0, firstBusy);
+    }
+    if (path === null || blocked.has(base)) {
+      r.retryAt = this.time + .5;
+      if (!r.waitReason) this.log("WAIT",r,"Traffic",r.id,"Waiting for reserved lanes or lift");
+      r.waitReason = "Waiting for traffic clearance";
+      return false;
+    }
+    r.path = r.segment ? [r.segment.to, ...path] : path;
+    r.booked = true; r.waitReason = "";
+    this.log("ROUTE",r,"Traffic",r.id,path.length && path[path.length-1] !== dest
+      ? "Approach reserved up to the occupied lane" : "Mapped route reserved",r.mission.id);
+    return true;
+  }
+
+  flag(r, rule, title, observed, expected) {
+    if (r.alert || r.isolated) return;
+    r.alert = {rule,title,observed,expected,time:this.time};
+    r.booked = false;
+    if (r.mission?.stage === "travel") r.paused = true;
+    const event = this.log("ALERT",r,"Security monitor","Dispatcher",title,r.mission?.id || "");
+    event.observed = observed;
+    event.expected = expected;
+    this.log("HOLD",r,"Dispatcher",r.id,"Simulated safety interlock engaged");
+  }
+
+  liftRequest(r, floor, task) {
+    const destination = r.mission?.stage === "travel" && this.net.stations[r.mission.dest];
+    const assigned = destination && this.net.nodes[destination.node].floor;
+    const valid = !r.isolated && !r.alert && r.mission?.stage === "travel" && r.mission.id === task &&
+      assigned === floor && r.booked && this.net.cabins.includes(r.at);
+    this.log(valid ? "LIFT" : "DENY",r,"Lift gate",r.id,valid ? "Lift 1 granted to "+floor : "Lift request denied for "+floor,task || "");
+    if (!valid) this.flag(r,"lift","Unassigned lift request","Requested "+floor+"; lift access denied.",
+      assigned ? "Dispatch authorizes "+assigned+" for "+r.mission.id+"." : "No active lift assignment.");
+    return valid;
+  }
+
+  move(r, dt) {
+    if (r.isolated || r.alert) return;
+    const moving = r.mission?.stage === "travel" && !r.paused;
+    if (moving && !r.booked && this.time >= r.retryAt) this.reserve(r);
+    if (moving && r.booked && !r.segment && r.path.length) {
+      const to = r.path[0], a = this.net.nodes[r.at], b = this.net.nodes[to];
+      const vertical = a.floor !== b.floor;
+      if (vertical && !this.liftRequest(r,b.floor,r.mission.id)) return;
+      r.segment = {from:r.at,to, progress:0, length:distance(a,b), vertical};
+      if (!vertical) {
+        const heading = Math.atan2(b.x-a.x,b.z-a.z);
+        if (Math.abs(angleDifference(heading,r.intentYaw))>.12) r.turnUntil = this.time+.35;
+        r.intentYaw = heading;
+      }
+    }
+    // The local device fixture changes the measured pose. The detector below only receives observations and intent.
+    if (r.example?.kind === "spin") {
+      r.pose.yaw = angleDifference(r.pose.yaw+Math.PI*.5*dt,0);
+      return;
+    }
+    if (!moving || !r.booked || !r.segment) return;
+    const seg = r.segment, a = this.net.nodes[seg.from], b = this.net.nodes[seg.to];
+    const previous = seg.progress;
+    seg.progress = Math.min(1,previous + dt*(seg.vertical ? 1.5 : r.speed)/Math.max(.001,seg.length));
+    r.mission.traveled += (seg.progress-previous)*seg.length;
+    const p = seg.progress;
+    r.pose = {x:a.x+(b.x-a.x)*p, y:a.y+(b.y-a.y)*p, z:a.z+(b.z-a.z)*p,
+      yaw:r.intentYaw, floor:p<.5 ? a.floor : b.floor};
+    if (p < 1) return;
+    r.at = seg.to; r.segment = null; r.path.shift();
+    if (seg.vertical) this.log("LIFT",r,"Lift 1","Dispatcher","Arrived on "+b.floor,r.mission.id);
+    if (!r.path.length) {
+      r.booked = false;
+      const dest = this.net.stations[r.mission.dest];
+      if (r.at === dest.node) {
+        r.mission.stage = "arrived";
+        this.log("ARRIVE",r,r.id,"Dispatcher","At "+dest.name+". Awaiting receipt.",r.mission.id);
+      }
+    }
+  }
+
+  monitor(r, observation, dt) {
+    const speed = distance(observation,r.seen)/dt;
+    const rate = Math.abs(angleDifference(observation.yaw,r.seen.yaw))*180/Math.PI/dt;
+    r.seen = {...observation}; r.spinRate = rate; r.measuredSpeed = speed;
+    const unexplained = this.time > r.turnUntil && speed < .10 && rate >= 60;
+    r.spinSeconds = unexplained ? r.spinSeconds+dt : 0;
+    r.quiet = unexplained || this.time-r.lastBeat>=2 ? 0 : r.quiet+dt;
+    if (r.spinSeconds >= 2-1e-7) this.flag(r,"spin","Uncommanded rotation",
+      Math.round(rate)+"°/s for "+r.spinSeconds.toFixed(1)+" s at "+speed.toFixed(2)+" m/s.",
+      "No turn commanded. Threshold 60°/s for 2 s while stationary.");
+    const lag = this.time-r.lastBeat;
+    if (lag >= 4-1e-7) this.flag(r,"silence","Heartbeat overdue",lag.toFixed(1)+" s since the last device heartbeat.",
+      "One heartbeat per second. Hold after 4 s of silence.");
+  }
+
+  step(dt) {
+    this.time += dt;
+    while (this.pending.length && this.pending[0].due <= this.time) this.finish(this.pending.shift().cmd);
+    // Oldest missions acquire available resources first. Occupancy is retained when a unit stops mid-lane.
+    const order = this.robots.slice().sort((a,b)=>(a.mission?.issued ?? Infinity)-(b.mission?.issued ?? Infinity));
+    for (const r of order) {
+      if (r.example?.kind === "lift" && !r.example.emitted) {
+        r.example.emitted = true;
+        const destination = r.mission && this.net.nodes[this.net.stations[r.mission.dest].node];
+        const otherLanding = this.net.cabins.map(n => this.net.nodes[n])
+          .find(n => n.floor !== (destination?.floor || r.pose.floor));
+        this.liftRequest(r,otherLanding.floor,r.mission?.id || "");
+      }
+      this.move(r,dt);
+      if (this.time >= r.nextBeat && r.example?.kind !== "silence") {
+        r.nextBeat = this.time+1; r.lastBeat = this.time;
+      }
+      this.monitor(r,r.pose,dt);
+    }
+  }
+
+  state(r) {
+    if (r.isolated) return "Isolated";
+    if (r.alert) return "Safety hold";
+    if (r.mission?.stage === "arrived") return "Awaiting receipt";
+    if (r.paused) return "Paused";
+    if (r.segment?.vertical) return "In lift";
+    if (r.mission && !r.booked) return "Waiting";
+    return r.mission ? "In transit" : "Ready";
+  }
+
+  snapshot() {
+    const lift = this.robots.find(r => [...this.claims(r)].some(n => this.net.cabins.includes(n)));
+    return {time:this.time,speed:this.speed,lift:lift?.id || null,
+      robots:this.robots.map(r=>({id:r.id,name:r.name,shape:r.shape,color:r.color,preferred:r.preferred,
+        pose:{...r.pose},at:r.at,state:this.state(r),mission:r.mission && {...r.mission},path:r.booked ? [...r.path] : [],
+        station:Object.keys(this.net.stations).find(k=>this.net.stations[k].node===r.at && !r.segment) || null,
+        heartbeat:r.lastBeat,rate:r.spinRate,measuredSpeed:r.measuredSpeed,example:r.example?.kind || null,alert:r.alert && {...r.alert},
+        isolated:r.isolated,paused:r.paused,canRelease:this.canRelease(r),completed:r.completed})),
+      events:this.messages.splice(0),acks:this.acks.splice(0)};
+  }
+}
+
+if (typeof module !== "undefined" && module.exports) module.exports = {FleetController};
+if (typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope) {
+  let fleet, timer, visible = true, previousTime = performance.now();
+  self.onmessage = ({data}) => {
+    if (data.type === "init" && !fleet) {
+      fleet = new FleetController(data.network);
+      self.postMessage(fleet.snapshot());
+      timer = setInterval(() => {
+        const now = performance.now(), elapsed = Math.min((now-previousTime)/1000,.25);
+        previousTime = now;
+        if (!visible) return;
+        let remaining = elapsed*fleet.speed;
+        while (remaining > .00001) {const dt=Math.min(.1,remaining);fleet.step(dt);remaining-=dt;}
+        self.postMessage(fleet.snapshot());
+      },125);
+    } else if (data.type === "visibility") {
+      visible = data.visible; previousTime = performance.now();
+    } else if (data.type === "command" && fleet) fleet.enqueue(data.command);
+    else if (data.type === "close") {clearInterval(timer); self.close();}
+  };
+}
+
+globalThis.FleetController = FleetController;
+})();
+// Hospital-side lift admission and a deterministic, offline mock installation.
+(function (root, create) {
+  "use strict";
+  if (typeof module === "object" && module.exports) module.exports = create(require("../clinic3d/fleet.js").FleetController);
+  else root.WardSafety = create(FleetController);
+})(globalThis, function (Fleet) {
+  "use strict";
+  const rounds = ["approved", "unverified", "forbidden", "priority", "roam"];
+  const mapping = Object.freeze({Upper: "L2", Ground: "L1"});
+  const liftLabels = Object.freeze({"01": "L2", G: "L1"});
+  const decision = (outcome, reason) => ({outcome, reason});
+
+  function evaluate(request, grant, site, now) {
+    if (!grant || !grant.active || request.robot !== grant.robot || request.trip !== grant.trip ||
+        request.lift !== grant.lift || now < grant.from || now >= grant.until) {
+      return decision("deny", "No current dispatch grant for this robot and lift");
+    }
+    if (request.mapRevision !== site.approvedRevision || !Object.hasOwn(mapping, request.rawFloor) ||
+        !Object.hasOwn(liftLabels, site.destinationLabel)) {
+      return decision("hold", "Facilities must verify the landing mapping");
+    }
+    if (mapping[request.rawFloor] !== grant.floor || liftLabels[site.destinationLabel] !== grant.floor) {
+      return decision("deny", "Requested destination is outside this trip");
+    }
+    if (site.priority) return decision("hold", "Facilities has priority for a patient transfer");
+    if (site.seenAt === null || now - site.seenAt > 10 || site.seenAt > now) {
+      return decision("hold", "Lift status is stale");
+    }
+    if (site.landing !== grant.origin) return decision("hold", "Awaiting car at the pickup landing");
+    return decision("allow", "Dispatch, approved landing and facilities status agree");
+  }
+
+  // This mock owns received calls, car position and observation time independently of the AGV pose.
+  class MockLift {
+    constructor(round) {
+      this.calls = new Map();
+      this.receivedCount = 0;
+      this.reservation = null;
+      this.priority = round === "priority";
+      this.connected = round !== "roam";
+      this.seenAt = this.connected ? 0 : null;
+      this.landing = "L1";
+      this.physicalLanding = "L1";
+      this.destinationLabel = "01";
+      this.approvedRevision = "map-7";
+      this.arrivalAt = null;
+    }
+    receive(request) {
+      this.receivedCount++;
+      const key = request.id;
+      const fingerprint = JSON.stringify([request.robot, request.trip, request.lift, request.rawFloor, request.mapRevision]);
+      if (this.calls.has(key)) return this.calls.get(key) === fingerprint ? "existing" : "conflict";
+      this.calls.set(key, fingerprint);
+      this.reservation = key;
+      return "accepted";
+    }
+    update(now) {
+      if (this.arrivalAt !== null && now >= this.arrivalAt) this.physicalLanding = "L2";
+      if (this.connected && (this.seenAt === null || now - this.seenAt >= 0.99)) {
+        this.seenAt = now;
+        this.landing = this.physicalLanding;
+      }
+    }
+  }
+
+  class WardFleet extends Fleet {
+    // The presenter controls a single delivery. Other fleet units stay at their own stations.
+    enqueue(cmd) {
+      if (cmd.id !== "DEMO-001") super.enqueue(cmd);
+    }
+    constructor(network, round) {
+      super(network);
+      this.round = round;
+      this.site = new MockLift(round);
+      this.cabins = new Set(network.cabins);
+      this.journal = [];
+      this.journey = {phase:"approach", outcome:"pending", reason:"Awaiting the lift approach",
+        holder:"RX-01", receipts:0, cabinEntries:0, confirmedLandings:0,
+        rawFloor:round === "forbidden" ? "Ground" : "Upper", mapRevision:round === "unverified" ? "map-8" : "map-7"};
+      this.request = {id:"RX-WB-01", robot:"RX-01", trip:"TRIP-WB", lift:"Lift 1",
+        rawFloor:this.journey.rawFloor, mapRevision:this.journey.mapRevision};
+      this.grant = {robot:"RX-01", trip:"TRIP-WB", lift:"Lift 1", origin:"L1", floor:"L2", active:true, from:0, until:3600};
+      this.porterArrival = null;
+      this.porterAtWard = false;
+      this.tickCount = 0;
+      this.capture("dispatch", "Dispatcher", "Pharmacy parcel assigned to RX-01 for Ward B on L2");
+      if (this.site.priority) this.capture("priority", "Facilities", "Patient transfer has priority");
+      if (!this.site.connected) this.capture("telemetry", "Facilities feed", "Wireless handover awaiting a fresh lift observation");
+      this.enqueue({id:"ward-dispatch", robot:"RX-01", action:"dispatch", destination:"WARD-B"});
+    }
+    capture(kind, source, text) { this.journal.push({time:+this.time.toFixed(2), kind, source, text}); }
+    authorize(r) {
+      const result = r.id === this.request.robot && r.mission?.dest === "WARD-B"
+        ? evaluate(this.request, this.grant, this.site, this.time)
+        : decision("deny", "Current fleet assignment differs from dispatch");
+      if (result.outcome !== this.journey.outcome || result.reason !== this.journey.reason) {
+        this.capture(result.outcome, "Lift adapter", result.reason);
+      }
+      Object.assign(this.journey, result);
+      if (result.outcome !== "allow") {
+        this.journey.phase = result.outcome === "deny" ? "denied" : "waiting";
+        r.booked = false;
+        r.path = [];
+        r.retryAt = this.time + .5;
+        if (result.outcome === "deny") r.paused = true;
+        return false;
+      }
+      if (!this.journey.callId) {
+        const reply = this.site.receive(this.request);
+        if (reply === "conflict") throw Error("Conflicting service request ID");
+        this.journey.callId = this.request.id;
+        this.capture("forward", "Mock lift", "Received service call RX-WB-01 for landing 01");
+      }
+      return true;
+    }
+    liftRequest(r, floor) {
+      return this.site.reservation === this.request.id && r.id === this.grant.robot && floor === this.grant.floor &&
+        this.journey.cabinEntries === 1;
+    }
+    move(r, dt) {
+      if (!r.mission || r.paused || r.isolated || r.alert || r.mission.stage !== "travel") return;
+      if (!r.booked && this.time >= r.retryAt) this.reserve(r);
+      if (!r.booked) return;
+      const next = r.path[0], at = r.at, j = this.journey;
+      if (!r.segment && next && this.net.nodes[at].floor === "L1" && !this.cabins.has(at) && this.liftZone.has(next)) {
+        // First checkpoint is upstream of the whole shared zone. Check again immediately before boarding.
+        if (!this.authorize(r)) return;
+        if (this.cabins.has(next)) {
+          j.phase = "boarding";
+          this.capture("boarding", "AGV", "Entering the origin cabin");
+        }
+      }
+      if (!r.segment && this.cabins.has(at) && this.net.nodes[at].floor === "L2" && next && !this.cabins.has(next)) {
+        const fresh = this.site.seenAt !== null && this.time - this.site.seenAt <= 10;
+        if (!fresh || this.site.landing !== "L2") {
+          if (j.phase !== "landing") this.capture("waiting", "Lift adapter", "Waiting for confirmed L2 landing");
+          j.phase = "landing";
+          return;
+        }
+        if (!j.confirmedLandings) {
+          j.confirmedLandings = 1;
+          this.capture("landing", "Facilities feed", "Confirmed landing 01 at L2");
+        }
+        j.phase = "delivering";
+      }
+      super.move(r, dt);
+      if (r.at !== at && this.cabins.has(at) && !this.cabins.has(r.at)) this.site.reservation = null;
+      if (r.at !== at && !this.cabins.has(at) && this.cabins.has(r.at)) {
+        j.cabinEntries++;
+        j.phase = "riding";
+        this.site.arrivalAt = this.time + 8;
+        this.site.physicalLanding = "in transit";
+        this.capture("entry", "AGV", "Origin cabin entry observed");
+      }
+      if (r.mission.stage === "arrived" && j.phase !== "awaiting_receipt") {
+        j.phase = "awaiting_receipt";
+        this.capture("arrival", "Ward dock", "Parcel at Ward B awaiting a scanner receipt");
+      }
+    }
+    tick() {
+      this.site.update(this.time);
+      super.step(.1);
+      this.tickCount++;
+      if (this.porterArrival !== null && this.time >= this.porterArrival && !this.porterAtWard) {
+        this.porterAtWard = true;
+        this.journey.phase = "awaiting_receipt";
+        this.capture("arrival", "Ward dock", "Porter arrived at Ward B");
+      }
+      // The original engine's transient buffers are unnecessary after a tick in this projection.
+      this.messages.length = 0;
+      this.acks.length = 0;
+    }
+  }
+
+  class WardSimulation {
+    constructor({network, round = "approved"}) {
+      if (!rounds.includes(round)) throw Error("Unknown exercise");
+      this.fleet = new WardFleet(network, round);
+      this.remainder = 0;
+    }
+    advance(seconds) {
+      if (!Number.isFinite(seconds) || seconds < 0 || seconds > 3600) throw Error("Invalid time step");
+      this.remainder += seconds;
+      const ticks = Math.floor((this.remainder + 1e-9) * 10);
+      this.remainder = Math.max(0, this.remainder - ticks / 10);
+      for (let i = 0; i < ticks; i++) this.fleet.tick();
+    }
+    actions() {
+      const f = this.fleet, j = f.journey, a = [];
+      if (j.phase === "waiting") {
+        if (f.site.approvedRevision !== j.mapRevision) a.push("approveMapping");
+        if (f.site.priority) a.push("clearPriority");
+        if (!f.site.connected) a.push("restoreFeed");
+        a.push("offerPorter");
+      }
+      if (j.phase === "porter_offered") a.push("acceptPorter");
+      if (j.phase === "landing" && !f.site.connected) a.push("restoreFeed");
+      if (j.phase === "awaiting_receipt") a.push("wardScan");
+      return a;
+    }
+    act(action) {
+      if (!this.actions().includes(action)) return false;
+      const f = this.fleet, j = f.journey, r = f.robots[0];
+      switch (action) {
+        case "approveMapping":
+          f.site.approvedRevision = j.mapRevision;
+          f.capture("review", "Facilities", "Facilities verified Upper and 01 against the revised map");
+          break;
+        case "clearPriority":
+          f.site.priority = false;
+          f.capture("priority", "Facilities", "Patient transfer cleared");
+          break;
+        case "restoreFeed":
+          f.site.connected = true;
+          f.site.update(f.time);
+          f.capture("telemetry", "Facilities feed", "Reconnected and reconciled the lift state");
+          break;
+        case "offerPorter":
+          r.paused = true;
+          r.booked = false;
+          j.phase = "porter_offered";
+          f.capture("offer", "Logistics", "Porter handoff offered. RX-01 retains custody");
+          break;
+        case "acceptPorter":
+          j.phase = "porter_transit"; j.holder = "Porter"; f.grant.active = false;
+          f.site.reservation = null;
+          f.porterArrival = f.time + 12;
+          f.capture("handoff", "Porter scanner", "Porter accepted the parcel for Ward B");
+          break;
+        case "wardScan":
+          if (j.holder === "RX-01" && f.apply(r, {action:"receipt", id:"ward-receipt"})) return false;
+          j.receipts = 1; j.holder = "Ward B"; j.phase = "received"; f.grant.active = false;
+          f.capture("receipt", "Ward scanner", "Ward B confirmed one parcel receipt");
+          break;
+      }
+      return true;
+    }
+    state() {
+      const f = this.fleet;
+      return {time:+f.time.toFixed(2), round:f.round,
+        journey:{...f.journey, forwardedCalls:f.site.receivedCount, trip:f.grant.trip, destination:"Ward B", approvedRevision:f.site.approvedRevision},
+        robots:f.robots.map(r => ({id:r.id, at:r.at, pose:{...r.pose}})),
+        facilities:{priority:f.site.priority, seenAt:f.site.seenAt, landing:f.site.landing, connected:f.site.connected},
+        actions:this.actions(), events:f.journal.map(e => ({...e}))};
+    }
+  }
+  return {WardSimulation, evaluate, MockLift};
+});
+
+// Smart RoboWard secure communication pipelines. Written on site, standard library only (Web Crypto).
+// Seven ways for a robot to ask a hospital lift for a floor, from an open network (A) to a layered design (G).
+// The same file runs in Node and in the browser. All devices, trips and keys are fictional and generated at run time.
+// Pipeline C runs the teammate's gate (gate/gate.cjs). Pipeline G runs our lift admission (ward-safety/controller.js).
+(function (root, create) {
+  "use strict";
+  if (typeof module === "object" && module.exports) {
+    module.exports = create({gate: require("../gate/gate.cjs"), evaluate: require("../ward-safety/controller.js").evaluate});
+  } else root.SecureComms = create({gate: typeof RWGate === "undefined" ? root.RWGate : RWGate, evaluate: root.WardSafety.evaluate});
+})(globalThis, function (deps) {
+  "use strict";
+  const subtle = globalThis.crypto.subtle;
+  const te = new TextEncoder(), td = new TextDecoder();
+  const MAP = Object.freeze({Upper: "L2", Ground: "L1"});                 // fleet floor names to hospital landings
+  const SCHEMA = Object.freeze(["type", "robot", "trip", "lift", "rawFloor", "mapRevision", "requestId"]);
+  const LIFT_LABEL = Object.freeze({L2: "01", L1: "G"});                    // the lift's own names for the same landings
+  const MARKER = "ZETA-PRIVATE-7731";                                      // fictional private marker a careless sender attaches
+  const LIMITS = Object.freeze({freshSeconds: 30, statusSeconds: 10, presenceSeconds: 10, ratePerSecond: 5, denialsToTrip: 5,
+    denialWindowSeconds: 10, isolationSeconds: 60, setupPerSecond: 6});
+
+  // ---- primitives ---------------------------------------------------------
+  const b64 = bytes => btoa(Array.from(bytes, b => String.fromCharCode(b)).join("")).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const unb64 = text => Uint8Array.from(atob(String(text).replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+  const hex = bytes => Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
+  // Canonical JSON: object keys sorted, so a signature covers one exact byte string.
+  function canon(value) {
+    if (Array.isArray(value)) return "[" + value.map(canon).join(",") + "]";
+    if (value && typeof value === "object") {
+      return "{" + Object.keys(value).sort().filter(k => value[k] !== undefined).map(k => JSON.stringify(k) + ":" + canon(value[k])).join(",") + "}";
+    }
+    return JSON.stringify(value === undefined ? null : value);
+  }
+  const parse = text => { try { const v = JSON.parse(text); return v && typeof v === "object" ? v : null; } catch { return null; } };
+  const random = (n = 12) => b64(globalThis.crypto.getRandomValues(new Uint8Array(n)));
+  const sha256hex = async text => hex(new Uint8Array(await subtle.digest("SHA-256", te.encode(text))));
+
+  async function signingKey() {
+    const pair = await subtle.generateKey("Ed25519", true, ["sign", "verify"]);
+    return {priv: pair.privateKey, pub: b64(new Uint8Array(await subtle.exportKey("raw", pair.publicKey)))};
+  }
+  const sign = async (priv, text) => b64(new Uint8Array(await subtle.sign("Ed25519", priv, te.encode(text))));
+  async function verify(pub, sig, text) {
+    try {
+      const key = await subtle.importKey("raw", unb64(pub), "Ed25519", false, ["verify"]);
+      return await subtle.verify("Ed25519", key, unb64(sig), te.encode(text));
+    } catch { return false; }
+  }
+  async function exchangeKey() {
+    const pair = await subtle.generateKey("X25519", false, ["deriveBits"]);   // private half is not extractable
+    return {priv: pair.privateKey, pub: b64(new Uint8Array(await subtle.exportKey("raw", pair.publicKey)))};
+  }
+  // Fresh keys for one session, one per direction, bound to everything both sides said during the handshake.
+  async function sessionKeys(priv, peerPub, transcript) {
+    const peer = await subtle.importKey("raw", unb64(peerPub), "X25519", false, []);
+    const secret = await subtle.deriveBits({name: "X25519", public: peer}, priv, 256);
+    const base = await subtle.importKey("raw", secret, "HKDF", false, ["deriveKey"]);
+    const salt = await subtle.digest("SHA-256", te.encode(transcript));
+    const derive = info => subtle.deriveKey({name: "HKDF", hash: "SHA-256", salt, info: te.encode(info)}, base,
+      {name: "AES-GCM", length: 256}, false, ["encrypt", "decrypt"]);
+    return {c2s: await derive("client to server"), s2c: await derive("server to client")};
+  }
+  const nonce = n => { const iv = new Uint8Array(12); new DataView(iv.buffer).setUint32(8, n); return iv; };
+  const seal = async (key, n, aad, text) =>
+    b64(new Uint8Array(await subtle.encrypt({name: "AES-GCM", iv: nonce(n), additionalData: te.encode(aad)}, key, te.encode(text))));
+  async function unseal(key, n, aad, sealed) {
+    try { return td.decode(await subtle.decrypt({name: "AES-GCM", iv: nonce(n), additionalData: te.encode(aad)}, key, unb64(sealed))); }
+    catch { return null; }
+  }
+
+  // ---- certificates -------------------------------------------------------
+  async function issueCert(ca, id, role, pub, notAfter) {
+    const body = {id, role, pub, serial: ca.next++, notAfter};
+    return {body, sig: await sign(ca.key.priv, canon(body))};
+  }
+  // Returns null when the certificate is good, otherwise the reason it was refused.
+  async function certProblem(world, cert, role) {
+    if (!cert || !cert.body || typeof cert.sig !== "string") return "missing certificate";
+    if (!await verify(world.caPub, cert.sig, canon(cert.body))) return "certificate not issued by the hospital";
+    if (world.now > cert.body.notAfter) return "certificate expired";
+    if (world.crl.has(cert.body.serial)) return "certificate revoked";
+    if (role && cert.body.role !== role) return "certificate has the wrong role";
+    return null;
+  }
+
+  // ---- network ------------------------------------------------------------
+  // Frames are strings. A tap is an attacker on one hop: it can read, change, drop, hold or answer a frame.
+  class Net {
+    constructor(world) { this.w = world; this.taps = []; this.captured = []; this.handlers = {}; }
+    async rpc(hop, origin, to, frame, opts = {}) {
+      const w = this.w;
+      if (w.admission && !opts.inside && !w.admitted.has(origin)) return null;       // B: the network drops unknown devices
+      this.captured.push({hop, dir: "request", origin, to, frame, at: w.now});
+      for (const tap of this.taps) {
+        if (tap.hop !== hop || !tap.request) continue;
+        const r = await tap.request(frame, {hop, origin, to});
+        if (r === null) return null;
+        if (r && typeof r === "object") return r.answer;
+        if (typeof r === "string") frame = r;
+      }
+      let reply = await this.handlers[to](frame, {hop, origin, inside: !!opts.inside});
+      for (const tap of this.taps) {
+        if (tap.hop !== hop || !tap.response) continue;
+        const r = await tap.response(reply, {hop, origin, to});
+        if (r === null) return null;
+        if (typeof r === "string") reply = r;
+      }
+      if (typeof reply === "string") this.captured.push({hop, dir: "reply", origin: to, to: origin, frame: reply, at: w.now});
+      return reply;
+    }
+  }
+
+  // ---- world --------------------------------------------------------------
+  async function makeWorld(id, options = {}) {
+    if (!PIPELINES[id]) throw Error("Unknown pipeline " + id);
+    const w = {id, tripTable: !!options.tripTable, now: 1000, ca: {key: await signingKey(), next: 1}, crl: new Set(), revokedKeys: new Set(), nodes: {}, trips: new Map(),
+      lift: {calls: []}, site: {approvedRevision: "map-7", destinationLabel: "01", priority: false, seenAt: 1000, landing: "L1"},
+      presence: {}, admitted: new Set(), admission: false, feedBlocked: false, capacity: Infinity, bucket: {second: -1, used: 0}, overloaded: 0};
+    w.caPub = w.ca.key.pub;
+    // Every key the hospital ever certified, per device, so an old log entry can still be checked after a key change.
+    w.keyHistory = new Map();
+    // The outside witness for the audit log. It only ever appends: the next head must follow the one it holds.
+    w.witness = {seq: -1, hash: "genesis", accept(entry) {
+      if (entry.seq !== this.seq + 1 || entry.prev !== this.hash) return false;
+      this.seq = entry.seq; this.hash = entry.hash;
+      return true;
+    }};
+    w.enroll = async (node, role) => {
+      const key = await signingKey();
+      w.keyHistory.set(node, (w.keyHistory.get(node) ?? []).concat(key.pub));
+      w.nodes[node] = {id: node, role, key, cert: await issueCert(w.ca, node, role, key.pub, 1e9), x: {seq: 0, tickets: {}, caps: {}}};
+      w.admitted.add(node);
+      return w.nodes[node];
+    };
+    for (const [node, role] of [["dispatcher", "dispatcher"], ["fleet", "fleet"], ["adapter", "adapter"], ["RX-01", "agv"], ["LAB-02", "agv"], ["SUP-03", "agv"], ["orders", "orders"]]) {
+      await w.enroll(node, role);
+    }
+    w.net = new Net(w);
+    w.pipe = new PIPELINES[id].make(w);
+    // Time only moves when a test says so. The facilities feed refreshes the lift status unless an attacker blocks it.
+    w.setTime = t => { w.now = t; if (!w.feedBlocked) w.site.seenAt = t; };
+    w.tick = seconds => w.setTime(w.now + seconds);
+    w.arrive = robot => { w.presence[robot] = w.now; };                   // independent lobby sensor sees the robot
+    w.forward = (claims, by) => w.lift.calls.push({robot: claims.robot, trip: claims.trip, floor: MAP[claims.rawFloor], rawFloor: claims.rawFloor,
+      at: w.now, statusAge: w.site.seenAt === null ? Infinity : w.now - w.site.seenAt, by});
+    // A delivery normally starts as a clinical order, which the dispatcher turns into a trip.
+    // `rogue` models a compromised dispatcher that creates a trip with no clinical order behind it.
+    w.orders = new Map();
+    w.dispatch = async (trip, robot, floor = "L2", o = {}) => {
+      const destination = o.destination ?? "WARD-B";
+      if (!o.rogue) w.orders.set(trip, {robot, floor, destination});
+      w.trips.set(trip, {trip, robot, lift: "Lift 1", origin: "L1", floor, destination});
+      await w.pipe.onDispatch(w.trips.get(trip));
+    };
+    w.revoke = node => {
+      const n = w.nodes[node];
+      w.crl.add(n.cert.body.serial); w.revokedKeys.add(n.key.pub); w.admitted.delete(node);
+      w.pipe.dropPeer(node);
+    };
+    w.handover = robot => { w.pipe.dropPeer(robot); };                     // the Wi-Fi link was lost and re-established
+    w.rotate = async robot => {
+      const old = w.nodes[robot], x = old.x;
+      w.crl.add(old.cert.body.serial); w.revokedKeys.add(old.key.pub);
+      const fresh = await w.enroll(robot, old.role);
+      fresh.x = {...x, link: null, tickets: {}, caps: {}, orders: {}};
+      w.pipe.dropPeer(robot);
+    };
+    w.net.handlers.fleet = (frame, meta) => w.pipe.fleet(frame, meta);
+    w.net.handlers.adapter = (frame, meta) => {
+      // Modelled firewall rule (pipeline I): only the fleet relay's address reaches the adapter. An attacker on the wired path can still spoof it.
+      if (w.adapterAllow && !meta.inside && !w.adapterAllow.has(meta.origin)) return null;
+      const second = Math.floor(w.now);                                    // modelled capacity of the lift adapter
+      if (w.bucket.second !== second) w.bucket = {second, used: 0};
+      if (++w.bucket.used > w.capacity) { w.overloaded++; return JSON.stringify({overloaded: true}); }
+      return w.pipe.adapter(frame, meta);
+    };
+    await w.pipe.init();
+    return w;
+  }
+  const claimsFor = (robot, trip, rawFloor = "Upper", requestId = "req-" + random(6)) =>
+    ({type: "LIFT_CALL", robot, trip, lift: "Lift 1", rawFloor, mapRevision: "map-7", requestId, note: "MED-ORDER 4471 " + MARKER});
+  const answer = (decision, reason) => ({decision, reason});
+  const noAnswer = reason => ({decision: null, reason});
+
+  // ---- shared building blocks --------------------------------------------
+  class Base {
+    constructor(world) { this.w = world; this.known = new Set(); this.cache = new Map(); this.entries = []; }
+    async init() {}
+    async onDispatch(trip) { this.known.add(trip.trip); }
+    dropPeer() {}
+    get log() { return this.entries; }
+    async verifyAudit() { return true; }                                   // a plain list has nothing to verify
+    record(event, detail) { this.entries.push({seq: this.entries.length, ts: this.w.now, event, detail}); }
+    // Identity-only authorization: the adapter knows which trips exist, and nothing about who may ask for which floor.
+    // With `tripTable` (a fairness variant, see run.cjs) the adapter also looks up which robot and floor the trip was given.
+    decide(claims) {
+      if (!claims || !this.known.has(claims.trip)) return answer("deny", "unknown trip");
+      if (!Object.hasOwn(MAP, claims.rawFloor)) return answer("deny", "unknown floor name");
+      const trip = this.w.trips.get(claims.trip);
+      if (this.w.tripTable && (trip.robot !== claims.robot || trip.floor !== MAP[claims.rawFloor])) return answer("deny", "call does not match the trip table");
+      this.w.forward(claims, this.w.id);
+      return answer("allow", "known trip");
+    }
+    cached(id, fingerprint) { const hit = this.cache.get(id); return hit && hit.fingerprint === fingerprint ? hit.reply : null; }
+    remember(id, fingerprint, reply) { this.cache.set(id, {fingerprint, reply}); return reply; }
+    relay(frame) { return this.w.net.rpc("backbone", "fleet", "adapter", frame); }
+    // The mission leg: dispatcher -> fleet manager -> robot. In A to H the robot takes its mission from the fleet manager.
+    // Whatever protects that hop is the fleet manager's own, so it does not help when the fleet manager is the attacker.
+    async mission(tripId) {
+      const t = this.w.trips.get(tripId), x = this.w.nodes[t.robot].x;
+      return {trip: t.trip, robot: t.robot, destination: t.destination, floor: t.floor, ticket: x.tickets[t.trip], cap: x.caps[t.trip], order: x.orders?.[t.trip]};
+    }
+    async acceptMission(mat, m) {
+      const body = m?.body ?? m;
+      return body && body.robot === mat.id ? {accepted: true, destination: body.destination} : {accepted: false, reason: "mission is for another robot"};
+    }
+    async fleet(frame) { return this.relay(frame); }
+    async direct(mat, claims, o = {}) { return this.w.net.rpc("backbone", mat.id, "adapter", await this.frame(mat, claims, o), o); }
+  }
+
+  // A signed envelope must have exactly the expected fields and types. This also keeps free text out of the log.
+  function malformed(env, headerKeys) {
+    const {hdr, claims} = env;
+    if (Object.keys(env).some(k => !["hdr", "capId", "claims"].includes(k)) || Object.keys(hdr).some(k => !headerKeys.includes(k))) return "unexpected field in the envelope";
+    if (!Number.isFinite(hdr.ts) || !Number.isInteger(hdr.seq)) return "time or sequence number is not a number";
+    if (typeof hdr.requestId !== "string" || !/^[A-Za-z0-9_-]{1,40}$/.test(hdr.requestId) || hdr.requestId !== claims.requestId) return "request ID is malformed";
+    if (Object.values(claims).some(v => typeof v !== "string" || v.length > 80)) return "claim value is malformed";
+    return null;
+  }
+  const envelopeHash = frameText => { const env = parse(frameText)?.env; return env ? sha256hex(canon(env)) : null; };
+  // Signed reply from the adapter, bound to the exact request it answers and to the time it was given.
+  async function signedReply(mat, world, requestId, decision, reason, requestHash) {
+    const env = {from: mat.cert.body.id, requestId, requestHash, ts: world.now, decision, reason};
+    return JSON.stringify({env, cert: mat.cert, sig: await sign(mat.key.priv, canon(env))});
+  }
+  async function readSignedReply(world, text, requestId, requestHash) {
+    const r = parse(text);
+    if (!r || !r.env) return noAnswer("no signed answer");
+    if (await certProblem(world, r.cert, "adapter")) return noAnswer("answer is not from the lift adapter");
+    if (!await verify(r.cert.body.pub, r.sig, canon(r.env))) return noAnswer("answer signature is wrong");
+    if (r.env.requestId !== requestId) return noAnswer("answer belongs to another request");
+    if (requestHash !== undefined && r.env.requestHash !== requestHash) return noAnswer("answer was given to a different message");
+    if (!Number.isFinite(r.env.ts) || Math.abs(world.now - r.env.ts) > LIMITS.freshSeconds) return noAnswer("answer is stale");
+    return answer(r.env.decision, r.env.reason);
+  }
+
+  // Three-message handshake and encrypted records, shared by E and G.
+  const transcriptOf = (hello, ack) => canon(hello) + "|" + ack.sid + "|" + ack.eph + "|" + canon(ack.cert);
+  // `send(frameText)` delivers one frame and returns the reply text. It is a network hop, or a tunnel through another channel.
+  async function connect(world, mat, send, serverRole, tag) {
+    const eph = await exchangeKey();
+    const hello = {v: tag, t: "hello", eph: eph.pub, cert: mat.cert, nonce: random()};
+    const ack = parse(await send(JSON.stringify(hello)));
+    if (!ack || ack.t !== "ack" || await certProblem(world, ack.cert, serverRole)) return null;
+    const transcript = transcriptOf(hello, ack);
+    if (!await verify(ack.cert.body.pub, ack.sig, transcript)) return null;
+    const keys = await sessionKeys(eph.priv, ack.eph, transcript);
+    const fin = {v: tag, t: "fin", sid: ack.sid, sig: await sign(mat.key.priv, transcript + "|fin")};
+    const ok = parse(await send(JSON.stringify(fin)));
+    return ok && ok.t === "ok" ? {sid: ack.sid, keys, out: 0, in: 0, serverCert: ack.cert, serverRole} : null;
+  }
+  async function exchange(world, session, send, text) {
+    if (await certProblem(world, session.serverCert, session.serverRole)) return null;   // revoked since the handshake
+    const n = session.out++;
+    const frame = {t: "rec", sid: session.sid, n, ct: await seal(session.keys.c2s, n, session.sid + "|c2s", text)};
+    const reply = parse(await send(JSON.stringify(frame)));
+    if (!reply || reply.t !== "rec" || reply.n !== session.in) return null;
+    const plain = await unseal(session.keys.s2c, reply.n, session.sid + "|s2c", reply.ct);
+    if (plain !== null) session.in++;
+    return plain;
+  }
+  // Server side. `inner(text, peer)` handles a decrypted record and returns the reply text.
+  async function serve(world, mat, sessions, frame, inner, gatekeeper) {
+    const f = parse(frame);
+    const error = why => JSON.stringify({t: "err", why});
+    if (!f) return error("unreadable");
+    if (f.t === "hello") {
+      if (await certProblem(world, f.cert)) return error("certificate refused");
+      if (gatekeeper && gatekeeper(f.cert.body)) return error("source isolated");
+      const eph = await exchangeKey();
+      const ack = {t: "ack", sid: random(), eph: eph.pub, cert: mat.cert};
+      const transcript = transcriptOf(f, ack);
+      ack.sig = await sign(mat.key.priv, transcript);
+      // At most one half-open session per claimed identity, so replayed hellos cannot pile up.
+      for (const [sid, old] of sessions) if (!old.ready && old.peer.id === f.cert.body.id) sessions.delete(sid);
+      sessions.set(ack.sid, {peer: f.cert.body, peerCert: f.cert, keys: await sessionKeys(eph.priv, f.eph, transcript), transcript, in: 0, out: 0, ready: false});
+      return JSON.stringify(ack);
+    }
+    const s = sessions.get(f.sid);
+    if (!s) return error("unknown session");
+    if (f.t === "fin") {
+      if (s.ready) return error("already established");
+      if (!await verify(s.peer.pub, f.sig, s.transcript + "|fin")) { sessions.delete(f.sid); return error("client proof failed"); }
+      s.ready = true;
+      // One live session per device: a proven new connection retires the old ones, so held-back frames from them are dead.
+      for (const [sid, old] of sessions) if (sid !== f.sid && old.peer.id === s.peer.id) sessions.delete(sid);
+      return JSON.stringify({t: "ok"});
+    }
+    if (f.t !== "rec" || !s.ready || f.n !== s.in) return error("out of order");
+    s.in++;                                                                // claim the slot before any await: no concurrent replays
+    if (await certProblem(world, s.peerCert)) { sessions.delete(f.sid); return error("certificate refused"); }
+    const plain = await unseal(s.keys.c2s, f.n, f.sid + "|c2s", f.ct);
+    if (plain === null) return error("record refused");
+    const out = await inner(plain, s.peer);
+    const n = s.out++;
+    return JSON.stringify({t: "rec", sid: f.sid, n, ct: await seal(s.keys.s2c, n, f.sid + "|s2c", out)});
+  }
+  // A client that keeps one session and reconnects once when the link was lost.
+  // Exchanges on one session take turns. Records are numbered, so two at once would overtake each other.
+  function viaSend(world, mat, slot, send, role, tag, text, o = {}) {
+    const turn = async () => {
+      for (let attempt = 0; attempt < (o.noRetry ? 1 : 2); attempt++) {
+        if (!slot.session) slot.session = await connect(world, mat, send, role, tag);
+        if (!slot.session) return null;
+        const reply = await exchange(world, slot.session, send, text);
+        if (reply !== null) return reply;
+        slot.session = null;
+      }
+      return null;
+    };
+    const result = (slot.queue ?? Promise.resolve()).then(turn, turn);
+    slot.queue = result.catch(() => null);
+    return result;
+  }
+  const viaChannel = (world, mat, slot, hop, server, role, tag, text, o = {}) =>
+    viaSend(world, mat, slot, frame => world.net.rpc(hop, mat.id, server, frame, o), role, tag, text, o);
+  const dropSessions = (sessions, id) => { for (const [sid, s] of sessions) if (s.peer.id === id) sessions.delete(sid); };
+
+  // ---- A · open network ---------------------------------------------------
+  class Open extends Base {
+    async frame(mat, claims) { return JSON.stringify({v: "A", claims}); }
+    async call(mat, claims, o = {}) {
+      const r = parse(await this.w.net.rpc("wifi", mat.id, "fleet", await this.frame(mat, claims, o), o));
+      return r && typeof r.decision === "string" ? answer(r.decision, r.reason) : noAnswer("no answer");
+    }
+    async adapter(frame) {
+      const f = parse(frame);
+      if (!f || !f.claims) return JSON.stringify(answer("deny", "unreadable"));
+      const hit = this.cached(f.claims.requestId, canon(f.claims));
+      if (hit) return hit;
+      this.record("call", f.claims);
+      return this.remember(f.claims.requestId, canon(f.claims), JSON.stringify(this.decide(f.claims)));
+    }
+  }
+
+  // ---- B · network admission only ----------------------------------------
+  class Admission extends Open {
+    async init() { this.w.admission = true; }                              // modelled: enterprise Wi-Fi with per-device certificates
+  }
+
+  // ---- C · signed single-use tickets (teammate's gate, method M1) --------
+  class Tickets extends Open {
+    async init() {
+      const w = this.w;
+      this.gateWorld = deps.gate.makeWorld();
+      this.gate = new deps.gate.Gate(this.gateWorld, {M1: true}, {get t() { return w.now * 1000; }});
+    }
+    get log() { return this.gate.audit; }
+    async verifyAudit() { return this.gate.verifyAudit(); }
+    async onDispatch(trip) {
+      this.gateWorld.tasks[trip.trip] = {dest: trip.floor, type: "med", owner: trip.robot, status: "REGISTERED"};
+      // The ticket travels with the mission, through the fleet manager, to the robot.
+      this.w.nodes[trip.robot].x.tickets[trip.trip] = deps.gate.issueToken(trip.robot, trip.trip, trip.floor, this.w.now * 1000);
+    }
+    async frame(mat, claims, o = {}) {
+      return JSON.stringify({v: "C", claims, token: o.stolen?.token ?? mat.x.tickets[claims.trip]});
+    }
+    async adapter(frame) {
+      const f = parse(frame);
+      if (!f || !f.claims) return JSON.stringify(answer("deny", "unreadable"));
+      const c = f.claims, fingerprint = canon(c) + "|" + f.token;
+      const hit = this.cached(c.requestId, fingerprint);
+      if (hit) return hit;
+      this.record("call", c);
+      const result = this.gate.handle({type: "deliver", user: c.robot, task_id: c.trip, destination: MAP[c.rawFloor] ?? "unknown", token: f.token, source: String(c.robot)});
+      if (result.ok) this.w.forward(c, "C");
+      return this.remember(c.requestId, fingerprint, JSON.stringify(result.ok ? answer("allow", "valid ticket") : answer("deny", result.reason)));
+    }
+    record(event, detail) { (this.inbox ??= []).push({event, detail}); }  // what a naive adapter keeps of each call
+  }
+
+  // ---- D · per-device signed messages ------------------------------------
+  class Signed extends Base {
+    constructor(world) { super(world); this.lastSeq = new Map(); }
+    // A retry keeps its request ID and is signed again with a fresh time and sequence number.
+    async frame(mat, claims, o = {}) {
+      const env = {hdr: {from: o.claimFrom ?? mat.cert.body.id, to: "adapter", seq: ++mat.x.seq, ts: this.w.now, requestId: claims.requestId}, claims};
+      return JSON.stringify({v: "D", env, cert: o.stolen?.cert ?? mat.cert, sig: await sign(mat.key.priv, canon(env))});
+    }
+    async call(mat, claims, o = {}) {
+      const frame = await this.frame(mat, claims, o);
+      return readSignedReply(this.w, await this.w.net.rpc("wifi", mat.id, "fleet", frame, o), claims.requestId, await envelopeHash(frame));
+    }
+    async adapter(frame) {
+      const w = this.w, me = w.nodes.adapter, f = parse(frame);
+      if (!f || !f.env || !f.env.hdr || !f.env.claims) return signedReply(me, w, undefined, "deny", "unreadable");
+      const {hdr, claims} = f.env, requestHash = await sha256hex(canon(f.env));
+      const refuse = why => signedReply(me, w, hdr.requestId, "deny", why, requestHash);
+      const problem = await certProblem(w, f.cert, "agv");
+      if (problem) return refuse(problem);
+      if (!await verify(f.cert.body.pub, f.sig, canon(f.env))) return refuse("signature is wrong");
+      const shape = malformed(f.env, ["from", "to", "seq", "ts", "requestId"]);
+      if (shape) return refuse(shape);
+      if (hdr.to !== "adapter" || hdr.from !== f.cert.body.id || claims.robot !== hdr.from) return refuse("sender does not match its certificate");
+      if (Math.abs(w.now - hdr.ts) > LIMITS.freshSeconds) return refuse("message is stale");
+      const hit = this.cached(hdr.requestId, canon(claims));
+      if (hit) return signedReply(me, w, hdr.requestId, hit.decision, hit.reason, requestHash);        // a retry gets the earlier answer, signed for this message
+      if (!(hdr.seq > (this.lastSeq.get(hdr.from) ?? 0))) return refuse("sequence number already used");
+      this.lastSeq.set(hdr.from, hdr.seq);
+      this.record("call", claims);
+      const d = this.remember(hdr.requestId, canon(claims), this.decide(claims));
+      return signedReply(me, w, hdr.requestId, d.decision, d.reason, requestHash);
+    }
+  }
+
+  // ---- E · encrypted channel with mutual authentication ------------------
+  class Channel extends Base {
+    constructor(world) { super(world); this.tag = "E"; this.robotSessions = new Map(); this.adapterSessions = new Map(); this.up = {session: null}; }
+    dropPeer(id) { dropSessions(this.robotSessions, id); }
+    body(mat, claims) { return canon({claims}); }
+    async call(mat, claims, o = {}) {
+      mat.x.link ??= {session: null};
+      const body = await this.body(mat, claims, o);
+      const reply = await viaChannel(this.w, mat, mat.x.link, "wifi", "fleet", "fleet", this.tag, body, o);
+      return reply === null ? noAnswer("no secure channel or no answer") : this.readReply(reply, claims, body);
+    }
+    readReply(text) { const r = parse(text); return r && typeof r.decision === "string" ? answer(r.decision, r.reason) : noAnswer("no answer"); }
+    upstream(text) { return viaChannel(this.w, this.w.nodes.fleet, this.up, "backbone", "adapter", "adapter", this.tag, text); }
+    async fleet(frame) {
+      return serve(this.w, this.w.nodes.fleet, this.robotSessions, frame, async (plain, peer) => {
+        const m = parse(plain);
+        // The fleet manager only lets a robot speak for itself.
+        if (!m || !m.claims || peer.role !== "agv" || m.claims.robot !== peer.id) return canon(answer("deny", "a robot may only speak for itself"));
+        return (await this.upstream(canon({claims: m.claims, onBehalfOf: peer.id}))) ?? canon(answer("hold", "lift adapter unavailable"));
+      });
+    }
+    async adapter(frame) {
+      return serve(this.w, this.w.nodes.adapter, this.adapterSessions, frame, async (plain, peer) => {
+        const m = parse(plain);
+        if (!m || !m.claims || peer.role !== "fleet") return canon(answer("deny", "only the fleet manager may relay lift calls"));
+        const hit = this.cached(m.claims.requestId, canon(m.claims));
+        if (hit) return hit;
+        this.record("call", m.claims);
+        return this.remember(m.claims.requestId, canon(m.claims), canon(this.decide(m.claims)));
+      });
+    }
+    // A compromised fleet manager uses its own genuine channel to the adapter.
+    async direct(mat, claims, o = {}) {
+      const slot = mat.id === "fleet" ? this.up : (mat.x.direct ??= {session: null});
+      return viaChannel(this.w, mat, slot, "backbone", "adapter", "adapter", this.tag, await this.directBody(mat, claims, o), o);
+    }
+    directBody(mat, claims) { return canon({claims, onBehalfOf: claims.robot}); }
+  }
+
+  // ---- F · trip capability with proof of possession ----------------------
+  // Shared by F and G: issue a capability, build a signed call, and check both at the adapter.
+  const Capability = {
+    async issue(pipe, trip) {
+      const w = pipe.w, robot = w.nodes[trip.robot], dispatcher = w.nodes.dispatcher;
+      const body = {capId: "cap-" + trip.trip + "-" + random(4), trip: trip.trip, robot: trip.robot, robotKey: robot.key.pub,
+        lift: trip.lift, origin: trip.origin, floor: trip.floor, nbf: w.now, exp: w.now + 600};
+      robot.x.caps[trip.trip] = {body, sig: await sign(dispatcher.key.priv, canon(body)), cert: dispatcher.cert};
+    },
+    async request(pipe, mat, claims, o = {}) {
+      const cap = o.stolen?.cap ?? mat.x.caps[claims.trip];
+      const env = {hdr: {from: o.claimFrom ?? mat.cert.body.id, seq: ++mat.x.seq, ts: pipe.w.now, requestId: claims.requestId}, capId: cap?.body?.capId, claims};
+      return JSON.stringify({v: pipe.w.id, cap, env, cert: mat.cert, sig: await sign(mat.key.priv, canon(env)), ...pipe.attach?.(mat, claims, o)});
+    },
+    // Returns {cap, claims, hdr} when everything checks out, otherwise {refuse: reason}.
+    async check(pipe, f) {
+      const w = pipe.w;
+      if (!f || !f.env || !f.env.hdr || !f.env.claims) return {refuse: "unreadable"};
+      const {hdr, claims} = f.env, cap = f.cap;
+      if (!cap || !cap.body) return {refuse: "no trip capability"};
+      const problem = await certProblem(w, cap.cert, "dispatcher");
+      if (problem) return {refuse: "capability issuer: " + problem};
+      if (!await verify(cap.cert.body.pub, cap.sig, canon(cap.body))) return {refuse: "capability signature is wrong"};
+      if (w.now < cap.body.nbf || w.now >= cap.body.exp) return {refuse: "capability is outside its time window"};
+      if (pipe.revokedCaps.has(cap.body.capId)) return {refuse: "capability was withdrawn"};
+      if (w.revokedKeys.has(cap.body.robotKey)) return {refuse: "robot key was revoked"};
+      if (!await verify(cap.body.robotKey, f.sig, canon(f.env))) return {refuse: "call is not signed by the robot this capability names"};
+      // The key in the grant must be the key the hospital certified for that robot. A dispatcher alone cannot rename a key.
+      const certified = await certProblem(w, f.cert, "agv");
+      if (certified || f.cert.body.pub !== cap.body.robotKey || f.cert.body.id !== cap.body.robot) return {refuse: "grant names a key the hospital did not certify for this robot"};
+      if (f.env.capId !== cap.body.capId || hdr.from !== cap.body.robot || claims.robot !== cap.body.robot || claims.trip !== cap.body.trip || claims.lift !== cap.body.lift) {
+        return {refuse: "call does not match its capability"};
+      }
+      const shape = malformed(f.env, ["from", "seq", "ts", "requestId"]);
+      if (shape) return {refuse: shape};
+      if (Math.abs(w.now - hdr.ts) > LIMITS.freshSeconds) return {refuse: "call is stale"};
+      return {cap, claims, hdr};
+    },
+    // Each signed call is accepted once. A relay that kept a copy cannot submit it again later.
+    // The exact message that was answered last is answered the same way again: a lost reply is not a new request and not misbehaviour.
+    repeated(pipe, hdr, requestHash) { const last = pipe.lastAnswer.get(hdr.from); return last && last.hash === requestHash ? last : null; },
+    answered(pipe, hdr, requestHash, decision, reason) { pipe.lastAnswer.set(hdr.from, {hash: requestHash, decision, reason}); },
+    seenBefore(pipe, hdr) {
+      if (!(hdr.seq > (pipe.lastSeq.get(hdr.from) ?? 0))) return true;
+      pipe.lastSeq.set(hdr.from, hdr.seq);
+      return false;
+    }
+  };
+  class TripCapability extends Base {
+    constructor(world) { super(world); this.revokedCaps = new Set(); this.used = new Map(); this.lastSeq = new Map(); this.lastAnswer = new Map(); }
+    async onDispatch(trip) { await Capability.issue(this, trip); }
+    frame(mat, claims, o) { return Capability.request(this, mat, claims, o); }
+    async call(mat, claims, o = {}) {
+      const frame = await this.frame(mat, claims, o);
+      return readSignedReply(this.w, await this.w.net.rpc("wifi", mat.id, "fleet", frame, o), claims.requestId, await envelopeHash(frame));
+    }
+    async adapter(frame) {
+      const w = this.w, me = w.nodes.adapter, f = parse(frame);
+      const requestHash = f?.env ? await sha256hex(canon(f.env)) : undefined;
+      const reply = (decision, reason) => signedReply(me, w, f?.env?.hdr?.requestId, decision, reason, requestHash);
+      const checked = await Capability.check(this, f);
+      if (checked.refuse) return reply("deny", checked.refuse);
+      const {cap, claims, hdr} = checked;
+      const again = Capability.repeated(this, hdr, requestHash);
+      if (again) return reply(again.decision, again.reason);
+      const hit = this.cached(hdr.requestId, canon(claims));
+      if (hit) return reply(hit.decision, hit.reason);
+      const final = (decision, reason) => { Capability.answered(this, hdr, requestHash, decision, reason); return reply(decision, reason); };
+      if (Capability.seenBefore(this, hdr)) return final("deny", "call was already seen");
+      this.record("call", claims);
+      if (MAP[claims.rawFloor] !== cap.body.floor) return final("deny", "requested floor is outside this trip");
+      const first = !this.used.has(cap.body.trip);
+      if (first) { w.forward(claims, "F"); this.used.set(cap.body.trip, hdr.requestId); }
+      const d = this.remember(hdr.requestId, canon(claims), answer("allow", first ? "capability and proof of possession verified" : "lift call for this trip was already forwarded"));
+      return final(d.decision, d.reason);
+    }
+  }
+
+  // ---- G · layered pipeline ----------------------------------------------
+  class Layered extends Channel {
+    constructor(world) {
+      super(world); this.tag = "G"; this.revokedCaps = new Set(); this.used = new Map(); this.lastSeq = new Map(); this.lastAnswer = new Map(); this.chain = [];
+      this.buckets = new Map(); this.isolatedUntil = new Map();
+    }
+    get log() { return this.chain; }
+    async onDispatch(trip) { await Capability.issue(this, trip); }
+    // Hash chain as in the teammate's gate, plus the adapter's signature on every entry.
+    async audit(event, detail) {
+      const prev = this.chain.length ? this.chain[this.chain.length - 1].hash : "genesis";
+      const me = this.w.nodes.adapter, entry = {seq: this.chain.length, ts: this.w.now, event, detail, prev, key: me.key.pub};
+      entry.hash = await sha256hex(prev + JSON.stringify([entry.seq, entry.ts, event, detail]));
+      entry.sig = await sign(me.key.priv, entry.hash);
+      this.chain.push(entry);
+      // The head of the log is exported to a witness outside the adapter (the hospital's security log) on every append.
+      this.w.witness.accept(entry);
+    }
+    async verifyAudit() {
+      let prev = "genesis";
+      for (const e of this.chain) {
+        const hash = await sha256hex(prev + JSON.stringify([e.seq, e.ts, e.event, e.detail]));
+        // Each entry names the key that signed it, which must be one the hospital certified for the adapter at some time.
+        if (e.prev !== prev || e.hash !== hash || !(this.w.keyHistory.get("adapter") ?? []).includes(e.key) || !await verify(e.key, e.sig, hash)) return false;
+        prev = e.hash;
+      }
+      // The log must end exactly at the head the outside witness holds: no cut, no fork, no rebuilt history.
+      const seen = this.w.witness;
+      return seen.seq === -1 ? this.chain.length === 0 : this.chain.length === seen.seq + 1 && this.chain[seen.seq].hash === seen.hash;
+    }
+    // Data minimization at the sender: only the fields a lift needs leave the robot.
+    body(mat, claims, o = {}) {
+      const minimal = o.rawSender ? claims : Object.fromEntries(SCHEMA.filter(k => k in claims).map(k => [k, claims[k]]));
+      return Capability.request(this, mat, minimal, o);
+    }
+    async readReply(text, claims, body) { return readSignedReply(this.w, text, claims.requestId, await envelopeHash(body)); }
+    directBody(mat, claims, o) { return this.body(mat, claims, o); }
+    // Circuit breaker at the fleet manager, per authenticated robot.
+    // Refusals are counted in a sliding window and isolation ends by itself, so a burst of bad luck cannot remove a robot for good.
+    strike(id, denied) {
+      const now = this.w.now, second = Math.floor(now);
+      let b = this.buckets.get(id);
+      if (!b) this.buckets.set(id, b = {second: -1, count: 0, denials: []});
+      if (denied) {
+        b.denials = b.denials.filter(t => now - t < LIMITS.denialWindowSeconds).concat(now);
+        if (b.denials.length >= LIMITS.denialsToTrip) this.isolate(id, "repeated refusals");
+        return;
+      }
+      if (b.second !== second) { b.second = second; b.count = 0; }
+      if (++b.count > LIMITS.ratePerSecond) this.isolate(id, "request rate");
+    }
+    isolated(id) { return (this.isolatedUntil.get(id) ?? -Infinity) > this.w.now; }
+    isolate(id, why) {
+      if (this.isolated(id)) return;
+      this.isolatedUntil.set(id, this.w.now + LIMITS.isolationSeconds); this.buckets.delete(id); this.dropPeer(id); this.pending = {id, why};
+    }
+    async fleet(frame) {
+      const reply = await serve(this.w, this.w.nodes.fleet, this.robotSessions, frame, async (plain, peer) => {
+        const refuse = why => signedReply(this.w.nodes.fleet, this.w, parse(plain)?.env?.hdr?.requestId, "deny", why);
+        this.strike(peer.id, false);
+        if (this.isolated(peer.id)) return refuse("source isolated");
+        const m = parse(plain);
+        if (!m || !m.env || !m.env.hdr || peer.role !== "agv" || m.env.hdr.from !== peer.id) { this.strike(peer.id, true); return refuse("a robot may only speak for itself"); }
+        const out = await this.upstream(plain);
+        if (out === null) return refuse("lift adapter unavailable");
+        const verdict = parse(out)?.env;
+        if (verdict?.decision === "deny" && !/stale/.test(verdict.reason)) this.strike(peer.id, true);   // a late message is not misbehaviour
+        return out;
+      }, peer => this.isolated(peer.id));
+      if (this.pending) { const p = this.pending; this.pending = null; await this.audit("breaker", {source: p.id, why: p.why}); }
+      return reply;
+    }
+    adapter(frame) {
+      return serve(this.w, this.w.nodes.adapter, this.adapterSessions, frame, (plain, peer) =>
+        this.decideCall(plain, peer.role !== "fleet" ? "only the fleet manager may relay lift calls" : null));
+    }
+    // Everything the lift adapter checks for one call. `objectionToSource` is set when the connection it arrived on is not acceptable.
+    async decideCall(plain, objectionToSource) {
+      const w = this.w, me = w.nodes.adapter;
+      {
+        const f = parse(plain), requestId = f?.env?.hdr?.requestId;
+        const requestHash = f?.env ? await sha256hex(canon(f.env)) : undefined;
+        // The log stores a fingerprint of the request, never its free text.
+        let asked = null;
+        const reply = async (decision, reason, detail) => {
+          if (asked) Capability.answered(this, asked, requestHash, decision, reason);
+          await this.audit(decision, {request: requestHash?.slice(0, 16), reason, ...detail});
+          return signedReply(me, w, requestId, decision, reason, requestHash);
+        };
+        if (objectionToSource) return reply("deny", objectionToSource);
+        // Unknown fields are refused and never written to the log.
+        if (f?.env?.claims && Object.keys(f.env.claims).some(k => !SCHEMA.includes(k))) return reply("deny", "unknown field rejected");
+        const checked = await Capability.check(this, f);
+        if (checked.refuse) return reply("deny", checked.refuse);
+        const {cap, claims, hdr} = checked, who = {trip: claims.trip, robot: claims.robot};
+        const again = Capability.repeated(this, hdr, requestHash);
+        if (again) return signedReply(me, w, requestId, again.decision, again.reason, requestHash);
+        asked = hdr;
+        const objection = await this.secondOpinion?.(f, cap);
+        if (objection) return reply("deny", objection, who);
+        const hit = this.cached(hdr.requestId, canon(claims));
+        if (hit) return signedReply(me, w, requestId, hit.decision, hit.reason, requestHash);
+        if (Capability.seenBefore(this, hdr)) return reply("deny", "call was already seen", who);
+        // Lift admission from ward-safety/controller.js: floor mapping, patient priority, fresh lift status.
+        const grant = {active: true, robot: cap.body.robot, trip: cap.body.trip, lift: cap.body.lift, origin: cap.body.origin, floor: cap.body.floor,
+          from: cap.body.nbf, until: cap.body.exp};
+        const verdict = deps.evaluate({robot: claims.robot, trip: claims.trip, lift: claims.lift, rawFloor: claims.rawFloor, mapRevision: claims.mapRevision}, grant,
+          {...w.site, destinationLabel: LIFT_LABEL[cap.body.floor]}, w.now);
+        if (verdict.outcome !== "allow") return reply(verdict.outcome, verdict.reason, who);
+        // Independent corroboration: a lobby sensor must have seen this robot at the lift just now.
+        const seen = w.presence[claims.robot];
+        if (seen === undefined || w.now - seen > LIMITS.presenceSeconds) return reply("hold", "Robot was not observed at the lift", who);
+        const first = !this.used.has(cap.body.trip);
+        if (first) { w.forward(claims, w.id); this.used.set(cap.body.trip, hdr.requestId); }
+        const d = this.remember(hdr.requestId, canon(claims), answer("allow", first ? verdict.reason : "Lift call for this trip was already forwarded"));
+        return reply(d.decision, d.reason, who);
+      }
+    }
+  }
+
+  // ---- H · layered pipeline with dual control ---------------------------
+  // Extension added after the first results, to close the "compromised dispatcher" limit: the lift adapter also requires
+  // a statement signed by the clinical order system, independent of the dispatcher, naming the same robot and floor.
+  class DualControl extends Layered {
+    constructor(world) { super(world); this.tag = "H"; }
+    async onDispatch(trip) {
+      await super.onDispatch(trip);
+      const order = this.w.orders.get(trip.trip), signer = this.w.nodes.orders;
+      if (!order) return;                                                  // no clinical order, so nothing to countersign
+      const body = {trip: trip.trip, robot: order.robot, floor: order.floor, destination: order.destination};
+      (this.w.nodes[trip.robot].x.orders ??= {})[trip.trip] = {body, sig: await sign(signer.key.priv, canon(body)), cert: signer.cert};
+    }
+    attach(mat, claims, o = {}) { return {order: o.stolen?.order ?? mat.x.orders?.[claims.trip]}; }
+    async secondOpinion(f, cap) {
+      const order = f.order;
+      if (!order || !order.body) return "no clinical order for this trip";
+      if (await certProblem(this.w, order.cert, "orders")) return "clinical order is not from the order system";
+      if (!await verify(order.cert.body.pub, order.sig, canon(order.body))) return "clinical order signature is wrong";
+      if (order.body.trip !== cap.body.trip || order.body.robot !== cap.body.robot || order.body.floor !== cap.body.floor) return "grant does not match the clinical order";
+      return null;
+    }
+  }
+
+  // ---- I · zero-trust relay ---------------------------------------------
+  // Built after the review and after reading the challenge material, where the cloud fleet manager is the door attackers use.
+  // The fleet manager becomes a relay that is not trusted with anything:
+  //  - the robot and the lift adapter share their own encrypted session, tunnelled through the fleet manager, so it cannot read or alter a call;
+  //  - the robot only accepts a mission signed by the hospital dispatcher and countersigned by the clinical order system;
+  //  - the adapter keeps its own breaker per robot, and (modelled) a firewall rule lets only the relay's address reach it.
+  class ZeroTrustRelay extends DualControl {
+    constructor(world) {
+      super(world); this.tag = "I"; this.innerSessions = new Map(); this.relayLog = [];
+      this.adapterDenials = new Map(); this.adapterIsolatedUntil = new Map(); this.prekeys = new Map(); this.missionCount = new Map();
+      world.adapterAllow = new Set(["fleet"]);
+    }
+    dropPeer(id) { super.dropPeer(id); dropSessions(this.innerSessions, id); }
+    // Every sealed message is padded to a fixed step, so its size does not give away the answer.
+    static pad(text, step) {
+      const f = parse(text);
+      if (!f) return text;
+      f.pad = "";
+      const bare = JSON.stringify(f).length;
+      f.pad = "0".repeat(Math.ceil(bare / step) * step - bare);
+      return JSON.stringify(f);
+    }
+    async body(mat, claims, o) { return ZeroTrustRelay.pad(await super.body(mat, claims, o), 4096); }
+    tunnel(mat, o) {
+      mat.x.link ??= {session: null};
+      return async frame => parse(await viaChannel(this.w, mat, mat.x.link, "wifi", "fleet", "fleet", this.tag, canon({tunnel: frame}), o))?.tunnel ?? null;
+    }
+    async call(mat, claims, o = {}) {
+      mat.x.inner ??= {session: null};
+      const body = await this.body(mat, claims, o);
+      const reply = await viaSend(this.w, mat, mat.x.inner, this.tunnel(mat, o), "adapter", this.tag, body, o);
+      return reply === null ? noAnswer("no secure channel or no answer") : this.readReply(reply, claims, body);
+    }
+    // The relay sees which robot is talking and how often. Nothing else.
+    tally(id, kind) {
+      const second = Math.floor(this.w.now);
+      let b = this.buckets.get(id);
+      if (!b || b.second !== second) this.buckets.set(id, b = {second, rec: 0, setup: 0});
+      if (++b[kind] > (kind === "rec" ? LIMITS.ratePerSecond : LIMITS.setupPerSecond) && !this.isolated(id)) {
+        this.isolatedUntil.set(id, this.w.now + LIMITS.isolationSeconds); this.dropPeer(id);
+        this.relayLog.push({ts: this.w.now, event: "breaker", source: id, why: "request rate"});
+      }
+    }
+    async fleet(frame) {
+      return serve(this.w, this.w.nodes.fleet, this.robotSessions, frame, async (plain, peer) => {
+        const m = parse(plain), refuse = why => canon({tunnel: JSON.stringify({t: "err", why})});
+        if (!m || typeof m.tunnel !== "string" || peer.role !== "agv") return refuse("not a tunnel");
+        this.tally(peer.id, parse(m.tunnel)?.t === "rec" ? "rec" : "setup");
+        if (this.isolated(peer.id)) return refuse("source isolated");
+        return (await this.upstream(canon({tunnel: m.tunnel}))) ?? refuse("lift adapter unavailable");
+      }, peer => this.isolated(peer.id));
+    }
+    adapterIsolated(id) { return (this.adapterIsolatedUntil.get(id) ?? -Infinity) > this.w.now; }
+    adapter(frame) {
+      const w = this.w, me = w.nodes.adapter;
+      return serve(w, me, this.adapterSessions, frame, async (plain, relay) => {
+        const m = parse(plain);
+        if (relay.role !== "fleet" || !m || typeof m.tunnel !== "string") return canon({tunnel: JSON.stringify({t: "err", why: "not a tunnel from the relay"})});
+        // The inner session is with the robot itself, proved by the robot's own certificate. Nothing the relay says about it is used.
+        const inner = await serve(w, me, this.innerSessions, m.tunnel, async (text, robot) => {
+          const source = parse(text)?.env?.hdr?.from !== robot.id ? "a robot may only speak for itself" : null;
+          const out = await this.decideCall(text, source);
+          const verdict = parse(out)?.env;
+          // Only refusals of a fresh, well-formed call from the robot itself count against it.
+          if (verdict?.decision === "deny" && !/stale|isolated|already seen/.test(verdict.reason)) {
+            const now = w.now, recent = (this.adapterDenials.get(robot.id) ?? []).filter(t => now - t < LIMITS.denialWindowSeconds).concat(now);
+            this.adapterDenials.set(robot.id, recent);
+            if (recent.length >= LIMITS.denialsToTrip) {
+              this.adapterIsolatedUntil.set(robot.id, now + LIMITS.isolationSeconds); this.adapterDenials.delete(robot.id);
+              dropSessions(this.innerSessions, robot.id);
+              await this.audit("breaker", {source: robot.id, why: "repeated refusals"});
+            }
+          }
+          return ZeroTrustRelay.pad(out, 1024);
+        }, peer => peer.role !== "agv" || this.adapterIsolated(peer.id));
+        return canon({tunnel: inner});
+      });
+    }
+    // A compromised fleet manager can open a tunnel of its own, with its own certificate. It is not a robot.
+    async direct(mat, claims, o = {}) {
+      if (mat.id !== "fleet") return super.direct(mat, claims, o);
+      const slot = (mat.x.rogue ??= {session: null});
+      const send = async frame => parse(await this.upstream(canon({tunnel: frame})))?.tunnel ?? null;
+      return viaSend(this.w, mat, slot, send, "adapter", this.tag, await this.body(mat, claims, o), o);
+    }
+    // Before a trip the robot registers a one-time key, signed with its identity. The mission is sealed to that key.
+    async onDispatch(trip) {
+      await super.onDispatch(trip);
+      const robot = this.w.nodes[trip.robot], key = await exchangeKey();
+      (robot.x.prekeys ??= new Map()).set(key.pub, key);
+      this.prekeys.set(trip.trip, {pub: key.pub, sig: await sign(robot.key.priv, "mission key|" + key.pub), cert: robot.cert});
+    }
+    // Missions are signed by the dispatcher, carry the clinical order system's statement and the trip grant,
+    // and travel sealed. The fleet manager delivers them and learns only which robot they are for.
+    async mission(tripId) {
+      const w = this.w, t = w.trips.get(tripId), dispatcher = w.nodes.dispatcher, x = w.nodes[t.robot].x, pre = this.prekeys.get(tripId);
+      if (!pre || await certProblem(w, pre.cert, "agv") || pre.cert.body.id !== t.robot || !await verify(pre.cert.body.pub, pre.sig, "mission key|" + pre.pub)) return null;
+      const n = (this.missionCount.get(t.robot) ?? 0) + 1;
+      this.missionCount.set(t.robot, n);
+      const body = {trip: t.trip, robot: t.robot, destination: t.destination, floor: t.floor, n, nbf: w.now, exp: w.now + 600};
+      const bundle = {body, sig: await sign(dispatcher.key.priv, canon(body)), cert: dispatcher.cert, order: x.orders?.[t.trip], cap: x.caps[t.trip]};
+      const eph = await exchangeKey(), keys = await sessionKeys(eph.priv, pre.pub, "mission|" + eph.pub + "|" + pre.pub);
+      const sealed = {to: t.robot, key: pre.pub, eph: eph.pub, ct: await seal(keys.c2s, 0, "mission", ZeroTrustRelay.pad(JSON.stringify(bundle), 4096))};
+      return sealed;
+    }
+    async acceptMission(mat, sealed) {
+      const w = this.w, no = reason => ({accepted: false, reason});
+      if (!sealed || typeof sealed.ct !== "string") return no("mission is not sealed");
+      const key = mat.x.prekeys?.get(sealed.key);
+      if (!key) return no("mission is sealed for another robot, or was already opened");
+      const keys = await sessionKeys(key.priv, sealed.eph, "mission|" + sealed.eph + "|" + sealed.key);
+      const m = parse(await unseal(keys.c2s, 0, "mission", sealed.ct) ?? "");
+      if (!m || !m.body) return no("mission cannot be opened");
+      mat.x.prekeys.delete(sealed.key);                                    // one-time key: this mission cannot be opened twice
+      if (await certProblem(w, m.cert, "dispatcher")) return no("mission is not from the hospital dispatcher");
+      if (!await verify(m.cert.body.pub, m.sig, canon(m.body))) return no("mission signature is wrong");
+      if (m.body.robot !== mat.id) return no("mission is for another robot");
+      if (!Number.isFinite(m.body.nbf) || w.now < m.body.nbf || w.now >= m.body.exp) return no("mission is outside its time window");
+      if (!(m.body.n > (mat.x.lastMission ?? 0))) return no("mission is older than the last one accepted");
+      const o = m.order;
+      if (!o || !o.body || await certProblem(w, o.cert, "orders") || !await verify(o.cert.body.pub, o.sig, canon(o.body))) return no("no clinical order for this mission");
+      if (o.body.trip !== m.body.trip || o.body.robot !== m.body.robot || o.body.destination !== m.body.destination || o.body.floor !== m.body.floor) return no("mission does not match the clinical order");
+      mat.x.lastMission = m.body.n;
+      return {accepted: true, destination: m.body.destination};
+    }
+  }
+
+  const PIPELINES = {
+    A: {make: Open, name: "Open network", short: "Open"},
+    B: {make: Admission, name: "Network admission only", short: "Admission"},
+    C: {make: Tickets, name: "Signed single-use tickets", short: "Tickets"},
+    D: {make: Signed, name: "Per-device signed messages", short: "Signed"},
+    E: {make: Channel, name: "Encrypted channel, mutual authentication", short: "Channel"},
+    F: {make: TripCapability, name: "Trip capability with proof of possession", short: "Capability"},
+    G: {make: Layered, name: "Layered pipeline", short: "Layered"},
+    H: {make: DualControl, name: "Layered pipeline with dual control", short: "G + dual", extension: true},
+    I: {make: ZeroTrustRelay, name: "Zero-trust relay", short: "Zero-trust", extension: true}
+  };
+
+  return {makeWorld, claimsFor, PIPELINES, MAP, SCHEMA, MARKER, LIMITS,
+    tools: {canon, parse, random, sha256hex, signingKey, sign, verify, exchangeKey, sessionKeys, seal, unseal, issueCert, certProblem,
+      signedReply, readSignedReply, envelopeHash, transcriptOf, connect, exchange, serve, b64, unb64}};
+});
+
+// Attack suite and legitimate workload for the secure communication pipelines. See IMPLEMENTATION-PLAN.md, section 5.
+// Every attack decides its result from effects only: what the lift received, what the attacker could read, what the robot believed.
+// Attack code uses the same client code as a real device, with stolen, forged or missing key material.
+(function (root, create) {
+  "use strict";
+  if (typeof module === "object" && module.exports) module.exports = create(require("./comms.js"));
+  else root.SecureAttacks = create(root.SecureComms);
+})(globalThis, function (SC) {
+  "use strict";
+  const {makeWorld, claimsFor, MARKER, tools} = SC;
+  const {parse, canon, random, signingKey, sign, issueCert, sha256hex, signedReply, transcriptOf, exchangeKey} = tools;
+  const TRIP = "TRIP-WB";
+  const calls = w => w.lift.calls.length;
+  const wire = w => w.net.captured.map(f => f.frame).join("\n");
+
+  // The page sets an observer to show the frames of the last run. It has no effect on results.
+  let observer = null;
+  const observe = fn => { observer = fn; };
+  let options = {};
+  const setOptions = o => { options = o || {}; };                         // used by run.cjs for the fairness variants
+  const world = async id => { const w = await makeWorld(id, options); if (observer) observer(w); return w; };
+  // A world in which RX-01 has a trip to Ward B, has accepted its mission and stands at the lift.
+  // `sealedMission` leaves the mission undelivered, for the attacks that are about the mission itself.
+  async function fresh(id, o = {}) {
+    const w = await world(id);
+    await w.dispatch(TRIP, "RX-01", "L2");
+    if (!o.sealedMission) await w.pipe.acceptMission(w.nodes["RX-01"], await w.pipe.mission(TRIP));
+    w.arrive("RX-01");
+    return w;
+  }
+  // The robot's connections are already open, as they are in normal operation, so the next frame on the Wi-Fi hop is the call itself.
+  async function warmedUp(id) {
+    const w = await fresh(id);
+    await w.dispatch("TRIP-WARM", "RX-01", "L2");
+    await w.pipe.call(w.nodes["RX-01"], claimsFor("RX-01", "TRIP-WARM"));
+    w.tick(2); w.arrive("RX-01");
+    w.net.captured.length = 0;
+    return w;
+  }
+  const rx = w => w.nodes["RX-01"];
+  const legit = (w, o) => w.pipe.call(rx(w), claimsFor("RX-01", TRIP), o);
+
+  // An outsider brings their own certificate authority, keys, a home-made capability and a home-made ticket.
+  async function outsider(w, name, pretend) {
+    const ca = {key: await signingKey(), next: 900}, key = await signingKey(), boss = await signingKey();
+    const mat = {id: name, role: "agv", key, cert: await issueCert(ca, pretend, "agv", key.pub, 1e9), x: {seq: 50, tickets: {}, caps: {}}};
+    const body = {capId: "cap-forged", trip: TRIP, robot: pretend, robotKey: key.pub, lift: "Lift 1", origin: "L1", floor: "L2", nbf: w.now - 1, exp: w.now + 600};
+    mat.x.caps[TRIP] = {body, sig: await sign(boss.priv, canon(body)), cert: await issueCert(ca, "dispatcher", "dispatcher", boss.pub, 1e9)};
+    const ticket = tools.b64(new TextEncoder().encode(JSON.stringify({u: pretend, t: TRIP, d: "L2", exp: w.now * 1000 + 300000, n: "forged"})));
+    mat.x.tickets[TRIP] = ticket + "." + random(32);
+    return mat;
+  }
+  // Walk a parsed frame and apply `edit` to every object. Returns true when something changed.
+  function walk(value, edit) {
+    let changed = false;
+    if (value && typeof value === "object") {
+      if (edit(value)) changed = true;
+      for (const child of Object.values(value)) if (walk(child, edit)) changed = true;
+    }
+    return changed;
+  }
+  const flip = text => text.slice(0, -2) + (text.at(-2) === "A" ? "B" : "A") + text.at(-1);
+  // Change a frame in transit: edit the readable field if there is one, otherwise damage the ciphertext.
+  function alter(frame, edit) {
+    const f = parse(frame);
+    if (!f) return undefined;
+    if (walk(f, edit)) return JSON.stringify(f);
+    if (f.t === "rec" && typeof f.ct === "string") { f.ct = flip(f.ct); return JSON.stringify(f); }
+    return undefined;
+  }
+  const stolenFrom = w => {
+    const bag = {};
+    for (const item of w.net.captured) walk(parse(item.frame), o => {
+      if (typeof o.token === "string" && (o.claims?.trip ?? TRIP) === TRIP) bag.token = o.token;
+      if (o.cap && o.cap.body && o.cap.body.trip === TRIP) bag.cap = o.cap;
+      if (o.order && o.order.body) bag.order = o.order;
+      if (o.cert && o.cert.body && o.cert.body.id === "RX-01") bag.cert = o.cert;
+      return false;
+    });
+    return bag;
+  };
+
+  // One compromised robot floods while two others work. `direct` sends the junk straight to the adapter, past the fleet manager.
+  async function flood(id, mode) {
+    const direct = !!mode, o = mode === "spoofed" ? {noRetry: true, inside: true} : {noRetry: true};
+    const w = await world(id), seconds = 5, junkPerSecond = 100, robots = ["RX-01", "LAB-02"], perSecond = 4;
+        w.capacity = 20;
+        const trips = [];
+        for (let i = 0; i < seconds * perSecond; i++) { trips.push({trip: "TRIP-F" + i, robot: robots[i % 2]}); await w.dispatch("TRIP-F" + i, robots[i % 2], "L2"); }
+        let seed = 20261128;
+        const rand = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+        const start = w.now + 1;
+        for (let s = 0; s < seconds; s++) {
+          const work = Array.from({length: junkPerSecond}, () => null).concat(trips.slice(s * perSecond, (s + 1) * perSecond));
+          for (let i = work.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [work[i], work[j]] = [work[j], work[i]]; }
+          for (let i = 0; i < work.length; i++) {
+            w.setTime(start + s + i / work.length);
+            const job = work[i];
+            if (job) { w.arrive(job.robot); await w.pipe.call(w.nodes[job.robot], claimsFor(job.robot, job.trip), {noRetry: true}); }
+            else if (direct) await w.pipe.direct(w.nodes["SUP-03"], claimsFor("SUP-03", "JUNK-" + s + "-" + i), o);
+            else await w.pipe.call(w.nodes["SUP-03"], claimsFor("SUP-03", "JUNK-" + s + "-" + i), {noRetry: true});
+          }
+        }
+        const served = new Set(w.lift.calls.filter(c => c.trip.startsWith("TRIP-F")).map(c => c.trip)).size, pct = Math.round(1000 * served / trips.length) / 10;
+        return {blocked: pct >= 90, detail: served + " of " + trips.length + " legitimate calls served (" + pct + "%), adapter refused " + w.overloaded + " frames as overloaded", retainedPct: pct};
+  }
+
+  const ATTACKS = [
+    {id: "T01", name: "Eavesdrop on a delivery", position: "PATH", wins: "Captured frames reveal the trip, the floor or a private marker",
+      async run(id) {
+        const w = await fresh(id);
+        await legit(w);
+        const text = wire(w), read = [[TRIP, "trip"], ['"Upper"', "floor"], [MARKER, "private marker"]].filter(([needle]) => text.includes(needle)).map(([, label]) => label);
+        return {blocked: read.length === 0, detail: read.length ? "Read from the wire: " + read.join(", ") : "Nothing readable on the wire"};
+      }},
+    {id: "T02", name: "Inject a lift call from outside", position: "OUT", wins: "The lift receives a call",
+      async run(id) {
+        const w = await fresh(id), mat = await outsider(w, "GUEST-LAPTOP", "RX-01");
+        await w.pipe.call(mat, claimsFor("RX-01", TRIP));
+        await w.pipe.direct(mat, claimsFor("RX-01", TRIP));
+        return {blocked: calls(w) === 0, detail: calls(w) + " lift call(s) from a device with no hospital credentials"};
+      }},
+    {id: "T03", name: "Replay a recorded lift call a minute later", position: "PATH", wins: "The lift receives a second call",
+      async run(id) {
+        const w = await fresh(id);
+        await legit(w);
+        const before = calls(w), recorded = w.net.captured.filter(f => f.dir === "request").map(f => ({...f}));
+        w.tick(60);
+        for (const f of recorded) await w.net.rpc(f.hop, f.origin, f.to, f.frame, {inside: true});
+        // Second try: give the recorded call a new request ID, so it no longer looks like a retry.
+        for (const f of recorded) {
+          const renamed = alter(f.frame, o => { if (typeof o.requestId === "string") { o.requestId += "-again"; return true; } return false; });
+          if (renamed) await w.net.rpc(f.hop, f.origin, f.to, renamed, {inside: true});
+        }
+        return {blocked: calls(w) === before, detail: (calls(w) - before) + " extra lift call(s) after replaying " + recorded.length + " recorded frame(s), verbatim and renamed"};
+      }},
+    {id: "T04", name: "Change the floor in transit", position: "PATH", wins: "The lift is called for a floor the robot did not ask for",
+      async run(id) {
+        let wrong = 0;
+        for (const hop of ["wifi", "backbone"]) {
+          const w = await fresh(id);
+          w.net.taps.push({hop, request: frame => alter(frame, o => { if (o.rawFloor === "Upper") { o.rawFloor = "Ground"; return true; } return false; })});
+          await legit(w);
+          wrong += w.lift.calls.filter(c => c.floor !== "L2").length;
+        }
+        return {blocked: wrong === 0, detail: wrong + " lift call(s) for the attacker's floor"};
+      }},
+    {id: "T05", name: "One robot pretends to be another", position: "DEV", wins: "The lift receives a call in RX-01's name",
+      async run(id) {
+        const w = await fresh(id), sup = w.nodes["SUP-03"];
+        await w.pipe.call(sup, claimsFor("RX-01", TRIP));
+        await w.pipe.call(sup, claimsFor("RX-01", TRIP), {claimFrom: "RX-01"});
+        const n = w.lift.calls.filter(c => c.robot === "RX-01").length;
+        return {blocked: n === 0, detail: n + " lift call(s) in RX-01's name from SUP-03"};
+      }},
+    {id: "T06", name: "A robot calls the lift with no delivery of its own", position: "DEV", wins: "The lift receives a call",
+      async run(id) {
+        const w = await fresh(id);
+        await w.pipe.call(w.nodes["SUP-03"], claimsFor("SUP-03", TRIP));
+        return {blocked: calls(w) === 0, detail: calls(w) + " lift call(s) for a robot with no trip"};
+      }},
+    {id: "T07", name: "Compromised fleet manager invents a lift call", position: "FLEET", wins: "The lift receives a call",
+      async run(id) {
+        const w = await fresh(id);
+        // The fleet manager relayed RX-01's mission, so it holds whatever travelled with it.
+        const stolen = {token: rx(w).x.tickets[TRIP], cap: rx(w).x.caps[TRIP], order: rx(w).x.orders?.[TRIP], cert: rx(w).cert};
+        await w.pipe.direct(w.nodes.fleet, claimsFor("RX-01", TRIP), {stolen, claimFrom: "RX-01", inside: true});
+        return {blocked: calls(w) === 0, detail: calls(w) + " lift call(s) the robot never made"};
+      }},
+    {id: "T08", name: "Genuine robot asks for the wrong floor", position: "DEV", wins: "The lift is called for L1 on a trip to L2",
+      async run(id) {
+        const w = await fresh(id);
+        await w.pipe.call(rx(w), claimsFor("RX-01", TRIP, "Ground"));
+        const n = w.lift.calls.filter(c => c.floor === "L1").length;
+        return {blocked: n === 0, detail: n + " lift call(s) for L1"};
+      }},
+    {id: "T09", name: "A retired robot keeps working", position: "DEV", wins: "The lift receives a call",
+      async run(id) {
+        const w = await fresh(id), sup = w.nodes["SUP-03"];
+        // The robot was given a real trip, and everything that came with it, before it was retired.
+        await w.dispatch("TRIP-SUP", "SUP-03", "L2");
+        w.revoke("SUP-03");
+        w.arrive("SUP-03");
+        await w.pipe.call(sup, claimsFor("SUP-03", "TRIP-SUP"));
+        await w.pipe.call(sup, claimsFor("SUP-03", TRIP));
+        await w.pipe.call(sup, claimsFor("RX-01", TRIP), {claimFrom: "RX-01"});
+        return {blocked: calls(w) === 0, detail: calls(w) + " lift call(s) from a revoked robot"};
+      }},
+    {id: "T10", name: "Steal a credential off the wire and use it elsewhere", position: "PATH", wins: "The lift receives a call triggered by the attacker's device",
+      async run(id) {
+        const w = await warmedUp(id), before = calls(w);
+        // Hold back the robot's call and keep a copy.
+        w.net.taps.push({hop: "wifi", request: () => null});
+        await legit(w, {noRetry: true});
+        w.net.taps.length = 0;
+        const stolen = stolenFrom(w);
+        await w.pipe.call(w.nodes["SUP-03"], claimsFor("RX-01", TRIP), {stolen, claimFrom: "RX-01"});
+        const found = Object.keys(stolen).join(", ") || "nothing";
+        return {blocked: calls(w) === before, detail: (calls(w) - before) + " lift call(s) from SUP-03. Lifted off the wire: " + found};
+      }},
+    {id: "T11", name: "Hold a lift call for two minutes, then release it", position: "PATH", wins: "The lift receives the stale call",
+      async run(id) {
+        const w = await warmedUp(id), before = calls(w);
+        let held = null;
+        w.net.taps.push({hop: "wifi", request: frame => { held = frame; return null; }});
+        await legit(w, {noRetry: true});
+        w.net.taps.length = 0;
+        w.tick(120);
+        w.arrive("RX-01");
+        if (held) await w.net.rpc("wifi", "RX-01", "fleet", held, {inside: true});
+        return {blocked: calls(w) === before, detail: (calls(w) - before) + " lift call(s) from a message delivered 120 s late"};
+      }},
+    {id: "T12", name: "Forge or replay the adapter's reply", position: "PATH", wins: "The robot believes a refused call was allowed",
+      async run(id) {
+        const fooled = [];
+        for (const variant of ["edit", "replay", "swap"]) {
+          const w = await fresh(id), target = claimsFor("RX-01", "TRIP-UNKNOWN", "Upper");
+          await legit(w);
+          let substitute = w.net.captured.filter(f => f.hop === "wifi" && f.dir === "reply").at(-1)?.frame;
+          if (variant === "swap") {
+            // A compromised robot with a trip of its own asks under the victim's request ID and collects a genuine "allow".
+            await w.dispatch("TRIP-SUP", "SUP-03", "L2");
+            w.arrive("SUP-03");
+            await w.pipe.call(w.nodes["SUP-03"], claimsFor("SUP-03", "TRIP-SUP", "Upper", target.requestId));
+            substitute = w.net.captured.filter(f => f.hop === "wifi" && f.dir === "reply").at(-1)?.frame;
+          }
+          w.net.taps.push({hop: "wifi", response: reply => {
+            if (typeof reply !== "string" || parse(reply)?.t === "ack" || parse(reply)?.t === "ok") return undefined;
+            return variant === "edit" ? alter(reply, o => { if (typeof o.decision === "string" && o.decision !== "allow") { o.decision = "allow"; return true; } return false; }) : substitute;
+          }});
+          // RX-01 asks for a trip that was never dispatched. Every design refuses it; the attacker replaces the refusal.
+          const result = await w.pipe.call(rx(w), target);
+          if (result.decision === "allow") fooled.push(variant);
+        }
+        return {blocked: fooled.length === 0, detail: fooled.length ? "Robot accepted a forged answer: " + fooled.join(", ") : "0 of 3 forged answers accepted by the robot"};
+      }},
+    {id: "T13", name: "Impersonate the lift adapter", position: "PATH", wins: "The robot accepts an answer from the attacker",
+      async run(id) {
+        const w = await fresh(id), me = w.nodes["SUP-03"];
+        // The attacker sits on the Wi-Fi hop and answers instead of the hospital, using a compromised robot's genuine credentials.
+        w.net.taps.push({hop: "wifi", request: async frame => {
+          const f = parse(frame);
+          if (f && f.t === "hello") {
+            const eph = await exchangeKey(), ack = {t: "ack", sid: random(), eph: eph.pub, cert: me.cert};
+            ack.sig = await sign(me.key.priv, transcriptOf(f, ack));
+            return {answer: JSON.stringify(ack)};
+          }
+          if (f && f.t === "fin") return {answer: JSON.stringify({t: "ok"})};
+          const requestId = f?.env?.hdr?.requestId ?? f?.claims?.requestId;
+          if (f && f.env) return {answer: await signedReply(me, w, requestId, "allow", "go ahead")};
+          return {answer: JSON.stringify({decision: "allow", reason: "go ahead"})};
+        }});
+        const result = await w.pipe.call(rx(w), claimsFor("RX-01", "TRIP-UNKNOWN"));
+        return {blocked: result.decision !== "allow", detail: result.decision === "allow" ? "Robot accepted the attacker's answer" : "Robot refused the answer: " + result.reason};
+      }},
+    {id: "T14", name: "Flood from one compromised robot", position: "DEV", wins: "Fewer than 90% of other robots' legitimate calls are served",
+      run: id => flood(id, false)},
+    {id: "T15", name: "Decrypt recorded traffic with keys stolen later", position: "LEAK", wins: "The recorded lift calls can be read",
+      async run(id) {
+        const w = await fresh(id);
+        await legit(w);
+        if (wire(w).includes('"Upper"')) return {blocked: false, detail: "Nothing to decrypt: the calls were recorded in clear"};
+        // With every long-term key stolen, look for anything left behind that could rebuild a session key.
+        const seen = new Set(), leftovers = [];
+        (function scan(v) {
+          if (!v || typeof v !== "object" || seen.has(v)) return;
+          seen.add(v);
+          if (typeof CryptoKey !== "undefined" && v instanceof CryptoKey) {
+            if ((v.type === "private" && v.algorithm.name === "X25519") || (v.type === "secret" && v.extractable)) leftovers.push(v.algorithm.name);
+            return;
+          }
+          for (const child of v instanceof Map ? v.values() : Object.values(v)) scan(child);
+        })({nodes: w.nodes, pipe: {...w.pipe, w: null}});
+        return {blocked: leftovers.length === 0, detail: leftovers.length ? "Session secrets left in memory: " + leftovers.join(", ")
+          : "Long-term keys sign only. No key-agreement secret or exportable session key was kept"};
+      }},
+    {id: "T16", name: "Rewrite or cut the audit log and repair its hashes", position: "LOG", wins: "Verification still passes",
+      async run(id) {
+        const undetected = [];
+        for (const variant of ["edit", "cut"]) {
+          const w = await fresh(id);
+          await legit(w);
+          await w.pipe.call(rx(w), claimsFor("RX-01", "TRIP-UNKNOWN"));       // a refusal the attacker would like to remove
+          const log = w.pipe.log;
+          if (!log.length) return {blocked: false, detail: "No audit record exists"};
+          if (variant === "edit") log[0].detail = "edited by the attacker"; else log.pop();
+          let prev = "genesis";
+          for (const e of log) if ("hash" in e) { e.prev = prev; e.hash = prev = await sha256hex(prev + JSON.stringify([e.seq, e.ts, e.event, e.detail])); }
+          if (await w.pipe.verifyAudit()) undetected.push(variant);
+        }
+        return {blocked: undetected.length === 0, detail: undetected.length ? "Undetected: " + undetected.join(" and ") + " of the log" : "Signatures exposed the edit, and the head held by the outside witness exposed the cut"};
+      }},
+    {id: "T17", name: "Over-sharing", position: "NONE", wins: "A private marker reaches the lift-side log",
+      async run(id) {
+        const kept = [];
+        for (const variant of ["extra field", "request ID"]) {
+          const w = await fresh(id), claims = claimsFor("RX-01", TRIP, "Upper", variant === "request ID" ? MARKER : undefined);
+          await w.pipe.call(rx(w), claims, {rawSender: variant === "extra field"});
+          if (JSON.stringify([w.pipe.log, w.pipe.inbox ?? [], w.lift.calls]).includes(MARKER)) kept.push(variant);
+        }
+        return {blocked: kept.length === 0, detail: kept.length ? "The private marker is stored on the lift side, sent as: " + kept.join(", ") : "The private marker was not stored on the lift side"};
+      }},
+    {id: "T18", name: "Suppress lift status updates", position: "PATH", wins: "The lift receives a call while the adapter's status is older than 10 seconds",
+      async run(id) {
+        const w = await fresh(id);
+        w.feedBlocked = true;
+        w.tick(60);
+        w.arrive("RX-01");
+        await legit(w);
+        const stale = w.lift.calls.filter(c => c.statusAge > SC.LIMITS.statusSeconds).length;
+        return {blocked: stale === 0, detail: stale + " lift call(s) forwarded on 60 s old status"};
+      }},
+    {id: "T19", name: "Robot calls the lift when it is not at the lift", position: "DEV", wins: "The lift receives a call",
+      async run(id) {
+        const w = await fresh(id);
+        w.presence = {};
+        await legit(w);
+        return {blocked: calls(w) === 0, detail: calls(w) + " lift call(s) with no robot seen at the lift"};
+      }},
+    {id: "T20", name: "Compromised dispatcher issues a wrong grant", position: "DISPATCHER", wins: "The lift is called for the wrong floor", limit: true,
+      async run(id) {
+        const w = await fresh(id);
+        // The dispatcher is compromised: it issues a trip to L1 that no clinical order asked for.
+        await w.dispatch("TRIP-EVIL", "SUP-03", "L1", {rogue: true});
+        w.arrive("SUP-03");
+        await w.pipe.call(w.nodes["SUP-03"], claimsFor("SUP-03", "TRIP-EVIL", "Ground"));
+        const n = w.lift.calls.filter(c => c.trip === "TRIP-EVIL").length;
+        // Second try, with a robot helping: the dispatcher re-issues RX-01's real grant, naming the helper's key, five times.
+        const before = calls(w), real = rx(w).x.caps[TRIP], sup = w.nodes["SUP-03"];
+        if (real) for (let i = 0; i < 5; i++) {
+          const body = {...real.body, capId: "cap-minted-" + i, robotKey: sup.key.pub};
+          const cap = {body, sig: await sign(w.nodes.dispatcher.key.priv, canon(body)), cert: w.nodes.dispatcher.cert};
+          w.tick(1); w.arrive("RX-01");
+          await w.pipe.call(sup, claimsFor("RX-01", TRIP), {stolen: {cap, order: rx(w).x.orders?.[TRIP]}, claimFrom: "RX-01"});
+        }
+        const minted = calls(w) - before;
+        return {blocked: n === 0 && minted === 0, detail: n + " lift call(s) on a grant with no order behind it, " + minted + " on re-issued grants naming another robot's key"};
+      }},
+    {id: "T21", name: "Traffic analysis", position: "PATH", wins: "The attacker can tell when a robot called the lift", limit: true,
+      async run(id) {
+        const w = await fresh(id);
+        w.tick(7);
+        w.arrive("RX-01");
+        await legit(w);
+        const visible = w.net.captured.some(f => f.hop === "wifi" && f.origin === "RX-01" && f.at === w.now);
+        return {blocked: !visible, detail: visible ? "Frame timing and sender show when RX-01 called" : "No frame visible"};
+      }}
+    ,{id: "T22", name: "Lock out a genuine robot by abusing the breaker", position: "PATH", wins: "RX-01's next legitimate call, two minutes later, is refused",
+      async run(id) {
+        const locked = [];
+        const after = async (w, label) => {
+          w.tick(120);
+          await w.dispatch("TRIP-2", "RX-01", "L2");
+          w.arrive("RX-01");
+          const r = await w.pipe.call(rx(w), claimsFor("RX-01", "TRIP-2"));
+          if (r.decision !== "allow") locked.push(label + ": " + (r.decision ?? "no answer"));
+        };
+        {
+          // On the network path: hold back three genuine calls, pour them in at once, and again once they are stale.
+          const w = await warmedUp(id), held = [];
+          for (let i = 0; i < 3; i++) await w.dispatch("TRIP-H" + i, "RX-01", "L2");
+          w.net.taps.push({hop: "wifi", request: frame => { held.push(frame); return null; }});
+          for (let i = 0; i < 3; i++) await w.pipe.call(rx(w), claimsFor("RX-01", "TRIP-H" + i));
+          w.net.taps.length = 0;
+          for (const frame of held) await w.net.rpc("wifi", "RX-01", "fleet", frame, {inside: true});
+          w.tick(31);
+          for (const frame of held) await w.net.rpc("wifi", "RX-01", "fleet", frame, {inside: true});
+          await after(w, "held and released");
+        }
+        {
+          // As the fleet manager: relabel six genuine calls as coming from another robot, so the adapter refuses them.
+          const w = await warmedUp(id), upstream = w.pipe.upstream?.bind(w.pipe), relay = w.pipe.relay.bind(w.pipe);
+          const relabel = text => text.replaceAll('"onBehalfOf":"RX-01"', '"onBehalfOf":"LAB-02"').replaceAll('"robot":"RX-01"', '"robot":"LAB-02"');
+          if (upstream) w.pipe.upstream = text => upstream(relabel(text));
+          w.pipe.relay = frame => relay(relabel(frame));
+          for (let i = 0; i < 6; i++) { await w.dispatch("TRIP-R" + i, "RX-01", "L2"); w.tick(1); w.arrive("RX-01"); await w.pipe.call(rx(w), claimsFor("RX-01", "TRIP-R" + i)); }
+          if (upstream) w.pipe.upstream = upstream;
+          w.pipe.relay = relay;
+          await after(w, "relabelled by the fleet manager");
+        }
+        return {blocked: locked.length === 0, detail: locked.length ? "RX-01 locked out. " + locked.join("; ") : "RX-01's next call was allowed after both attempts"};
+      }},
+    {id: "T23", name: "Compromised fleet manager reads the deliveries it relays", position: "FLEET", wins: "The fleet manager sees the trip and the floor", limit: true,
+      async run(id) {
+        const w = await fresh(id, {sealedMission: true}), seen = [];
+        const relay = w.pipe.relay.bind(w.pipe), upstream = w.pipe.upstream?.bind(w.pipe);
+        w.pipe.relay = frame => { seen.push(frame); return relay(frame); };
+        if (upstream) w.pipe.upstream = text => { seen.push(text); return upstream(text); };
+        // The fleet manager carries the mission to the robot and then relays the robot's call.
+        const mission = await w.pipe.mission(TRIP);
+        seen.push(JSON.stringify(mission));
+        await w.pipe.acceptMission(rx(w), mission);
+        await legit(w);
+        const all = seen.join("\n"), learned = [[TRIP, "trip"], ['"Upper"', "floor"], ['"L2"', "floor"], ["WARD-B", "destination"]].filter(([needle]) => all.includes(needle)).map(([, label]) => label);
+        const unique = [...new Set(learned)];
+        return {blocked: unique.length === 0, detail: unique.length ? "The fleet manager handles in clear: " + unique.join(", ") : "The fleet manager carried the mission and the call and could read neither"};
+      }},
+    {id: "T24", name: "Flood the lift adapter directly, past the fleet manager", position: "DEV", wins: "Fewer than 90% of other robots' legitimate calls are served", limit: true,
+      run: id => flood(id, true)},
+    // Added after reading the challenge material: the team's pitch names two scenarios, both through the cloud fleet manager.
+    {id: "T25", name: "Compromised fleet manager reroutes a robot", position: "FLEET", wins: "The robot accepts a mission the hospital did not order", scenario: "Medication theft",
+      async run(id) {
+        const accepted = [];
+        const tries = {
+          "changed destination": async (w, m) => {
+            const c = structuredClone(m);
+            if (!walk(c, o => { if (o.destination === "WARD-B") { o.destination = "BASEMENT"; return true; } return false; }) && typeof c.ct === "string") c.ct = flip(c.ct);
+            return c;
+          },
+          "earlier mission replayed inside its time window": async w => {
+            await w.dispatch("TRIP-EARLY", "RX-01", "L1", {destination: "LOADING-DOCK"});
+            const early = await w.pipe.mission("TRIP-EARLY");
+            await w.pipe.acceptMission(rx(w), early);                       // the robot ran that errand a few minutes ago
+            w.tick(300);
+            return early;
+          },
+          "invented mission": async (w, m) => ({trip: "TRIP-FAKE", robot: "RX-01", destination: "BASEMENT", floor: "L1"}),
+          "old mission replayed": async w => { await w.dispatch("TRIP-OLD", "RX-01", "L1", {destination: "LOADING-DOCK"}); const old = await w.pipe.mission("TRIP-OLD"); w.tick(700); return old; },
+          "another robot's mission": async w => { await w.dispatch("TRIP-SUP", "SUP-03", "L1", {destination: "LOADING-DOCK"}); const c = structuredClone(await w.pipe.mission("TRIP-SUP")); if (!c.body) c.robot = "RX-01"; return c; }
+        };
+        for (const [label, make] of Object.entries(tries)) {
+          const w = await fresh(id, {sealedMission: true}), genuine = await w.pipe.mission(TRIP);
+          const r = await w.pipe.acceptMission(rx(w), await make(w, genuine));
+          if (r.accepted && r.destination !== "WARD-B") accepted.push(label + " to " + r.destination);
+        }
+        return {blocked: accepted.length === 0, detail: accepted.length ? "Robot accepted: " + accepted.join("; ") : "Robot refused all 5 false missions"};
+      }},
+    {id: "T26", name: "Compromised fleet manager takes the lift hostage", position: "FLEET", wins: "The lift receives 10 or more calls nobody ordered", scenario: "Heart attack, lift not coming",
+      async run(id) {
+        const w = await fresh(id), stolen = {token: rx(w).x.tickets[TRIP], cap: rx(w).x.caps[TRIP], order: rx(w).x.orders?.[TRIP], cert: rx(w).cert};
+        for (let i = 0; i < 50; i++) {
+          w.tick(1);
+          await w.pipe.direct(w.nodes.fleet, claimsFor(i % 2 ? "RX-01" : "LAB-02", i % 3 ? TRIP : "TRIP-X" + i), {stolen, claimFrom: "RX-01", inside: true});
+        }
+        return {blocked: calls(w) < 10, detail: calls(w) + " lift call(s) from 50 attempts by the fleet manager"};
+      }},
+    {id: "T27", name: "Compromised fleet manager stops relaying", position: "FLEET", wins: "Robots can no longer call the lift", limit: true,
+      async run(id) {
+        const w = await fresh(id);
+        w.pipe.fleet = async () => null;
+        const r = await legit(w, {noRetry: true});
+        return {blocked: r.decision === "allow", detail: r.decision === "allow" ? "Robot still got through" : "Robot deliveries stop. The lift received " + calls(w) + " calls and stays free for staff. Fallback: porter"};
+      }},
+    // Added after the second review.
+    {id: "T28", name: "Flood the lift adapter from the wired path, posing as the relay", position: "PATH", wins: "Fewer than 90% of other robots' legitimate calls are served", limit: true,
+      run: id => flood(id, "spoofed")},
+    {id: "T29", name: "A replaced fleet manager keeps using its old credentials", position: "FLEET", wins: "The lift receives a call",
+      async run(id) {
+        const w = await fresh(id), old = w.nodes.fleet;
+        const stolen = {token: rx(w).x.tickets[TRIP], cap: rx(w).x.caps[TRIP], order: rx(w).x.orders?.[TRIP], cert: rx(w).cert};
+        w.revoke("fleet");
+        await w.rotate("fleet");
+        old.id = "fleet";
+        await w.pipe.direct(old, claimsFor("RX-01", TRIP), {stolen, claimFrom: "RX-01", inside: true});
+        return {blocked: calls(w) === 0, detail: calls(w) + " lift call(s) through the retired fleet manager"};
+      }}
+  ];
+
+  const LEGIT = [
+    {id: "L01", name: "Routine lift call",
+      async run(id) {
+        const w = await fresh(id), r = await legit(w);
+        return {pass: r.decision === "allow" && calls(w) === 1 && w.lift.calls[0].floor === "L2", detail: (r.decision ?? "no answer") + ", " + calls(w) + " lift call(s)"};
+      }},
+    {id: "L02", name: "Reply lost, robot retries",
+      async run(id) {
+        const w = await fresh(id), claims = claimsFor("RX-01", TRIP);
+        let dropped = false;
+        w.net.taps.push({hop: "wifi", response: reply => { const t = parse(reply)?.t; if (dropped || t === "ack" || t === "ok") return undefined; dropped = true; return null; }});
+        let r = await w.pipe.call(rx(w), claims);
+        if (r.decision !== "allow") r = await w.pipe.call(rx(w), claims);
+        return {pass: r.decision === "allow" && calls(w) === 1, detail: (r.decision ?? "no answer") + ", " + calls(w) + " lift call(s)"};
+      }},
+    {id: "L03", name: "Wi-Fi handover mid-trip",
+      async run(id) {
+        const w = await fresh(id);
+        await legit(w);
+        w.handover("RX-01");
+        w.tick(20);
+        await w.dispatch("TRIP-2", "RX-01", "L2");
+        w.arrive("RX-01");
+        const r = await w.pipe.call(rx(w), claimsFor("RX-01", "TRIP-2"));
+        return {pass: r.decision === "allow" && calls(w) === 2, detail: (r.decision ?? "no answer") + " after reconnect, " + calls(w) + " lift call(s)"};
+      }},
+    {id: "L04", name: "Two robots, two trips",
+      async run(id) {
+        const w = await fresh(id);
+        await w.dispatch("TRIP-LAB", "LAB-02", "L2");
+        w.arrive("LAB-02");
+        const a = await legit(w), b = await w.pipe.call(w.nodes["LAB-02"], claimsFor("LAB-02", "TRIP-LAB"));
+        return {pass: a.decision === "allow" && b.decision === "allow" && calls(w) === 2, detail: [a.decision, b.decision].join(" and ") + ", " + calls(w) + " lift call(s)"};
+      }},
+    {id: "L05", name: "Key rotation",
+      async run(id) {
+        const w = await fresh(id);
+        await legit(w);
+        await w.rotate("RX-01");
+        w.tick(20);
+        await w.dispatch("TRIP-3", "RX-01", "L2");
+        w.arrive("RX-01");
+        const r = await w.pipe.call(rx(w), claimsFor("RX-01", "TRIP-3"));
+        return {pass: r.decision === "allow" && calls(w) === 2, detail: (r.decision ?? "no answer") + " with the new key, " + calls(w) + " lift call(s)"};
+      }},
+    {id: "L06", name: "Held for a patient transfer, robot keeps retrying",
+      async run(id) {
+        const w = await fresh(id), claims = claimsFor("RX-01", TRIP), answers = [];
+        // Facilities holds the lift for two and a half minutes. The robot asks again every 31 seconds with the same request ID.
+        w.site.priority = true;
+        for (let i = 0; i < 6; i++) {
+          if (i === 5) w.site.priority = false;
+          answers.push((await w.pipe.call(rx(w), claims)).decision ?? "no answer");
+          w.tick(31);
+          w.arrive("RX-01");
+        }
+        return {pass: answers.at(-1) === "allow" && calls(w) === 1, detail: "Last answer " + answers.at(-1) + " after " + answers.filter(a => a === "hold").length + " holds, " + calls(w) + " lift call(s)"};
+      }},
+    {id: "L07", name: "Recovery: the fleet manager's credentials are revoked and replaced",
+      async run(id) {
+        const w = await fresh(id);
+        await legit(w);
+        w.revoke("fleet");
+        await w.rotate("fleet");
+        w.tick(20);
+        await w.dispatch("TRIP-3", "RX-01", "L2");
+        w.arrive("RX-01");
+        const r = await w.pipe.call(rx(w), claimsFor("RX-01", "TRIP-3"));
+        return {pass: r.decision === "allow" && calls(w) === 2, detail: (r.decision ?? "no answer") + " after the replacement, " + calls(w) + " lift call(s)"};
+      }},
+    {id: "L08", name: "The robot accepts the hospital's own mission",
+      async run(id) {
+        const w = await fresh(id, {sealedMission: true}), r = await w.pipe.acceptMission(rx(w), await w.pipe.mission(TRIP));
+        return {pass: r.accepted === true && r.destination === "WARD-B", detail: r.accepted ? "Accepted, destination " + r.destination : "Refused: " + r.reason};
+      }},
+    {id: "L09", name: "Three robots call at the same moment, five times over",
+      async run(id) {
+        const w = await fresh(id), robots = ["RX-01", "LAB-02", "SUP-03"];
+        let allowed = 0;
+        for (let round = 0; round < 5; round++) {
+          w.tick(3);
+          for (const robot of robots) { await w.dispatch("TRIP-" + robot + round, robot, "L2"); w.arrive(robot); }
+          const answers = await Promise.all(robots.map(robot => w.pipe.call(w.nodes[robot], claimsFor(robot, "TRIP-" + robot + round))));
+          allowed += answers.filter(a => a.decision === "allow").length;
+        }
+        return {pass: allowed === 15 && calls(w) === 15, detail: allowed + " of 15 simultaneous calls allowed, " + calls(w) + " lift call(s)"};
+      }}
+  ];
+
+  // Who sees what during one routine delivery. Each vantage point is searched for each kind of information.
+  const FIELDS = [["patient", [MARKER], "Patient marker"], ["order", ["MED-ORDER 4471"], "Medication order"], ["ward", ["WARD-B"], "Destination ward"],
+    ["trip", [TRIP], "Trip"], ["floor", ['"Upper"', '"L2"'], "Floor"], ["robot", ["RX-01"], "Which robot"]];
+  async function exposure(id) {
+    const w = await fresh(id, {sealedMission: true}), relayed = [];
+    const mission = await w.pipe.mission(TRIP);
+    relayed.push(JSON.stringify(mission));                                 // the fleet manager delivers the mission
+    await w.pipe.acceptMission(rx(w), mission);
+    const relay = w.pipe.relay.bind(w.pipe), upstream = w.pipe.upstream?.bind(w.pipe);
+    w.pipe.relay = frame => { relayed.push(frame); return relay(frame); };
+    if (upstream) w.pipe.upstream = text => { relayed.push(text); return upstream(text); };
+    await legit(w);
+    const views = {
+      "Network observer": wire(w) + (id === "A" || id === "B" ? JSON.stringify(mission) : ""),
+      "Fleet manager": relayed.join("\n"),
+      "Lift adapter records": JSON.stringify([w.pipe.log, w.pipe.inbox ?? [], [...w.pipe.cache.keys()]]),
+      "Lift controller": JSON.stringify(w.lift.calls)
+    };
+    return Object.fromEntries(Object.entries(views).map(([who, text]) => [who, Object.fromEntries(FIELDS.map(([key, needles]) => [key, needles.some(n => text.includes(n))]))]));
+  }
+
+  // Bytes on the wire and processing time for a routine call.
+  async function cost(id, runs = 200) {
+    const w = await makeWorld(id), bytes = () => w.net.captured.reduce((n, f) => n + f.frame.length, 0);
+    for (let i = 0; i <= runs; i++) await w.dispatch("TRIP-C" + i, "RX-01", "L2");
+    w.arrive("RX-01");
+    await w.pipe.call(rx(w), claimsFor("RX-01", "TRIP-C0"));
+    const first = bytes();
+    const next = i => { w.tick(1); w.arrive("RX-01"); return w.pipe.call(rx(w), claimsFor("RX-01", "TRIP-C" + i)); };
+    await next(1);
+    const steady = bytes() - first, started = performance.now();
+    for (let i = 2; i <= runs; i++) await next(i);
+    const ms = (performance.now() - started) / (runs - 1);
+    return {bytesPerCall: steady, setupBytes: first - steady, msPerCall: Math.round(ms * 100) / 100, calls: calls(w)};
+  }
+
+  async function runPipeline(id, o = {}) {
+    const attacks = {}, legit = {};
+    for (const a of ATTACKS) attacks[a.id] = await a.run(id);
+    for (const l of LEGIT) legit[l.id] = await l.run(id);
+    const core = ATTACKS.filter(a => !a.limit);
+    return {attacks, legit, cost: o.skipCost ? null : await cost(id, o.costRuns), exposure: await exposure(id),
+      summary: {blocked: core.filter(a => attacks[a.id].blocked).length, of: core.length,
+        limitsBlocked: ATTACKS.filter(a => a.limit && attacks[a.id].blocked).length, limits: ATTACKS.length - core.length,
+        legitPassed: LEGIT.filter(l => legit[l.id].pass).length, legitOf: LEGIT.length}};
+  }
+  // Selection rule from IMPLEMENTATION-PLAN.md section 6, fixed before the first run.
+  function choose(results, vendorNeeds) {
+    const eligible = Object.keys(results).filter(id => results[id].summary.legitPassed === results[id].summary.legitOf);
+    // An extension of a candidate is reported, and competes only if the team adopts it as a candidate.
+    for (const id of [...eligible]) if (SC.PIPELINES[id].extension) eligible.splice(eligible.indexOf(id), 1);
+    eligible.sort((a, b) => results[b].summary.blocked - results[a].summary.blocked || vendorNeeds[a] - vendorNeeds[b] ||
+      (results[a].cost?.bytesPerCall ?? 0) - (results[b].cost?.bytesPerCall ?? 0));
+    return {eligible, winner: eligible[0] ?? null};
+  }
+
+  return {ATTACKS, LEGIT, FIELDS, runPipeline, cost, exposure, choose, fresh, observe, setOptions};
+});
+
+// What each pipeline is, where it comes from and what it costs to run in a hospital. Written by the team, not measured.
+// `vendorNeeds` counts the separate capabilities a hospital must obtain from suppliers. It is the tie-break in the selection rule.
+(function (root, create) {
+  "use strict";
+  if (typeof module === "object" && module.exports) module.exports = create();
+  else root.SecureInfo = create();
+})(globalThis, function () {
+  "use strict";
+  const info = {
+    A: {source: "Baseline", idea: "Plain messages on the robotics network. The lift adapter accepts any call that names a known trip.",
+      needs: [], keys: "None", weakest: "Anyone who can reach the adapter can move the lift.", vendorNeeds: 0},
+    B: {source: "Common hospital practice", idea: "Enterprise Wi-Fi admits only enrolled devices. Inside the network, messages are plain. The admission step is modelled.",
+      needs: ["Wi-Fi with per-device certificates"], keys: "One Wi-Fi certificate per device",
+      weakest: "One compromised device or switch inside the network defeats it.", vendorNeeds: 1},
+    C: {source: "Teammate's gate, method M1, real code", idea: "The dispatcher issues a ticket signed with a server secret, bound to robot, trip and floor, valid once.",
+      needs: ["Ticket service at the dispatcher", "Lift adapter that checks tickets"], keys: "One server secret",
+      weakest: "The ticket is a bearer token sent in clear. Whoever copies it first can use it, and the fleet manager sees every ticket.", vendorNeeds: 2},
+    D: {source: "Standard practice", idea: "Every device has its own key and a certificate from the hospital. Each message is signed, numbered and time-stamped.",
+      needs: ["Hospital certificate authority", "Robots that hold a key and sign", "Lift adapter that verifies and signs replies"], keys: "One key pair per device",
+      weakest: "It proves who is asking, not whether they may. A genuine robot can call the lift for any floor.", vendorNeeds: 3},
+    E: {source: "Standard practice, the idea behind mutual TLS", idea: "Both ends prove their certificate, agree fresh keys and encrypt everything on each hop.",
+      needs: ["Hospital certificate authority", "Robots, fleet manager and adapter that support mutually authenticated channels", "Revocation list delivered to every endpoint"],
+      keys: "One key pair per device, fresh session keys", weakest: "Protection ends at each hop. A compromised fleet manager can invent calls, and a held message is still accepted later.", vendorNeeds: 3},
+    F: {source: "Our proposal", idea: "The dispatcher signs a grant for one robot key, lift, floor and time window. The robot signs each call with that key. The adapter checks both.",
+      needs: ["Hospital certificate authority", "Signing service at the dispatcher", "Robots that hold a key and sign", "Lift adapter that verifies grants and signs replies"],
+      keys: "One key pair per device, one grant per trip", weakest: "Everything travels in clear, and nothing limits a flooding device or checks the lift's current state.", vendorNeeds: 4},
+    G: {source: "Combination of E, F, the teammate's M3 and M4, and our lift admission", idea: "Encrypted, mutually authenticated hops. A trip grant checked end to end. Only the fields a lift needs. A breaker per device. Fresh lift status and a sensor reading before the lift moves. A signed log.",
+      needs: ["Hospital certificate authority", "Signing service at the dispatcher", "Robots that hold a key, sign, and support authenticated channels", "Fleet manager with a per-robot breaker",
+        "Lift adapter that verifies grants, checks lift status and signs its log", "Status feed from facilities", "Presence sensor at the lift lobby"],
+      keys: "One key pair per device, one grant per trip, fresh session keys", weakest: "It trusts the dispatcher. A compromised dispatcher can still issue a wrong grant. Message timing remains visible.", vendorNeeds: 7},
+    H: {source: "Extension of G, added after the first results", idea: "Everything in G. In addition the lift adapter requires a second signature from the clinical order system, independent of the dispatcher, naming the same robot and floor.",
+      needs: ["Everything G needs", "Clinical order system that signs each delivery order"],
+      keys: "As G, plus one signed order per trip", weakest: "Both the dispatcher and the order system would have to be compromised. Message timing remains visible.", vendorNeeds: 8},
+    I: {source: "Built after the review and the challenge material, on top of H", idea: "Everything in H. The fleet manager becomes a relay that is trusted with nothing: robot and lift adapter share their own encrypted session through it, the robot only accepts missions signed by the hospital, and the adapter keeps its own breaker.",
+      needs: ["Everything H needs", "Robots that check a signed mission before moving", "Lift adapter that ends the robot's encrypted session itself", "Firewall rule: only the relay's address reaches the lift adapter"],
+      keys: "As H, plus a second set of fresh session keys per robot", weakest: "A compromised fleet manager can still stop relaying, which pauses robot deliveries, and message timing remains visible. The firewall rule is modelled.", vendorNeeds: 11}
+  };
+  // The same nine approaches in everyday words, for the ranked overview on the page and in the slides.
+  // `like` is a picture from daily life, `good` what it stops, `gap` what it leaves open, `short` one line for a slide.
+  const plain = {
+    A: {name: "Open network", group: "Where hospitals start", like: "An unlocked door.", short: "Anyone who reaches the lift can call it.",
+      good: "Nothing. It is the starting point we measure against.", gap: "Anyone who can reach the lift's interface can move the lift."},
+    B: {name: "Guest list at the entrance", group: "Where hospitals start", like: "A guest list at the building entrance. Once you are inside, nobody checks again.", short: "Keeps outsiders out. Inside, anything goes.",
+      good: "Keeps strangers off the robot network.", gap: "One hacked device inside the network can do everything."},
+    C: {name: "Single-use tickets", group: "Where hospitals start", like: "A cinema ticket. Valid once, for one seat. But whoever holds it gets in.", short: "Valid once, for one floor. A copied ticket still works.",
+      good: "Stops replayed calls and calls for the wrong floor.", gap: "A copied ticket works for the thief, and the fleet manager sees every ticket."},
+    D: {name: "A badge on every message", group: "One defence at a time", like: "A staff badge on every message. It proves who you are, not where you may go.", short: "Proves who is asking. Not whether they may.",
+      good: "Nobody can pretend to be another robot or change a message.", gap: "A genuine robot can still ask for any floor, and everything is readable."},
+    E: {name: "Armoured van between stops", group: "One defence at a time", like: "An armoured van between each pair of stops. But the depot in the middle opens every parcel.", short: "Nobody outside can read it. The server in the middle can.",
+      good: "Nobody on the network can read or change anything.", gap: "A hacked fleet server in the middle can invent lift calls and send robots elsewhere."},
+    F: {name: "Boarding pass for one trip", group: "One defence at a time", like: "A boarding pass in your name, for one flight, checked against your ID at the gate.", short: "This robot, this lift, this floor, ten minutes.",
+      good: "Only the right robot gets the right floor, and only for this delivery.", gap: "It travels in the open, and nothing stops a flood."},
+    G: {name: "Van, boarding pass and a guard", group: "Combine them", like: "The armoured van, the boarding pass, and a guard who checks the lift is really free.", short: "Encryption, trip grant and a check of the lift itself.",
+      good: "Almost everything, including floods and acting on old information.", gap: "It still trusts the fleet server to read calls and to hand robots their missions."},
+    H: {name: "Two signatures", group: "Combine them", like: "Two signatures on the cheque, on top of the van, the boarding pass and the guard.", short: "The same, and no single system can order a trip alone.",
+      good: "A hacked dispatcher alone can no longer send a robot anywhere.", gap: "The fleet server in the middle is still trusted."},
+    I: {name: "Sealed envelope, courier cannot open it", group: "Combine them", like: "A sealed envelope. The courier in the middle carries it and cannot open it. Inside is everything the other approaches do well.", short: "All the others combined. Nothing in the middle is trusted.",
+      good: "Every attack in our main list. The fleet server cannot read, reroute or call the lift.", gap: "Message timing is visible, the courier can refuse to deliver, and a flood from the wired network still hurts."}
+  };
+  // What number one is made of, piece by piece, and where each piece comes from.
+  const recipe = [
+    {piece: "Encrypted, proven connections", from: "E", why: "Nobody on the network can read or change a message"},
+    {piece: "A grant for one robot, one floor, ten minutes", from: "F", why: "A genuine robot cannot ask for the wrong floor"},
+    {piece: "Only the fields a lift needs", from: "Teammate's gate", why: "Patient data never reaches the lift side"},
+    {piece: "A breaker for each robot", from: "Teammate's gate", why: "One flooding robot cannot starve the others"},
+    {piece: "A check of the lift itself", from: "Ward safety", why: "Patient transfers first, no decisions on old information"},
+    {piece: "A second signature on every order", from: "H", why: "A hacked dispatcher cannot act alone"},
+    {piece: "A sealed session past the fleet server", from: "I", why: "The server in the middle cannot read or invent calls"},
+    {piece: "Missions the robot checks before it moves", from: "I", why: "A hacked server cannot send the robot to the basement"}
+  ];
+  // Number one in four rules, for the simple overview.
+  const pillars = [
+    {rule: "Nothing moves without a signed order", how: "The hospital signs every mission and every lift call. A second system countersigns. The robot checks before it drives."},
+    {rule: "Nobody in the middle can read or change it", how: "Robot and lift talk in a sealed session. The fleet server only carries it, like a courier with a sealed envelope."},
+    {rule: "The lift checks the situation", how: "Patient transfers go first. The lift's status must be fresh, and a sensor must see the robot at the door."},
+    {rule: "One robot is cut off, the hospital keeps working", how: "A hacked or flooding robot is isolated alone. Every decision goes into a signed log."}
+  ];
+  // Three attacks for the side-by-side demo, in everyday words.
+  const scenes = [
+    {id: "T25", title: "Send the robot to the basement", story: "A hacked fleet server tries to redirect a robot carrying medication.",
+      works: "The robot accepts the false mission and drives to the basement.", stopped: "The robot checks the hospital's signature and refuses every false mission."},
+    {id: "T26", title: "Hold the lift hostage", story: "A hacked fleet server calls the lift fifty times so nobody else can use it.",
+      works: "The lift answers the forged calls. Patients and staff wait.", stopped: "Not one of the fifty calls reaches the lift."},
+    {id: "T08", title: "Ask for the wrong floor", story: "A genuine robot, on a delivery to floor 2, asks the lift for floor 1.",
+      works: "The lift goes to floor 1. Being a genuine robot was enough.", stopped: "Refused. This delivery is for floor 2 only."}
+  ];
+  Object.defineProperty(info, "pillars", {value: pillars, enumerable: false});
+  Object.defineProperty(info, "scenes", {value: scenes, enumerable: false});
+  for (const id of Object.keys(info)) info[id].plain = plain[id];
+  Object.defineProperty(info, "recipe", {value: recipe, enumerable: false});
+  return info;
+});
+
+
+</script>
+<script>
 "use strict";
 // The demo's 3D layer, drawn into the fleet console's own Three.js scene (clinic meters):
 // the hacker, the nurse workstation, the gate, attack packets, task tags above the robots, and the "robot zone cut off" box.
@@ -4251,6 +6359,8 @@ if (typeof module !== "undefined" && module.exports) module.exports = FleetTraff
 //  - A suspicious task (the gate refuses it for an identity or permission reason) is HELD: it needs authorization from the
 //    ward/unit that owns the destination. Authorized -> it runs. Not authorized in time -> it is not run and saved to the log.
 //  - Hacker requests never carry that authorization, so they end up in the log.
+//  - Defence menu, second group: the nine secure lift-call pipelines A to I (secure-comms/, real cryptography). With one of them selected,
+//    nurse tasks are the legitimate lift call of that pipeline and the hacker runs attacks from its 29-attack suite against it.
 //  - When the breaker (M4) trips, ONE incident is shown from detection to restore: an alert goes to the Security duty lead with the
 //    evidence, the robots stay isolated (nurse tasks go by hand), and nothing resets automatically. Only a supervisor clicking
 //    "Restore robots" brings them back, and then the next task goes by robot. The attacker's address stays quarantined.
@@ -4272,6 +6382,19 @@ if (typeof module !== "undefined" && module.exports) module.exports = FleetTraff
     M3: "Data minimisation. Robots only get the task number and destination; extra fields are refused.",
     M4: "Containment. Floods and repeated bad requests trip a breaker: an alert goes to the Security duty lead and the robots stay isolated until a supervisor restores them.",
     ALL: "All four defences together (M1 + M2 + M3 + M4)."};
+  // Secure lift-call pipelines A to I (secure-comms/). Each demo "defence" P-A ... P-I runs the real pipeline code in this page.
+  const HAVE_PIPES = typeof SecureAttacks !== "undefined" && typeof SecureComms !== "undefined" && typeof SecureInfo !== "undefined";
+  const PIPE_IDS = HAVE_PIPES ? Object.keys(SecureComms.PIPELINES) : [];
+  for (const id of PIPE_IDS) {
+    const p = SecureComms.PIPELINES[id], info = SecureInfo[id];
+    CONFIGS["P-" + id] = {};   // the request gate is not used in this mode
+    DEF_TEXT["P-" + id] = "Pipeline " + id + ", " + p.name + ". " + info.idea + " Nurse tasks and the hacker's attacks now run through this pipeline, with real cryptography. Weakest point: " + info.weakest +
+      " The request-gate checks below do not apply to it.";
+  }
+  const isPipe = () => cfgKey.indexOf("P-") === 0, pipeId = () => cfgKey.slice(2);
+  let pipeChain = Promise.resolve(), epoch = 0;   // pipeline runs go one after another; a restart drops the ones still waiting
+  const pipeRun = fn => { const mine = epoch; const p = pipeChain.then(() => (mine === epoch ? fn() : null)); pipeChain = p.catch(() => null); return p.then(r => (mine === epoch ? r : null)); };
+  const legitCall = () => SecureAttacks.LEGIT[0].run(pipeId());   // L01, a routine lift call: it must pass
   // The gate's destinations are the fleet console's stations.
   const DEST_TO_STATION = {"Room 12": "WARD-A", "Room 7": "WARD-B", "Pharmacy": "PHARMACY", "Lab": "LAB", "Storage": "STORES"};
   const STATION_TO_DEST = {"WARD-A": "Room 12", "WARD-B": "Room 7", "PHARMACY": "Pharmacy", "LAB": "Lab", "STORES": "Storage", "COLLECTION": "Lab"};
@@ -4425,6 +6548,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = FleetTraff
   }
   // A task request through the gate. o: {user, type, station, robot, who, cmd?} (cmd: the console's own Dispatch command)
   function submit(o) {
+    if (isPipe()) return pipeSubmit(o);
     tick();
     const dest = STATION_TO_DEST[o.station], id = "L" + (++taskN);
     world.tasks[id] = {dest, type: o.type, owner: o.user, status: "REGISTERED"};
@@ -4445,6 +6569,40 @@ if (typeof module !== "undefined" && module.exports) module.exports = FleetTraff
     else { log("warn", o.who + "'s task was not accepted (" + res.reason + "). Saved to the log."); DemoLayer.request({from: "nurse", passed: false, text: "NOT ACCEPTED"}); }
     if (o.cmd && !(res.ok && res.mode === "robot")) declineInConsole(o.cmd, res.ok ? "Robots are cut off. Deliver by hand." : "Held by the gate: " + (AUTH_REASONS[res.reason] || res.reason));
     refresh();
+  }
+  // A task through a secure pipeline: the lift call of that pipeline decides, and the robot goes only if it passes.
+  function pipeSubmit(o) {
+    const id = pipeId();
+    if (o.robot) jobs[o.robot] = {kind: o.cmd ? "operator" : "nurse", dest: o.station, at: now(), who: o.user};   // reserve the robot while the call is checked
+    DemoLayer.nurseWave(); DemoLayer.nurseSay(o.robot ? o.robot + ", to " + stationName(o.station) + " please" : "A task for " + stationName(o.station));
+    return pipeRun(legitCall).then(r => {
+      if (!r) return;
+      if (r.pass) {
+        st.sent++; DemoLayer.request({from: "nurse", passed: true, target: o.robot});
+        later(() => dispatch(o.robot, o.station, {kind: o.cmd ? "operator" : "nurse", who: o.user}));
+      } else {
+        if (o.robot) { delete jobs[o.robot]; DemoLayer.setTask(o.robot, null); }
+        st.logged++; log("warn", o.who + "'s task to " + stationName(o.station) + " was refused by pipeline " + id + " (" + r.detail + "). Saved to the log.");
+        DemoLayer.request({from: "nurse", passed: false, text: "REFUSED"});
+        if (o.cmd) declineInConsole(o.cmd, "Refused by pipeline " + id);
+      }
+      refresh();
+    });
+  }
+  const POSITION = {OUT: "from outside the network", PATH: "on the network path", DEV: "from a hacked robot", FLEET: "from the hacked fleet manager", LEAK: "with stolen keys", LOG: "on the audit log", NONE: "careless sender", DISPATCHER: "from the hacked dispatcher"};
+  // One attack from the comparison's suite. "Got through" is the attack's own verdict (its effect on the lift, the wire or the robot).
+  function pipeHack(kind) {
+    const id = pipeId(), list = SecureAttacks.ATTACKS, a = kind === "vendorLift" ? list.find(x => x.id === "T06") : pick(list);
+    DemoLayer.hackerSay(a.id + ": " + a.name); typing(1300);
+    st.attempts++; refresh();
+    return pipeRun(() => a.run(id)).then(r => {
+      if (!r) return;
+      const label = a.id + " " + a.name + (a.position ? " (" + POSITION[a.position] + ")" : "");
+      if (r.blocked) { st.stopped++; lastHack("ok", label + ": blocked by pipeline " + id + "."); log("good", "Hacker: " + label + ". Blocked by pipeline " + id + ". " + r.detail + "."); }
+      else { st.through++; lastHack("bad", label + ": got through pipeline " + id + "."); log("bad", "Hacker: " + label + ". It got through pipeline " + id + ". The attacker wins if: " + a.wins.charAt(0).toLowerCase() + a.wins.slice(1) + ". Observed: " + r.detail + "."); }
+      refresh();
+      DemoLayer.request({from: "hacker", passed: !r.blocked, noRobot: true, text: r.blocked ? "BLOCKED" : "GOT THROUGH", arrive() { if (r.blocked) DemoLayer.hackerRage(); }});
+    });
   }
   function hold(o, reason) {
     const dest = STATION_TO_DEST[o.station], authority = AUTHORITY[dest];
@@ -4505,6 +6663,16 @@ if (typeof module !== "undefined" && module.exports) module.exports = FleetTraff
     const c = msg.command;
     if (!gate || c.action !== "dispatch" || !STATION_TO_DEST[c.destination]) return forward();   // other console buttons are operator controls
     const [user, type] = USER_FOR[c.destination];
+    if (isPipe()) {   // the console's own Dispatch goes through the selected pipeline as a lift call
+      jobs[c.robot] = {kind: "operator", dest: c.destination, at: now(), who: user};
+      pipeRun(legitCall).then(r => {
+        if (!r) return;
+        if (r.pass) { st.sent++; DemoLayer.setTask(c.robot, "Operator · " + stationName(c.destination), "operator"); forward(); }
+        else { delete jobs[c.robot]; st.logged++; declineInConsole(c, "Refused by pipeline " + pipeId() + ": " + r.detail); log("warn", "Console order to " + stationName(c.destination) + " refused by pipeline " + pipeId() + "."); }
+        refresh();
+      });
+      return;
+    }
     tick();
     const dest = STATION_TO_DEST[c.destination], id = "L" + (++taskN);
     world.tasks[id] = {dest, type, owner: user, status: "REGISTERED"};
@@ -4549,6 +6717,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = FleetTraff
   }
   function hack(kind) {
     if (!gate) return;
+    if (isPipe()) return pipeHack(kind);
     rotateIfQuarantined();
     const keys = WEIGHTED.filter(k => !ATTACKS[k].needs || ATTACKS[k].needs());
     const id = kind || pick(keys), a = ATTACKS[id];
@@ -4722,14 +6891,14 @@ if (typeof module !== "undefined" && module.exports) module.exports = FleetTraff
   }
 
   function restart() {
-    stopFlood(false); clearTimeout(hackTimer); incident = null;
+    epoch++; stopFlood(false); clearTimeout(hackTimer); incident = null;
     world = makeWorld(); clock = {t: T0}; startMs = now(); gate = new Gate(world, CONFIGS[cfgKey], clock, CAPACITY); gate.beginSecond();
     st = {sent: 0, done: 0, held: 0, authorized: 0, logged: 0, manual: 0, attempts: 0, stopped: 0, through: 0};
     lastLegit = null; taskN = 0; tampered = false; holds = []; hackerSrc = "HACKER-" + (++srcN); shedSinceLog = 0;
     if (wasIso) { wasIso = false; const s = snap(); if (s) for (const r of s.robots) if (r.isolated) ours.add(r.id); }
     DemoLayer.setIsolated(false);
     for (const id of Object.keys(jobs)) if (jobs[id].kind === "hacker") { delete jobs[id]; DemoLayer.setTask(id, null); }
-    $("log").innerHTML = ""; $("defdesc").textContent = DEF_TEXT[cfgKey]; $("defname").textContent = cfgKey;
+    $("log").innerHTML = ""; $("defdesc").textContent = DEF_TEXT[cfgKey]; $("defname").textContent = isPipe() ? "Pipeline " + pipeId() : cfgKey;
     lastHack("", hackerOn ? "Attacking..." : "Idle. Switch attacks on to start.");
     log("info", "Demo started. Defence: " + $("def").selectedOptions[0].textContent + ".");
     renderHolds(); refresh(); scheduleHack();
@@ -4749,8 +6918,11 @@ if (typeof module !== "undefined" && module.exports) module.exports = FleetTraff
       '</div>' +
       '<div class="hk-block hk-sim" aria-label="Simulation">' +
         '<label for="hk-def">Defence</label><select id="hk-def">' +
+        '<optgroup label="Request gate (methods M0 to M4)">' +
         '<option value="M0">M0 · No protection</option><option value="M1">M1 · Signed tickets</option><option value="M2">M2 · Ward rules</option>' +
-        '<option value="M3">M3 · Data minimisation</option><option value="M4">M4 · Containment</option><option value="ALL" selected>ALL · Full protection</option></select>' +
+        '<option value="M3">M3 · Data minimisation</option><option value="M4">M4 · Containment</option><option value="ALL" selected>ALL · Full protection</option></optgroup>' +
+        (PIPE_IDS.length ? '<optgroup label="Lift-call pipelines (real cryptography)">' + PIPE_IDS.map(id => '<option value="P-' + id + '">' + id + ' · ' + esc(SecureComms.PIPELINES[id].name) + '</option>').join("") + '</optgroup>' : "") +
+        '</select>' +
         '<label for="hk-robots" class="hk-robots-label">Robots on duty: <output id="hk-robots-out" for="hk-robots">3</output></label>' +
         '<input type="range" id="hk-robots" min="3" max="10" step="1" value="3" aria-valuetext="3 robots">' +
         '<p id="hk-robots-note" class="hk-note" role="status"></p>' +

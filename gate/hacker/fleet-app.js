@@ -8,6 +8,8 @@
 //  - A suspicious task (the gate refuses it for an identity or permission reason) is HELD: it needs authorization from the
 //    ward/unit that owns the destination. Authorized -> it runs. Not authorized in time -> it is not run and saved to the log.
 //  - Hacker requests never carry that authorization, so they end up in the log.
+//  - Defence menu, second group: the nine secure lift-call pipelines A to I (secure-comms/, real cryptography). With one of them selected,
+//    nurse tasks are the legitimate lift call of that pipeline and the hacker runs attacks from its 29-attack suite against it.
 //  - When the breaker (M4) trips, ONE incident is shown from detection to restore: an alert goes to the Security duty lead with the
 //    evidence, the robots stay isolated (nurse tasks go by hand), and nothing resets automatically. Only a supervisor clicking
 //    "Restore robots" brings them back, and then the next task goes by robot. The attacker's address stays quarantined.
@@ -29,6 +31,19 @@
     M3: "Data minimisation. Robots only get the task number and destination; extra fields are refused.",
     M4: "Containment. Floods and repeated bad requests trip a breaker: an alert goes to the Security duty lead and the robots stay isolated until a supervisor restores them.",
     ALL: "All four defences together (M1 + M2 + M3 + M4)."};
+  // Secure lift-call pipelines A to I (secure-comms/). Each demo "defence" P-A ... P-I runs the real pipeline code in this page.
+  const HAVE_PIPES = typeof SecureAttacks !== "undefined" && typeof SecureComms !== "undefined" && typeof SecureInfo !== "undefined";
+  const PIPE_IDS = HAVE_PIPES ? Object.keys(SecureComms.PIPELINES) : [];
+  for (const id of PIPE_IDS) {
+    const p = SecureComms.PIPELINES[id], info = SecureInfo[id];
+    CONFIGS["P-" + id] = {};   // the request gate is not used in this mode
+    DEF_TEXT["P-" + id] = "Pipeline " + id + ", " + p.name + ". " + info.idea + " Nurse tasks and the hacker's attacks now run through this pipeline, with real cryptography. Weakest point: " + info.weakest +
+      " The request-gate checks below do not apply to it.";
+  }
+  const isPipe = () => cfgKey.indexOf("P-") === 0, pipeId = () => cfgKey.slice(2);
+  let pipeChain = Promise.resolve(), epoch = 0;   // pipeline runs go one after another; a restart drops the ones still waiting
+  const pipeRun = fn => { const mine = epoch; const p = pipeChain.then(() => (mine === epoch ? fn() : null)); pipeChain = p.catch(() => null); return p.then(r => (mine === epoch ? r : null)); };
+  const legitCall = () => SecureAttacks.LEGIT[0].run(pipeId());   // L01, a routine lift call: it must pass
   // The gate's destinations are the fleet console's stations.
   const DEST_TO_STATION = {"Room 12": "WARD-A", "Room 7": "WARD-B", "Pharmacy": "PHARMACY", "Lab": "LAB", "Storage": "STORES"};
   const STATION_TO_DEST = {"WARD-A": "Room 12", "WARD-B": "Room 7", "PHARMACY": "Pharmacy", "LAB": "Lab", "STORES": "Storage", "COLLECTION": "Lab"};
@@ -182,6 +197,7 @@
   }
   // A task request through the gate. o: {user, type, station, robot, who, cmd?} (cmd: the console's own Dispatch command)
   function submit(o) {
+    if (isPipe()) return pipeSubmit(o);
     tick();
     const dest = STATION_TO_DEST[o.station], id = "L" + (++taskN);
     world.tasks[id] = {dest, type: o.type, owner: o.user, status: "REGISTERED"};
@@ -202,6 +218,40 @@
     else { log("warn", o.who + "'s task was not accepted (" + res.reason + "). Saved to the log."); DemoLayer.request({from: "nurse", passed: false, text: "NOT ACCEPTED"}); }
     if (o.cmd && !(res.ok && res.mode === "robot")) declineInConsole(o.cmd, res.ok ? "Robots are cut off. Deliver by hand." : "Held by the gate: " + (AUTH_REASONS[res.reason] || res.reason));
     refresh();
+  }
+  // A task through a secure pipeline: the lift call of that pipeline decides, and the robot goes only if it passes.
+  function pipeSubmit(o) {
+    const id = pipeId();
+    if (o.robot) jobs[o.robot] = {kind: o.cmd ? "operator" : "nurse", dest: o.station, at: now(), who: o.user};   // reserve the robot while the call is checked
+    DemoLayer.nurseWave(); DemoLayer.nurseSay(o.robot ? o.robot + ", to " + stationName(o.station) + " please" : "A task for " + stationName(o.station));
+    return pipeRun(legitCall).then(r => {
+      if (!r) return;
+      if (r.pass) {
+        st.sent++; DemoLayer.request({from: "nurse", passed: true, target: o.robot});
+        later(() => dispatch(o.robot, o.station, {kind: o.cmd ? "operator" : "nurse", who: o.user}));
+      } else {
+        if (o.robot) { delete jobs[o.robot]; DemoLayer.setTask(o.robot, null); }
+        st.logged++; log("warn", o.who + "'s task to " + stationName(o.station) + " was refused by pipeline " + id + " (" + r.detail + "). Saved to the log.");
+        DemoLayer.request({from: "nurse", passed: false, text: "REFUSED"});
+        if (o.cmd) declineInConsole(o.cmd, "Refused by pipeline " + id);
+      }
+      refresh();
+    });
+  }
+  const POSITION = {OUT: "from outside the network", PATH: "on the network path", DEV: "from a hacked robot", FLEET: "from the hacked fleet manager", LEAK: "with stolen keys", LOG: "on the audit log", NONE: "careless sender", DISPATCHER: "from the hacked dispatcher"};
+  // One attack from the comparison's suite. "Got through" is the attack's own verdict (its effect on the lift, the wire or the robot).
+  function pipeHack(kind) {
+    const id = pipeId(), list = SecureAttacks.ATTACKS, a = kind === "vendorLift" ? list.find(x => x.id === "T06") : pick(list);
+    DemoLayer.hackerSay(a.id + ": " + a.name); typing(1300);
+    st.attempts++; refresh();
+    return pipeRun(() => a.run(id)).then(r => {
+      if (!r) return;
+      const label = a.id + " " + a.name + (a.position ? " (" + POSITION[a.position] + ")" : "");
+      if (r.blocked) { st.stopped++; lastHack("ok", label + ": blocked by pipeline " + id + "."); log("good", "Hacker: " + label + ". Blocked by pipeline " + id + ". " + r.detail + "."); }
+      else { st.through++; lastHack("bad", label + ": got through pipeline " + id + "."); log("bad", "Hacker: " + label + ". It got through pipeline " + id + ". The attacker wins if: " + a.wins.charAt(0).toLowerCase() + a.wins.slice(1) + ". Observed: " + r.detail + "."); }
+      refresh();
+      DemoLayer.request({from: "hacker", passed: !r.blocked, noRobot: true, text: r.blocked ? "BLOCKED" : "GOT THROUGH", arrive() { if (r.blocked) DemoLayer.hackerRage(); }});
+    });
   }
   function hold(o, reason) {
     const dest = STATION_TO_DEST[o.station], authority = AUTHORITY[dest];
@@ -262,6 +312,16 @@
     const c = msg.command;
     if (!gate || c.action !== "dispatch" || !STATION_TO_DEST[c.destination]) return forward();   // other console buttons are operator controls
     const [user, type] = USER_FOR[c.destination];
+    if (isPipe()) {   // the console's own Dispatch goes through the selected pipeline as a lift call
+      jobs[c.robot] = {kind: "operator", dest: c.destination, at: now(), who: user};
+      pipeRun(legitCall).then(r => {
+        if (!r) return;
+        if (r.pass) { st.sent++; DemoLayer.setTask(c.robot, "Operator · " + stationName(c.destination), "operator"); forward(); }
+        else { delete jobs[c.robot]; st.logged++; declineInConsole(c, "Refused by pipeline " + pipeId() + ": " + r.detail); log("warn", "Console order to " + stationName(c.destination) + " refused by pipeline " + pipeId() + "."); }
+        refresh();
+      });
+      return;
+    }
     tick();
     const dest = STATION_TO_DEST[c.destination], id = "L" + (++taskN);
     world.tasks[id] = {dest, type, owner: user, status: "REGISTERED"};
@@ -306,6 +366,7 @@
   }
   function hack(kind) {
     if (!gate) return;
+    if (isPipe()) return pipeHack(kind);
     rotateIfQuarantined();
     const keys = WEIGHTED.filter(k => !ATTACKS[k].needs || ATTACKS[k].needs());
     const id = kind || pick(keys), a = ATTACKS[id];
@@ -479,14 +540,14 @@
   }
 
   function restart() {
-    stopFlood(false); clearTimeout(hackTimer); incident = null;
+    epoch++; stopFlood(false); clearTimeout(hackTimer); incident = null;
     world = makeWorld(); clock = {t: T0}; startMs = now(); gate = new Gate(world, CONFIGS[cfgKey], clock, CAPACITY); gate.beginSecond();
     st = {sent: 0, done: 0, held: 0, authorized: 0, logged: 0, manual: 0, attempts: 0, stopped: 0, through: 0};
     lastLegit = null; taskN = 0; tampered = false; holds = []; hackerSrc = "HACKER-" + (++srcN); shedSinceLog = 0;
     if (wasIso) { wasIso = false; const s = snap(); if (s) for (const r of s.robots) if (r.isolated) ours.add(r.id); }
     DemoLayer.setIsolated(false);
     for (const id of Object.keys(jobs)) if (jobs[id].kind === "hacker") { delete jobs[id]; DemoLayer.setTask(id, null); }
-    $("log").innerHTML = ""; $("defdesc").textContent = DEF_TEXT[cfgKey]; $("defname").textContent = cfgKey;
+    $("log").innerHTML = ""; $("defdesc").textContent = DEF_TEXT[cfgKey]; $("defname").textContent = isPipe() ? "Pipeline " + pipeId() : cfgKey;
     lastHack("", hackerOn ? "Attacking..." : "Idle. Switch attacks on to start.");
     log("info", "Demo started. Defence: " + $("def").selectedOptions[0].textContent + ".");
     renderHolds(); refresh(); scheduleHack();
@@ -506,8 +567,11 @@
       '</div>' +
       '<div class="hk-block hk-sim" aria-label="Simulation">' +
         '<label for="hk-def">Defence</label><select id="hk-def">' +
+        '<optgroup label="Request gate (methods M0 to M4)">' +
         '<option value="M0">M0 · No protection</option><option value="M1">M1 · Signed tickets</option><option value="M2">M2 · Ward rules</option>' +
-        '<option value="M3">M3 · Data minimisation</option><option value="M4">M4 · Containment</option><option value="ALL" selected>ALL · Full protection</option></select>' +
+        '<option value="M3">M3 · Data minimisation</option><option value="M4">M4 · Containment</option><option value="ALL" selected>ALL · Full protection</option></optgroup>' +
+        (PIPE_IDS.length ? '<optgroup label="Lift-call pipelines (real cryptography)">' + PIPE_IDS.map(id => '<option value="P-' + id + '">' + id + ' · ' + esc(SecureComms.PIPELINES[id].name) + '</option>').join("") + '</optgroup>' : "") +
+        '</select>' +
         '<label for="hk-robots" class="hk-robots-label">Robots on duty: <output id="hk-robots-out" for="hk-robots">3</output></label>' +
         '<input type="range" id="hk-robots" min="3" max="10" step="1" value="3" aria-valuetext="3 robots">' +
         '<p id="hk-robots-note" class="hk-note" role="status"></p>' +

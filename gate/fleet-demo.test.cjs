@@ -25,10 +25,10 @@ test("the demo is injected into the unchanged fleet console page", () => {
   for (const marker of ["id=\"model-panel\"", "id=\"fleet-worker-source\"", "window.makeFleetScene"]) assert.ok(stripped.includes(marker), marker);
 });
 
-test("the injected scripts add exactly five balanced script blocks", () => {
+test("the injected scripts add exactly six balanced script blocks", () => {
   const count = (s, re) => (s.match(re) || []).length;
   assert.equal(count(page, /<script/gi), count(page, /<\/script/gi));
-  assert.equal(count(page, /<script/gi) - count(consoleHtml, /<script/gi), 5);   // hooks, gate, layer, traffic, app
+  assert.equal(count(page, /<script/gi) - count(consoleHtml, /<script/gi), 6);   // hooks, gate, pipelines, layer, traffic, app
   assert.ok(page.indexOf("const FleetTraffic") > page.indexOf("const DemoLayer") && page.indexOf("window.RWDemo") > page.indexOf("const FleetTraffic"));
 });
 
@@ -49,4 +49,23 @@ test("the browser copy of the gate answers exactly like the Node gate", () => {
     return JSON.stringify(out);
   };
   assert.equal(run(web), run(real));
+});
+
+test("the nine secure pipelines run inside the page's own scripts and decide like the secure-comms results", async () => {
+  const {pipelinesSource} = require("./build-hacker.cjs");
+  assert.ok(page.includes("root.SecureAttacks") && page.includes('<optgroup label="Lift-call pipelines (real cryptography)">'));
+  // run the page's gate and pipeline scripts in a fresh browser-like context
+  const ctx = vm.createContext({console, TextEncoder, TextDecoder, btoa, atob, performance, setTimeout, clearTimeout, crypto: globalThis.crypto, URL});
+  ctx.globalThis = ctx; ctx.window = ctx;
+  vm.runInContext(gateBrowserSource() + "\nglobalThis.RWGate = RWGate;", ctx);
+  vm.runInContext(pipelinesSource(), ctx);
+  const A = ctx.SecureAttacks, saved = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "secure-comms", "results.json"), "utf8"));
+  assert.equal(Object.keys(ctx.SecureComms.PIPELINES).join(""), "ABCDEFGHI");
+  const t06 = A.ATTACKS.find(x => x.id === "T06"), l01 = A.LEGIT[0];
+  for (const id of ["A", "G", "I"]) {
+    assert.equal((await t06.run(id)).blocked, saved.results[id].attacks.T06.blocked, "T06 on " + id + " matches the saved result");
+    assert.equal((await l01.run(id)).pass, true, "a routine lift call passes on " + id);
+  }
+  assert.equal((await t06.run("A")).blocked, false);
+  assert.equal((await t06.run("I")).blocked, true);
 });
