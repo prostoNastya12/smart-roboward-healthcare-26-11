@@ -10,6 +10,7 @@ const SCHEMA_KEYS = new Set(["type", "user", "task_id", "destination", "token", 
 const ROBOT_MSG_KEYS = new Set(["task_id", "status"]);
 const ROBOT_STATUSES = new Set(["DELIVERED", "IN_TRANSIT", "FAILED"]);
 const LIMITS = {ratePerSecond: 5, denialsToTrip: 5, robotMsgBytes: 200}; // fixed before any run
+const ALERT_TO = "Security duty lead";   // who is told when the breaker trips
 
 const hmac = body => crypto.createHmac("sha256", SECRET).update(body).digest();
 
@@ -30,7 +31,8 @@ function makeWorld() {
   return {
     users: {
       N1: {role: "nurse", wards: ["A"]}, N2: {role: "nurse", wards: ["B"]}, P1: {role: "porter", wards: ["A", "B"]},
-      N3: {role: "nurse", wards: ["A"], revoked: true}, S1: {role: "supervisor", wards: ["A", "B"]}
+      N3: {role: "nurse", wards: ["A"], revoked: true}, S1: {role: "supervisor", wards: ["A", "B"]},
+      V1: {role: "vendor", wards: []}   // a visiting vendor's account: a real login, but no delivery rights and no tasks of its own
     },
     destinations: {"Room 12": "A", "Room 7": "B", "Pharmacy": "SHARED", "Lab": "SHARED", "Storage": "SHARED"},
     tasks,
@@ -45,7 +47,7 @@ class Gate {
     this.w = world; this.cfg = cfg; this.clock = clock; this.cap = capacity; this.left = capacity;
     this.usedNonces = new Set(); this.buckets = new Map(); this.blocked = new Set();
     this.isolated = false; this.tripAt = null; this.shed = 0; this.manualCount = 0; this.robotCount = 0;
-    this.audit = [];
+    this.audit = []; this.alerts = [];   // alerts: one record per security incident, each naming who was told and the evidence
   }
   beginSecond() { this.left = this.cap; }
 
@@ -68,6 +70,7 @@ class Gate {
   deny(req, reason) {
     if (this.cfg.M4 && req && typeof req.source === "string") {
       const b = this.bucket(req.source); b.denials++;
+      b.recent.push({reason, user: typeof req.user === "string" ? req.user : null, ts: this.clock.t}); if (b.recent.length > 12) b.recent.shift();   // evidence for the alert
       if (b.denials >= LIMITS.denialsToTrip) this.trip(req.source, "repeated denials");
     }
     this.log("deny", reason);
@@ -75,13 +78,29 @@ class Gate {
   }
   bucket(src) {
     let b = this.buckets.get(src);
-    if (!b) this.buckets.set(src, b = {sec: -1, count: 0, denials: 0});
+    if (!b) this.buckets.set(src, b = {sec: -1, count: 0, denials: 0, recent: [], users: new Set()});
     return b;
   }
   trip(src, why) {
+    const first = !this.isolated;
     this.blocked.add(src);
-    if (!this.isolated) { this.isolated = true; this.tripAt = this.clock.t; }
+    if (first) { this.isolated = true; this.tripAt = this.clock.t; }
     this.log("breaker-trip", {source: src, why});
+    this.raiseAlert(src, why, first);
+  }
+  // Detection -> alert: a trip writes one alert record that names the recipient and carries the evidence. It stays open until a
+  // supervisor restores the robots (reset). A further source tripping during the same incident is added to the open alert.
+  raiseAlert(src, why, first) {
+    const open = this.alerts.find(a => a.status === "open"), b = this.bucket(src);
+    if (open && !first) {
+      if (!open.sources.includes(src)) { open.sources.push(src); this.log("alert-update", {id: open.id, source: src}); }
+      return;
+    }
+    const reasons = {}; for (const e of b.recent) reasons[e.reason] = (reasons[e.reason] || 0) + 1;
+    const alert = {id: this.alerts.length + 1, to: ALERT_TO, at: this.clock.t, status: "open", why, sources: [src],
+      evidence: {requests: why === "rate" ? b.count : b.denials, reasons, users: [...b.users], windowMs: b.recent.length > 1 ? b.recent[b.recent.length - 1].ts - b.recent[0].ts : 0}};
+    this.alerts.push(alert);
+    this.log("alert-sent", {id: alert.id, to: alert.to, source: src, why, evidence: alert.evidence});
   }
 
   verifyToken(req) {
@@ -105,6 +124,7 @@ class Gate {
   policy(req, task) {
     const u = this.w.users[req.user];
     if (!u || u.revoked) return "unknown or revoked user";
+    if (u.role === "vendor") return "vendors have no delivery rights";
     if (req.type === "deliver") {
       if (u.role === "porter" && task.type !== "linen") return "role not allowed for task type";
       const ward = this.w.destinations[req.destination];
@@ -123,6 +143,7 @@ class Gate {
     this.log("request", this.cfg.M3 ? {type: req?.type, task_id: req?.task_id, source: src} : JSON.stringify(req));
     if (this.cfg.M4) {
       const b = this.bucket(src), sec = Math.floor(this.clock.t / 1000);
+      if (req && typeof req.user === "string") b.users.add(req.user);
       if (b.sec !== sec) { b.sec = sec; b.count = 0; }
       if (++b.count > LIMITS.ratePerSecond) { this.trip(src, "rate"); return {ok: false, reason: "rate limit exceeded"}; }
     }
@@ -130,6 +151,7 @@ class Gate {
     if (this.cfg.M3) {
       for (const k of Object.keys(req)) if (!SCHEMA_KEYS.has(k)) return this.deny(req, "unknown field rejected");
     }
+    if (req.type === "lift") return this.lift(req);
     const task = this.w.tasks[req.task_id];
     if (!task || task.status === "CANCELLED") return this.deny(req, "unknown task");   // M0 allowlist
     if (!["deliver", "status", "cancel"].includes(req.type)) return this.deny(req, "unknown request type");
@@ -160,6 +182,28 @@ class Gate {
     return {ok: true, mode: "robot"};
   }
 
+  // A request to ride the lift. Only a delivery that is assigned to the requester earns a lift trip. A valid login is not enough:
+  // a vendor account with no delivery asks for the lift and is denied. The audit log records the requesting user ID either way.
+  lift(req) {
+    const user = typeof req.user === "string" ? req.user : null;
+    this.log("lift-request", {user, task_id: req.task_id ?? null, source: req.source});
+    if (this.cfg.M1) {
+      const v = this.verifyToken(req);
+      if (typeof v === "string") return this.deny(req, v);
+    }
+    const task = this.w.tasks[req.task_id];
+    if (!task || task.status === "CANCELLED" || task.owner !== req.user) {
+      this.log("lift-denied", {user, reason: "no task assigned"});
+      return this.deny(req, "no task assigned");
+    }
+    if (this.cfg.M2) {
+      const u = this.w.users[req.user];
+      if (!u || u.revoked) return this.deny(req, "unknown or revoked user");
+    }
+    this.log("lift-granted", {user, task_id: req.task_id});
+    return {ok: true, mode: "lift"};
+  }
+
   // Messages coming back from the (possibly compromised) robot.
   robotMessage(msg) {
     if (this.cfg.M3 || this.cfg.M4) {
@@ -186,6 +230,7 @@ class Gate {
     const u = this.w.users[user];
     if (!u || u.role !== "supervisor") { this.log("reset-denied", {user}); return {ok: false}; }
     this.isolated = false; this.blocked.clear(); this.buckets.clear(); this.tripAt = null;
+    for (const a of this.alerts) if (a.status === "open") { a.status = "restored"; a.closedBy = user; a.closedAt = this.clock.t; }
     this.log("reset", {user});
     return {ok: true};
   }

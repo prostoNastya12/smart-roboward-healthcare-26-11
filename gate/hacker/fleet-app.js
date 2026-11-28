@@ -8,16 +8,17 @@
 //  - A suspicious task (the gate refuses it for an identity or permission reason) is HELD: it needs authorization from the
 //    ward/unit that owns the destination. Authorized -> it runs. Not authorized in time -> it is not run and saved to the log.
 //  - Hacker requests never carry that authorization, so they end up in the log.
-//  - When the breaker (M4) trips, robots pause for a short containment window, then the system reconnects them automatically.
-//    The attacker's address stays quarantined.
+//  - When the breaker (M4) trips, ONE incident is shown from detection to restore: an alert goes to the Security duty lead with the
+//    evidence, the robots stay isolated (nurse tasks go by hand), and nothing resets automatically. Only a supervisor clicking
+//    "Restore robots" brings them back, and then the next task goes by robot. The attacker's address stays quarantined.
 (function () {
-  const {Gate, makeWorld, issueToken, PATIENT_NAMES} = RWGate;
+  const {Gate, makeWorld, issueToken, PATIENT_NAMES, LIMITS} = RWGate;
   const H = window.RWHooks;
   const $ = id => document.getElementById("hk-" + id);
   const pick = a => a[Math.floor(Math.random() * a.length)];
   const now = () => performance.now();
   const T0 = 1000000, CAPACITY = 20;
-  const CONTAIN_MS = 4000;     // robots stay cut off this long after the breaker trips, then the system reconnects them
+  const VENDOR_SRC = "VENDOR-PC";   // the vendor's workstation address
   const HOLD_MS = 12000;       // a held task waits this long for authorization, then it is logged as unauthorized
   const NURSE_EVERY_MS = 6500, CROSS_WARD_SHARE = 0.25;
   const CONFIGS = {M0: {}, M1: {M1: true}, M2: {M2: true}, M3: {M3: true}, M4: {M4: true}, ALL: {M1: true, M2: true, M3: true, M4: true}};
@@ -26,7 +27,7 @@
     M1: "Signed, single-use tickets. Forged, expired, changed and reused orders need authorization.",
     M2: "Role and ward rules. Orders outside a person's ward need authorization from that ward.",
     M3: "Data minimisation. Robots only get the task number and destination; extra fields are refused.",
-    M4: "Containment. Floods and repeated bad requests trip a breaker; robots pause, then reconnect automatically.",
+    M4: "Containment. Floods and repeated bad requests trip a breaker: an alert goes to the Security duty lead and the robots stay isolated until a supervisor restores them.",
     ALL: "All four defences together (M1 + M2 + M3 + M4)."};
   // The gate's destinations are the fleet console's stations.
   const DEST_TO_STATION = {"Room 12": "WARD-A", "Room 7": "WARD-B", "Pharmacy": "PHARMACY", "Lab": "LAB", "Storage": "STORES"};
@@ -45,11 +46,12 @@
     "token does not match request": "ticket for a different order", "replayed token": "ticket already used",
     "unknown or revoked user": "account removed", "destination outside user's ward": "outside the sender's ward",
     "role not allowed for task type": "role not allowed for this task", "not task owner": "not the task owner",
-    "unknown field rejected": "hidden extra data", "unknown task": "unknown task number"};
+    "unknown field rejected": "hidden extra data", "unknown task": "unknown task number",
+    "no task assigned": "no delivery assigned", "vendors have no delivery rights": "vendor account"};
 
   let world, gate, clock, startMs, cfgKey = "ALL", st, lastLegit, taskN = 0, cmdN = 0, holdN = 0, tampered = false;
   let hackerOn = false, hackTimer = null, autoOn = true, autoTimer = null, floodTimer = null, floodStats = null;
-  let hackerSrc = "HACKER-1", srcN = 1, quarantinedAt = 0, containTimer = null, wasIso = false, shedSinceLog = 0;
+  let hackerSrc = "HACKER-1", srcN = 1, quarantinedAt = 0, incident = null, wasIso = false, shedSinceLog = 0;   // incident: {alert, openedAt, restoredAt}
   let jobs = {}, holds = [], idleSince = {}, arrivedAt = {}, exampleAt = {}, lastCmd = {}, ours = new Set(), toResume = new Set();
   let traffic = null, planned = new Map(), plannedAt = new Map(), waitSince = {}, retireSince = {}, fleetWanted = 3, fleetTimer = null;
 
@@ -110,25 +112,54 @@
     return true;
   }
 
-  // ---------- breaker: automatic containment and recovery ----------
+  // ---------- one incident: detection -> alert -> isolation -> a supervisor restores ----------
+  const clockAt = ms => { const s = Math.max(0, Math.floor((ms - startMs) / 1000)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+  function evidenceText(a) {   // the evidence the gate wrote into the alert, in plain words
+    const e = a.evidence, what = a.why === "rate" ? "flood: " + e.requests + " requests in one second (limit " + LIMITS.ratePerSecond + ")" : e.requests + " refused requests in " + (e.windowMs / 1000).toFixed(1) + " s";
+    const why = Object.entries(e.reasons).map(([r, n]) => (AUTH_REASONS[r] || r) + " ×" + n).join(", ");
+    return what + " from " + a.sources.join(", ") + (why ? " (" + why + ")" : "") + (e.users.length ? "; accounts used: " + e.users.join(", ") : "") + ".";
+  }
   function syncIso() {
     DemoLayer.setIsolated(gate.isolated);
     if (!gate.isolated || wasIso) return;
     wasIso = true;
     const s = snap();
     if (s) for (const r of s.robots) if (!r.isolated) { if (r.mission && r.mission.stage === "travel") toResume.add(r.id); ours.add(r.id); fleetSend({id: newId("G"), robot: r.id, action: "isolate"}); }
-    log("warn", "Breaker tripped: repeated bad requests from " + [...gate.blocked].join(", ") + ". Robots paused and cut off for " + CONTAIN_MS / 1000 + " s; nurse tasks go by hand.");
-    clearTimeout(containTimer); containTimer = setTimeout(recover, CONTAIN_MS);
+    const alert = gate.alerts[gate.alerts.length - 1];   // written by the gate at the moment of the trip
+    incident = {alert, openedAt: now(), restoredAt: null}; quarantinedAt = now();
+    if (alert) log("bad", "ALERT sent to " + alert.to + ". Evidence: " + evidenceText(alert));
+    log("warn", "Robots are isolated and stay isolated until a supervisor restores them. Nurse tasks go by hand.");
     refresh();
   }
-  function recover() {
+  function restoreRobots() {   // the human step: only a supervisor can do this, and the gate checks it
     if (!gate.isolated) return;
     const attackers = [...gate.blocked].filter(x => x.startsWith("HACKER"));
-    tick(); gate.reset("S1");                           // automatic security review, signed by supervisor S1 (real gate API, in the audit chain)
+    tick();
+    if (!gate.reset("S1").ok) return;                   // supervisor S1 signs the restore: a real gate call, recorded in the audit chain
     for (const a of attackers) gate.blocked.add(a);     // the attacker's address stays quarantined; only checked when M4 is on
     wasIso = false; quarantinedAt = now(); DemoLayer.setIsolated(false);
-    log("good", "Automatic review: " + (attackers.length ? "attacker address " + attackers.join(", ") + (attackers.length > 1 ? " stay" : " stays") + " quarantined. " : "") + "Robots reconnected and back at work.");
+    if (incident) incident.restoredAt = now();
+    log("good", "Supervisor S1 restored the robots" + (attackers.length ? ". Attacker address " + attackers.join(", ") + (attackers.length > 1 ? " stay" : " stays") + " quarantined" : "") + ". The next task goes by robot.");
     refresh();
+  }
+  function renderIncident() {
+    const box = $("incident"); if (!box) return;
+    if (!incident || !incident.alert) { if (!box.hidden) box.hidden = true; return; }
+    const a = incident.alert, open = gate.isolated && !incident.restoredAt, s = snap();
+    const duty = s ? s.robots : [], cut = duty.filter(r => r.isolated).length;
+    const set = (id, text) => { const e = $(id); if (e.textContent !== text) e.textContent = text; };
+    box.hidden = false; box.className = "hk-incident " + (open ? "open" : "closed");
+    set("inc-title", "Alert sent to " + a.to);
+    set("inc-status", open ? "Robots isolated · waiting for a supervisor" : "Restored by supervisor S1 at " + clockAt(incident.restoredAt));
+    set("inc-evidence", evidenceText(a));
+    const steps = [
+      ["done", "1 · Detected", "Breaker tripped at " + clockAt(incident.openedAt) + " (" + (a.why === "rate" ? "too many requests" : "repeated refusals") + ")"],
+      ["done", "2 · Alert sent", "To " + a.to + " at " + clockAt(incident.openedAt)],
+      [open ? "now" : "done", "3 · Robots isolated", open ? cut + " of " + duty.length + " robots cut off; tasks go by hand" : "Robots were isolated for " + Math.round((incident.restoredAt - incident.openedAt) / 1000) + " s"],
+      [open ? "wait" : "done", "4 · Supervisor restore", open ? "Waiting. Nothing resets automatically." : "Done by S1. Tasks go by robot again."]];
+    const html = steps.map(([cls, t, d]) => '<li class="' + cls + '"><b>' + esc(t) + "</b>" + esc(d) + "</li>").join("");
+    if ($("inc-steps").innerHTML !== html) $("inc-steps").innerHTML = html;
+    $("restore").disabled = !open;
   }
 
   // ---------- nurse ----------
@@ -257,9 +288,10 @@
     unknown: {say: "Task 99, I guess?", name: "Made-up task number", build() { return mk("N1", "T99", "Room 12"); }},
     fired: {say: "I still have my old login!", name: "Login of a former employee", build() { return mk("N3", "T1", "Room 12"); }},
     flood: {say: "FLOOD!", name: "Flood of orders", special: "flood"},
-    robot: {say: "I'm taking over a robot!", name: "Hacked robot sends forged messages", special: "robot"}
+    robot: {say: "I'm taking over a robot!", name: "Hacked robot sends forged messages", special: "robot"},
+    vendorLift: {say: "Just a quick ride in the lift!", name: "Vendor account asks for the lift with no delivery", special: "lift"}
   };
-  const WEIGHTED = ["noTicket", "forged", "expired", "replay", "wrongWard", "tamper", "leak", "unknown", "fired", "flood", "robot"];
+  const WEIGHTED = ["noTicket", "forged", "expired", "replay", "wrongWard", "tamper", "leak", "unknown", "fired", "flood", "robot", "vendorLift"];
   const lastHack = (cls, text) => { const e = $("last"); e.textContent = text; e.className = "hk-note " + cls; };
 
   function hijackTarget(preferred) {   // a free robot and a station it can reach right now, so a hijacked order visibly moves a robot
@@ -281,6 +313,7 @@
     DemoLayer.hackerSay(a.say); typing(1300);
     if (a.special === "flood") return startFlood();
     if (a.special === "robot") return hackRobot();
+    if (a.special === "lift") return vendorLift(a);
     tick();
     const req = a.build(), res = gate.handle(req);
     syncIso(); st.attempts++;
@@ -302,6 +335,23 @@
       arrive() { if (!res.ok) DemoLayer.hackerRage(); }
     });
     if (hij) { claimRoute(hij.robot, hij.route); jobs[target] = {kind: "hacker", dest: hij.station, at: now()}; ours.add(target); later(() => dispatch(target, hij.station, {kind: "hacker", label: "hijacked"})); }
+  }
+  // A vendor's account is a real login with a valid ticket, but it has no delivery and no delivery rights. It asks for the lift anyway.
+  // The gate denies it (no task assigned), no robot moves, and the audit log records the vendor's user ID.
+  function vendorLift(a) {
+    tick();
+    const moved = world.robot.actions;
+    const res = gate.handle({type: "lift", user: "V1", task_id: null, token: issueToken("V1", null, "", clock.t), source: VENDOR_SRC});
+    syncIso(); st.attempts++;
+    if (res.ok) { st.through++; lastHack("bad", "Vendor lift request was granted."); log("bad", "Vendor account V1 was granted the lift. That should not happen."); }
+    else if (res.shed) { st.stopped++; shedSinceLog++; lastHack("ok", a.name + ": dropped, the vendor workstation is quarantined."); }
+    else {
+      st.stopped++;
+      lastHack("ok", "Vendor V1 asked for the lift with no delivery: denied. No robot moved.");
+      log("good", "Vendor account V1 asked for the lift with no delivery: DENIED (" + res.reason + "). " + (world.robot.actions === moved ? "No robot moved. " : "") + "Audit log entry: user V1.");
+    }
+    refresh();
+    DemoLayer.request({from: "hacker", passed: res.ok, noRobot: true, text: res.ok ? "LIFT GRANTED" : res.shed ? "QUARANTINED" : "NO DELIVERY ASSIGNED", arrive() { if (!res.ok) DemoLayer.hackerRage(); }});
   }
   function rotateIfQuarantined() {
     if (gate.blocked.has(hackerSrc) && now() - quarantinedAt > 10000) {
@@ -411,7 +461,8 @@
     $("n-sent").textContent = st.sent; $("n-done").textContent = st.done; $("n-held").textContent = holds.length;
     $("n-att").textContent = st.attempts; $("n-stop").textContent = st.stopped; $("n-thr").textContent = st.through;
     $("n-thr").parentElement.classList.toggle("bad", st.through > 0);
-    setCheck("c-zone", gate.isolated ? "Cut off (contained)" : "Connected", gate.isolated ? "warn" : "ok");
+    setCheck("c-zone", gate.isolated ? "Cut off (waiting for a supervisor)" : "Connected", gate.isolated ? "warn" : "ok");
+    renderIncident();
     const l = leaks();
     setCheck("c-leak", l.robot ? "Yes: robots got patient names" : l.log ? "Yes: names written to the log" : "None", l.robot || l.log ? "bad" : "ok");
     setCheck("c-rec", corrupted() ? "Overwritten by a hacked robot" : "Intact", corrupted() ? "bad" : "ok");
@@ -428,7 +479,7 @@
   }
 
   function restart() {
-    stopFlood(false); clearTimeout(hackTimer); clearTimeout(containTimer);
+    stopFlood(false); clearTimeout(hackTimer); incident = null;
     world = makeWorld(); clock = {t: T0}; startMs = now(); gate = new Gate(world, CONFIGS[cfgKey], clock, CAPACITY); gate.beginSecond();
     st = {sent: 0, done: 0, held: 0, authorized: 0, logged: 0, manual: 0, attempts: 0, stopped: 0, through: 0};
     lastLegit = null; taskN = 0; tampered = false; holds = []; hackerSrc = "HACKER-" + (++srcN); shedSinceLog = 0;
@@ -466,10 +517,17 @@
         '<div class="hk-head"><span class="hk-dot" aria-hidden="true"></span><h2 id="hk-hacker-h">Hacker</h2>' +
         '<label class="hk-switch"><input type="checkbox" role="switch" id="hk-hack"><span class="hk-track" aria-hidden="true"></span>Attacks</label></div>' +
         '<dl class="hk-stats"><div><dt>Attempts</dt><dd id="hk-n-att">0</dd></div><div><dt>Stopped</dt><dd id="hk-n-stop">0</dd></div><div><dt>Got through</dt><dd id="hk-n-thr">0</dd></div></dl>' +
-        '<div class="hk-actions"><button type="button" id="hk-one">One attack</button></div>' +
+        '<div class="hk-actions"><button type="button" id="hk-one">One attack</button><button type="button" id="hk-vendor">Vendor asks for the lift</button></div>' +
         '<p id="hk-last" class="hk-note" role="status"></p>' +
       '</div>';
     panel.insertBefore(bar, panel.querySelector(".ops-grid"));
+    const inc = document.createElement("section"); inc.id = "hk-incident"; inc.hidden = true; inc.setAttribute("role", "alert");   // one incident: detection, alert, isolation, restore
+    inc.innerHTML =
+      '<div class="hk-inc-head"><span class="hk-inc-badge">Security incident</span><h2 id="hk-inc-title"></h2><span id="hk-inc-status" class="hk-inc-status"></span></div>' +
+      '<p class="hk-inc-evidence"><b>Evidence:</b> <span id="hk-inc-evidence"></span></p>' +
+      '<ol id="hk-inc-steps" class="hk-inc-steps"></ol>' +
+      '<div class="hk-actions"><button type="button" id="hk-restore" class="primary">Restore robots (supervisor)</button></div>';
+    panel.insertBefore(inc, panel.querySelector(".ops-grid"));
     const views = document.createElement("div"); views.className = "hk-views"; views.setAttribute("role", "group"); views.setAttribute("aria-label", "Camera view");
     views.innerHTML = [["overview", "Overview"], ["clinic", "Robots"], ["nurse", "Nurse"], ["gate", "Gate"], ["hacker", "Hacker"]]
       .map(([k, t]) => '<button type="button" data-hkview="' + k + '" aria-pressed="' + (k === "overview") + '">' + t + "</button>").join("");
@@ -526,6 +584,8 @@
       scheduleHack();
     };
     $("one").onclick = () => hack();
+    $("vendor").onclick = () => hack("vendorLift");
+    $("restore").onclick = restoreRobots;
     $("nurse").onclick = () => nurseTask(false, true);
     $("cross").onclick = () => nurseTask(true, true);
     $("auto").onchange = () => { autoOn = $("auto").checked; scheduleNurse(); if (autoOn) nurseTask(false, false); };
