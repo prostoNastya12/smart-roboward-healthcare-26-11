@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#103930">
-  <title>Ward safety control room · Smart RoboWard</title>
+  <title>May this robot use the lift? · Smart RoboWard</title>
   <style>
 :root {
   color-scheme:light;
@@ -162,52 +162,144 @@ footer strong {color:var(--ink)}
 @media(max-width:900px) {.topology-steps {grid-template-columns:repeat(4,minmax(0,1fr))}.topology-steps li:after {display:none}}
 @media(max-width:700px) {.topology-steps {grid-template-columns:repeat(2,minmax(0,1fr));padding-left:14px;padding-right:14px}.topology-title {padding-left:14px;padding-right:14px}}
 
+/* ---- simple view ---- */
+main {padding-bottom:48px}
+.hero {padding:40px 0 8px;max-width:900px}
+.eyebrow {font:600 11px var(--mono);text-transform:uppercase;letter-spacing:.12em;color:var(--green);margin:0 0 10px}
+.hero h1 {font-size:clamp(34px,5vw,58px);line-height:1.05;margin:0;text-wrap:balance}
+.hero-lede {font-size:clamp(16px,2vw,20px);color:var(--mid);margin:14px 0 0;max-width:52ch}
+.step-title,.expert>summary {font-size:clamp(21px,2.4vw,27px);font-weight:640;letter-spacing:-.035em;line-height:1.2;display:flex;align-items:center;gap:12px;margin:38px 0 14px}
+.step {flex:none;width:30px;height:30px;border-radius:50%;background:var(--dark);color:#fff;font:600 14px/30px var(--mono);text-align:center;letter-spacing:0}
+.situations {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.situations button {display:grid;gap:3px;text-align:left;padding:13px 15px;min-height:0;border-radius:10px;background:var(--surface);align-content:start}
+.situations b {font-size:15px;letter-spacing:-.015em}
+.situations span {font-size:12px;font-weight:400;color:var(--sub)}
+.situations button[aria-pressed=true] {background:var(--dark);border-color:var(--dark);color:#fff}
+.situations button[aria-pressed=true] span {color:#cfe0d6}
+.decision-grid {display:grid;grid-template-columns:minmax(300px,1fr) minmax(0,1.35fr);gap:14px;align-items:stretch}
+.verdict {border:2px solid var(--line);border-radius:14px;background:var(--surface);padding:24px 26px;display:flex;flex-direction:column;gap:10px}
+.verdict-label {font:600 11px var(--mono);text-transform:uppercase;letter-spacing:.1em;color:var(--sub)}
+.verdict-word {font-size:clamp(44px,6vw,72px);font-weight:660;letter-spacing:-.05em;line-height:1;color:var(--mid)}
+.verdict-why {font-size:17px;line-height:1.45;color:var(--ink);max-width:36ch;min-height:3em}
+.verdict[data-type=allow] {border-color:#7fb58c;background:#f1f9ef}.verdict[data-type=allow] .verdict-word {color:#17573c}
+.verdict[data-type=hold] {border-color:#d9bb6d;background:#fff8e3}.verdict[data-type=hold] .verdict-word {color:#7a5406}
+.verdict[data-type=deny] {border-color:#dc9f8f;background:#fdf0ec}.verdict[data-type=deny] .verdict-word {color:#8f3426}
+.verdict-facts {display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:6px 0 0}
+.verdict-facts div {background:rgba(255,255,255,.7);border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+.verdict-facts dt {font-size:11px;color:var(--sub)}
+.verdict-facts dd {font:600 17px/1.3 var(--mono);margin-top:2px}
+.next-label {font-size:13px;font-weight:600;color:var(--mid);margin-top:auto}
+.next-label:empty {display:none}
+.verdict .actions:not(:empty) {margin-top:0}
+.verdict .actions button {font-size:14px;padding:10px 15px}
+.decision-grid .map-stage {min-height:340px}
+.decision-grid .playback button {font-size:14px;padding:9px 16px}
+.checks {list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.checks li {display:grid;grid-template-columns:28px minmax(0,1fr);gap:2px 10px;align-items:start;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.checks i {grid-row:span 2;width:26px;height:26px;border-radius:50%;font:700 14px/26px var(--mono);font-style:normal;text-align:center;background:#e0f1df;color:#1b583d}
+.checks li[data-ok=false] i {background:#fbe3dc;color:#8f3426}
+.checks li[data-ok=wait] i {background:#edf1e9;color:var(--sub)}
+.checks li[data-ok=false] {border-color:#e3b8ab}
+.checks b {font-size:14px}
+.checks span {font-size:13px;color:var(--sub)}
+.expert {margin-top:34px;border-top:1px solid var(--line)}
+.expert>summary {cursor:pointer;list-style:none;flex-wrap:wrap;margin:20px 0 6px}
+.expert>summary::-webkit-details-marker {display:none}
+.expert>summary small {font-size:14px;font-weight:400;letter-spacing:0;color:var(--sub);flex-basis:100%;margin-left:42px}
+.expert>summary:after {content:"Show";font:600 12px var(--mono);letter-spacing:0;border:1px solid #bacbc0;border-radius:6px;padding:5px 10px;margin-left:auto;background:var(--surface)}
+.expert[open]>summary:after {content:"Hide"}
+.expert[open]>summary {margin-bottom:16px}
+.expert-row {display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px;font-size:13px;color:var(--sub)}
+.expert-row label {display:flex;align-items:center;gap:7px}
+.expert .detail-grid {margin-top:0;grid-template-columns:minmax(280px,1fr) minmax(0,1.3fr)}
+.expert .panel+.panel,.expert .study-heat {margin-top:14px}
+.expert .detail-grid .panel+.panel {margin-top:0}
+@media(max-width:1000px) {.situations {grid-template-columns:repeat(2,minmax(0,1fr))}.checks {grid-template-columns:repeat(2,minmax(0,1fr))}.decision-grid,.expert .detail-grid {grid-template-columns:1fr}}
+@media(max-width:600px) {.situations,.checks {grid-template-columns:1fr}.verdict {padding:18px}.verdict-facts {grid-template-columns:1fr 1fr}.expert>summary small {margin-left:0}.hero {padding-top:24px}}
+#reset {font-size:14px;line-height:inherit;padding:9px 16px}
+.verdict-facts dd {font:600 15px/1.3 "Inter","Helvetica Neue",Arial,sans-serif}
+
 </style>
 </head>
 <body>
-  <a class="skip-link" href="#main">Skip to control room</a>
+  <a class="skip-link" href="#main">Skip to the decision</a>
   <header class="site-head"><div class="site-inner">
     <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M5 9h7V5h8v7h7v8h-7v7h-8v-7H5z"/><path d="M9 13v4h7v6m0-14v7h7"/></svg></span><strong>Smart RoboWard</strong></div>
-    <nav aria-label="Dashboard"><button data-view="control" aria-pressed="true">Control room</button><button data-view="study" aria-pressed="false">Trust study</button><button data-view="review" aria-pressed="false">Workflow review</button></nav>
     <span class="page-links"><a href="index.html">Overview</a><a href="security-pipelines.html">Secure pipelines</a><a href="Clinic-World.html">Fleet console</a><a href="hacker-demo.html">Live hack demo</a><a href="gate-results.html">Gate results</a></span><span class="local-status"><i></i> Local simulation</span>
   </div></header>
   <main id="main" tabindex="-1">
     <section id="view-control">
-      <div class="mast"><div><h1>Ward safety control room</h1><p>Follow a pharmacy delivery through the shared lift to Ward B.</p></div>
-        <label class="round-select"><span>Simulation round</span><select id="round"><option value="approved">Verified floor mapping</option><option value="unverified">Unverified map revision</option><option value="forbidden">Wrong-floor request</option><option value="priority">Patient transfer priority</option><option value="roam">Wi-Fi handover</option></select></label>
+      <header class="hero">
+        <p class="eyebrow">Ward safety · the shared lift</p>
+        <h1>May this robot use the lift?</h1>
+        <p class="hero-lede">A pharmacy robot is taking medication to Ward B on floor 2. Pick what happens on the way.</p>
+      </header>
+
+      <h2 class="step-title"><span class="step">1</span>Pick a situation</h2>
+      <div class="situations" id="situations" role="group" aria-label="Situation">
+        <button type="button" data-round="approved" aria-pressed="true"><b>Normal delivery</b><span>Everything is in order</span></button>
+        <button type="button" data-round="unverified" aria-pressed="false"><b>The map changed</b><span>Floor names not confirmed yet</span></button>
+        <button type="button" data-round="forbidden" aria-pressed="false"><b>Wrong floor</b><span>The robot asks for floor 1</span></button>
+        <button type="button" data-round="priority" aria-pressed="false"><b>A patient needs the lift</b><span>Transfers go first</span></button>
+        <button type="button" data-round="roam" aria-pressed="false"><b>Connection drops</b><span>Lift status is out of date</span></button>
       </div>
-      <div class="control-grid">
-        <article class="panel map-card"><div class="panel-head"><div><h2>Live floor map</h2></div><label class="floor-control"><span class="sr-only">Floor view</span><select id="floor"><option value="auto">Follow RX-01</option><option value="L1">L1 · Ground</option><option value="L2">L2 · Upper</option></select></label></div>
+      <select id="round" hidden aria-hidden="true" tabindex="-1"><option value="approved">approved</option><option value="unverified">unverified</option><option value="forbidden">forbidden</option><option value="priority">priority</option><option value="roam">roam</option></select>
+
+      <h2 class="step-title"><span class="step">2</span>The decision</h2>
+      <div class="decision-grid">
+        <article class="verdict" id="verdict" data-type="pending" aria-live="polite">
+          <p class="verdict-label">The lift says</p>
+          <p class="verdict-word" id="verdict-word">Checking…</p>
+          <p class="verdict-why" id="verdict-why"></p>
+          <dl class="verdict-facts">
+            <div><dt>Lift calls</dt><dd id="calls">0</dd></div>
+            <div><dt>Parcel is with</dt><dd id="holder">—</dd></div>
+            <div><dt>Ward receipts</dt><dd id="receipts">0</dd></div>
+          </dl>
+          <p class="next-label" id="next-label"></p>
+          <div id="actions" class="actions"></div>
+          <div id="receipt-actions" class="actions"></div>
+          <p id="action-status" class="action-status" aria-live="polite"></p>
+        </article>
+        <article class="panel map-card">
           <div class="map-stage"><div class="map-label"><b id="map-level">L1</b><span id="map-title">Ground floor</span></div><span class="map-north" aria-label="North">↑ N</span><svg id="floor-map" viewBox="-31 -27 62 53" role="img" aria-label="Open-RMF clinic plan with live robot positions and pharmacy route"><title>Clinic floor and fleet positions</title><defs>
           <pattern id="map-grid" width="2" height="2" patternUnits="userSpaceOnUse"><path d="M2 0H0V2" fill="none" stroke="#ccd9ce" stroke-width=".052"/></pattern>
           </defs><rect x="-31" y="-27" width="62" height="53" fill="url(#map-grid)"/><g id="architecture"></g><g id="lanes"></g><g id="route"></g><g id="stations"></g><g id="units"></g></svg>
           <div class="map-key"><span><i class="route-key"></i>Planned route</span><span><i class="rx-key"></i>RX-01</span><span><i class="other-key"></i>Other robots</span></div></div>
-          <div class="playback"><button class="primary" id="play">Play</button><button id="step">Step 1 s</button><button id="decision">To decision</button><label><span class="sr-only">Playback speed</span><select id="speed"><option value="1">1×</option><option value="4">4×</option><option value="8" selected>8×</option><option value="16">16×</option></select></label><output id="clock" aria-label="Simulation time">00:00</output><button id="reset" title="Restart this round" aria-label="Restart this round">↺</button></div>
+          <div class="playback"><button class="primary" id="play">Play</button><button id="reset" title="Start this situation again">Start again</button><output id="clock" aria-label="Simulation time">00:00</output></div>
         </article>
-        <aside class="panel gate-card"><div class="panel-head"><div><h2>Lift gate decision</h2></div><span id="outcome" class="outcome">Pending</span></div>
-          <div class="gate-content"><div class="journey"><span class="route-stop">Pharmacy</span><span class="journey-line"></span><span class="lift-symbol" aria-hidden="true">↕</span><span class="journey-line"></span><span class="route-stop">Ward B</span></div>
-          <p id="gate-reason"></p><dl class="facts"><div><dt>Reported floor</dt><dd id="raw-floor">—</dd></div><div><dt>Map revision</dt><dd id="map-rev">—</dd></div><div><dt>Facilities priority</dt><dd id="priority">—</dd></div><div><dt>Facilities observation</dt><dd id="feed">—</dd></div><div><dt>Lift landing</dt><dd id="landing">—</dd></div></dl>
-          <h3 class="wire-title">Message security <a id="wire-link" href="security-pipelines.html">compare pipelines</a></h3>
-          <dl class="facts"><div><dt>Channel</dt><dd id="wire-channel">—</dd></div><div><dt>Trip grant</dt><dd id="wire-grant">—</dd></div><div><dt>Decision over the wire</dt><dd id="wire-decision">—</dd></div></dl>
-          <div class="numbers"><div><strong id="calls">0</strong><span>Forwarded calls</span></div><div><strong id="entries">0</strong><span>Cabin entries</span></div></div>
-          <div id="actions" class="actions"></div><p id="action-status" class="action-status" aria-live="polite"></p></div>
-        </aside>
       </div>
-      <article class="topology panel"><div class="topology-title"><h2>Service path</h2><span class="forge"><output id="forge-status" aria-live="polite"></output><button id="forge" type="button">Send a forged order</button></span></div><ol id="topology" class="topology-steps"></ol></article>
-      <div class="detail-grid"><article class="panel"><div class="panel-head"><div><h2>Ward receipt</h2></div><span class="panel-icon" aria-hidden="true">✓</span></div><dl class="facts custody"><div><dt>Delivery</dt><dd>RX-01 → Ward B</dd></div><div><dt>Journey phase</dt><dd id="phase">—</dd></div><div><dt>Current holder</dt><dd id="holder">—</dd></div><div><dt>Ward receipts</dt><dd id="receipts">0</dd></div></dl><div id="receipt-actions" class="actions receipt-actions"></div></article>
-      <article class="panel"><div class="panel-head"><div><h2>Event log</h2></div><span id="event-count" class="meta"></span></div><ol id="events" class="event-list"></ol></article></div>
-    </section>
-    <section id="view-study" hidden>
-      <div class="mast"><div><h1>Trust study</h1><p>Inspect alert performance and exposure across the clinic’s mapped transitions.</p></div></div>
-      <article class="panel"><div class="panel-head"><div><h2>Detection performance</h2></div><span class="meta" id="mission-count"></span></div><div class="data-pad"><p id="study-description"></p><div id="metrics"></div><p id="study-note" class="footnote"></p></div></article>
+
+      <h2 class="step-title"><span class="step">3</span>Why</h2>
+      <ul class="checks" id="checks"></ul>
+
+      <details class="expert">
+        <summary><span class="step">4</span>All the detail<small>every device on the path, the event log, message security and playback controls</small></summary>
+        <div class="expert-row"><label>Floor shown <select id="floor"><option value="auto">Follow RX-01</option><option value="L1">L1 · Ground</option><option value="L2">L2 · Upper</option></select></label><button id="step">Step 1 s</button><button id="decision">To decision</button><label>Speed <select id="speed"><option value="1">1×</option><option value="4">4×</option><option value="8" selected>8×</option><option value="16">16×</option></select></label></div>
+        <div class="detail-grid">
+          <article class="panel"><div class="panel-head"><div><h2>Lift gate facts</h2></div><span id="outcome" class="outcome">Pending</span></div>
+            <div class="gate-content"><p id="gate-reason"></p><dl class="facts"><div><dt>Reported floor</dt><dd id="raw-floor">—</dd></div><div><dt>Map revision</dt><dd id="map-rev">—</dd></div><div><dt>Facilities priority</dt><dd id="priority">—</dd></div><div><dt>Facilities observation</dt><dd id="feed">—</dd></div><div><dt>Lift landing</dt><dd id="landing">—</dd></div><div><dt>Cabin entries</dt><dd id="entries">0</dd></div><div><dt>Journey phase</dt><dd id="phase">—</dd></div></dl>
+            <h3 class="wire-title">Message security <a id="wire-link" href="security-pipelines.html">compare the nine approaches</a></h3>
+            <dl class="facts"><div><dt>Channel</dt><dd id="wire-channel">—</dd></div><div><dt>Trip grant</dt><dd id="wire-grant">—</dd></div><div><dt>Decision over the wire</dt><dd id="wire-decision">—</dd></div></dl></div>
+          </article>
+          <article class="panel"><div class="panel-head"><div><h2>Event log</h2></div><span id="event-count" class="meta"></span></div><ol id="events" class="event-list"></ol></article>
+        </div>
+        <article class="topology panel"><div class="topology-title"><h2>Every device on the path</h2><span class="forge"><output id="forge-status" aria-live="polite"></output><button id="forge" type="button">Send a forged order</button></span></div><ol id="topology" class="topology-steps"></ol></article>
+      </details>
+
+      <details class="expert" id="view-study">
+        <summary><span class="step">5</span>Evidence from 10,000 simulated deliveries<small>how often the early warning was right, and where robots actually drive</small></summary>
+        <article class="panel"><div class="panel-head"><div><h2>Detection performance</h2></div><span class="meta" id="mission-count"></span></div><div class="data-pad"><p id="study-description"></p><div id="metrics"></div><p id="study-note" class="footnote"></p></div></article>
       <article class="panel study-heat"><div class="panel-head"><div><h2>Route heatmap</h2></div><div class="heat-controls"><label>Coverage <select id="heat-coverage"><option value="all">All transitions</option><option value="observed">Observed</option><option value="none">No coverage</option></select></label><label>Floor <select id="heat-floor"><option>L1</option><option>L2</option><option value="cabin">Lift cabin</option></select></label><label>Color by <select id="heat-mode"><option value="missions">Distinct missions</option><option value="seconds">Exposure time</option><option value="alerts">Alert count</option><option value="alertsPerHour">Alerts / observed hour</option><option value="missionsPer100">Missions / 100</option></select></label></div></div>
       <div class="heat-layout"><div class="heat-chart"><svg id="heat" viewBox="-31 -27 62 53" role="img" aria-label="Clinic transitions colored by selected study measure"></svg><div class="heat-scale"><span>Low</span><i></i><span>High</span><span class="no-data-key">- - No coverage</span></div></div><div class="heat-table"><h3 id="heat-heading">Transition details</h3><label class="edge-select">Directed transition <select id="heat-edge"></select></label><div id="heat-detail"></div><div id="heat-values"></div><p class="footnote" id="heat-note"></p></div></div></article>
+    </details>
+
+      <details class="expert" id="view-review">
+        <summary><span class="step">6</span>Other checks<small>previewing a rule change, tracking the parcel, sharing the lift between suppliers</small></summary>
+        <article class="panel"><div class="panel-head"><div><h2 id="review-heading">Policy preview</h2></div><label class="floor-control"><span class="sr-only">Workflow</span><select id="workflow"><option value="policy">Policy preview</option><option value="custody">Custody replay</option><option value="queue">Lift queue</option></select></label></div><div class="data-pad"><p id="review-description"></p><div id="review-results"></div></div></article>
+    </details>
     </section>
-    <section id="view-review" hidden>
-      <div class="mast"><div><h1>Workflow review</h1><p>Trace how policy changes, parcel scans and shared-lift queues affect ward deliveries.</p></div></div>
-      <article class="panel"><div class="panel-head"><div><h2 id="review-heading">Policy preview</h2></div><label class="floor-control"><span class="sr-only">Workflow</span><select id="workflow"><option value="policy">Policy preview</option><option value="custody">Custody replay</option><option value="queue">Lift queue</option></select></label></div><div class="data-pad"><p id="review-description"></p><div id="review-results"></div></div></article>
-    </section>
-    <noscript>Enable JavaScript to run the local fleet simulation and inspect its evidence.</noscript>
+    <noscript>Enable JavaScript to run the local simulation.</noscript>
   </main>
   <footer><div><strong>Smart RoboWard</strong><span>Fictional hospital logistics simulation · Open-RMF clinic geometry</span></div></footer>
   <script type="application/json" id="network-data">{"nodes":{"L1/363":{"x":-21.67253,"y":0,"z":14.97809,"floor":"L1"},"L1/370":{"x":13.86457,"y":0,"z":-21.2859,"floor":"L1"},"L1/384":{"x":-19.11151,"y":0,"z":-15.10952,"floor":"L1"},"L1/386":{"x":-19.6005,"y":0,"z":12.75732,"floor":"L1"},"L1/387":{"x":-12.3074,"y":0,"z":14.38807,"floor":"L1"},"L1/388":{"x":-12.31959,"y":0,"z":11.60538,"floor":"L1"},"L1/389":{"x":-15.75062,"y":0,"z":5.06841,"floor":"L1"},"L1/390":{"x":-21.2036,"y":0,"z":3.01787,"floor":"L1"},"L1/391":{"x":-16.00091,"y":0,"z":-1.95116,"floor":"L1"},"L1/392":{"x":-18.98735,"y":0,"z":-1.85979,"floor":"L1"},"L1/393":{"x":-15.97173,"y":0,"z":-15.2023,"floor":"L1"},"L1/394":{"x":-13.66968,"y":0,"z":-17.08808,"floor":"L1"},"L1/395":{"x":-13.9676,"y":0,"z":-18.43025,"floor":"L1"},"L1/396":{"x":-7.75512,"y":0,"z":-17.12047,"floor":"L1"},"L1/397":{"x":-7.72882,"y":0,"z":-13.91327,"floor":"L1"},"L1/398":{"x":-7.6869,"y":0,"z":-9.09048,"floor":"L1"},"L1/399":{"x":7.63699,"y":0,"z":-17.20476,"floor":"L1"},"L1/400":{"x":7.65898,"y":0,"z":-18.68313,"floor":"L1"},"L1/401":{"x":11.82399,"y":0,"z":-17.2277,"floor":"L1"},"L1/402":{"x":11.71719,"y":0,"z":-13.10308,"floor":"L1"},"L1/403":{"x":11.69446,"y":0,"z":-8.50119,"floor":"L1"},"L1/404":{"x":13.83417,"y":0,"z":-18.27055,"floor":"L1"},"L1/405":{"x":13.84497,"y":0,"z":-17.23876,"floor":"L1"},"L1/406":{"x":19.65297,"y":0,"z":-17.27058,"floor":"L1"},"L1/407":{"x":23.10096,"y":0,"z":-15.2661,"floor":"L1"},"L1/408":{"x":19.66245,"y":0,"z":-8.88773,"floor":"L1"},"L1/409":{"x":22.33809,"y":0,"z":-8.92755,"floor":"L1"},"L1/410":{"x":19.80392,"y":0,"z":2.36013,"floor":"L1"},"L1/411":{"x":21.85374,"y":0,"z":2.3491,"floor":"L1"},"L1/412":{"x":19.86789,"y":0,"z":8.45663,"floor":"L1"},"L1/413":{"x":12.72943,"y":0,"z":12.84414,"floor":"L1"},"L1/414":{"x":9.8352,"y":0,"z":14.62302,"floor":"L1"},"L1/415":{"x":6.10615,"y":0,"z":14.63505,"floor":"L1"},"L1/416":{"x":3.76643,"y":0,"z":-17.18357,"floor":"L1"},"L1/417":{"x":3.61093,"y":0,"z":4.89563,"floor":"L1"},"L1/418":{"x":1.71772,"y":0,"z":4.92195,"floor":"L1"},"L1/419":{"x":7.38155,"y":0,"z":10.84628,"floor":"L1"},"L1/420":{"x":10.97462,"y":0,"z":13.92269,"floor":"L1"},"L1/421":{"x":3.73082,"y":0,"z":-11.39948,"floor":"L1"},"L1/422":{"x":1.77908,"y":0,"z":-11.40694,"floor":"L1"},"L1/423":{"x":3.68257,"y":0,"z":-4.8406,"floor":"L1"},"L1/424":{"x":1.84573,"y":0,"z":-4.83115,"floor":"L1"},"L1/425":{"x":20.59018,"y":0,"z":14.87361,"floor":"L1"},"L1/426":{"x":20.59018,"y":0,"z":10.55327,"floor":"L1"},"L1/427":{"x":19.83612,"y":0,"z":5.7738,"floor":"L1"},"L1/428":{"x":21.69293,"y":0,"z":5.85287,"floor":"L1"},"L1/429":{"x":-16.49493,"y":0,"z":8.54857,"floor":"L1"},"L1/430":{"x":-14.16709,"y":0,"z":8.08543,"floor":"L1"},"L1/431":{"x":-16.3782,"y":0,"z":9.83049,"floor":"L1"},"L1/432":{"x":-13.50031,"y":0,"z":9.35583,"floor":"L1"},"L1/433":{"x":-15.89858,"y":0,"z":3.00855,"floor":"L1"},"L1/444":{"x":1.73573,"y":0,"z":-17.17245,"floor":"L1"},"L1/447":{"x":-18.01762,"y":0,"z":14.32378,"floor":"L1"},"L1/448":{"x":19.58933,"y":0,"z":-15.05878,"floor":"L1"},"L2/280":{"x":-21.67253,"y":10,"z":14.97809,"floor":"L2"},"L2/281":{"x":13.86457,"y":10,"z":-21.2859,"floor":"L2"},"L2/291":{"x":13.91868,"y":10,"z":-17.96498,"floor":"L2"},"L2/292":{"x":11.74914,"y":10,"z":-17.96768,"floor":"L2"},"L2/293":{"x":11.49855,"y":10,"z":-11.5945,"floor":"L2"},"L2/294":{"x":11.37921,"y":10,"z":-8.34593,"floor":"L2"},"L2/295":{"x":-8.13238,"y":10,"z":-17.99247,"floor":"L2"},"L2/296":{"x":-7.97255,"y":10,"z":-12.96411,"floor":"L2"},"L2/297":{"x":-7.6956,"y":10,"z":-8.90222,"floor":"L2"},"L2/298":{"x":0.84259,"y":10,"z":-17.9813,"floor":"L2"},"L2/299":{"x":0.87339,"y":10,"z":-20.57257,"floor":"L2"},"L2/300":{"x":-14.51834,"y":10,"z":-18.00044,"floor":"L2"},"L2/301":{"x":-17.14348,"y":10,"z":-11.25822,"floor":"L2"},"L2/302":{"x":-20.94208,"y":10,"z":-11.19439,"floor":"L2"},"L2/303":{"x":-16.80195,"y":10,"z":4.90642,"floor":"L2"},"L2/304":{"x":-21.08738,"y":10,"z":4.92909,"floor":"L2"},"L2/305":{"x":-12.14406,"y":10,"z":11.70313,"floor":"L2"},"L2/306":{"x":-12.10952,"y":10,"z":14.85503,"floor":"L2"},"L2/307":{"x":-19.92383,"y":10,"z":13.30026,"floor":"L2"},"L2/308":{"x":6.53079,"y":10,"z":14.80662,"floor":"L2"},"L2/309":{"x":9.88064,"y":10,"z":14.7979,"floor":"L2"},"L2/310":{"x":15.51085,"y":10,"z":11.00397,"floor":"L2"},"L2/311":{"x":19.94779,"y":10,"z":8.01409,"floor":"L2"},"L2/312":{"x":19.94462,"y":10,"z":-0.51969,"floor":"L2"},"L2/313":{"x":25.44732,"y":10,"z":-0.33005,"floor":"L2"},"L2/314":{"x":19.93894,"y":10,"z":-15.79507,"floor":"L2"},"L2/315":{"x":11.52437,"y":10,"z":13.69028,"floor":"L2"},"L2/316":{"x":5.90076,"y":10,"z":10.49791,"floor":"L2"},"L2/317":{"x":3.32489,"y":10,"z":2.02565,"floor":"L2"},"L2/318":{"x":3.55111,"y":10,"z":-17.97791,"floor":"L2"},"L2/319":{"x":5.90076,"y":10,"z":11.96974,"floor":"L2"},"L2/320":{"x":3.36438,"y":10,"z":-1.23905,"floor":"L2"},"L2/321":{"x":1.82789,"y":10,"z":-1.26018,"floor":"L2"},"L2/322":{"x":3.48809,"y":10,"z":-11.46778,"floor":"L2"},"L2/323":{"x":1.78675,"y":10,"z":-11.46132,"floor":"L2"},"L2/330":{"x":4.21525,"y":10,"z":4.95415,"floor":"L2"},"L2/334":{"x":19.93813,"y":10,"z":-17.95747,"floor":"L2"}},"edges":[["L1/363","L1/386"],["L1/370","L1/404"],["L1/370","L2/281"],["L1/384","L1/393"],["L1/386","L1/363"],["L1/386","L1/447"],["L1/387","L1/388"],["L1/387","L1/415"],["L1/387","L1/447"],["L1/388","L1/387"],["L1/388","L1/432"],["L1/389","L1/430"],["L1/389","L1/433"],["L1/390","L1/433"],["L1/391","L1/392"],["L1/391","L1/393"],["L1/391","L1/433"],["L1/392","L1/391"],["L1/393","L1/384"],["L1/393","L1/391"],["L1/393","L1/394"],["L1/394","L1/393"],["L1/394","L1/395"],["L1/394","L1/396"],["L1/395","L1/394"],["L1/396","L1/394"],["L1/396","L1/397"],["L1/396","L1/444"],["L1/397","L1/396"],["L1/397","L1/398"],["L1/398","L1/397"],["L1/399","L1/400"],["L1/399","L1/401"],["L1/399","L1/416"],["L1/400","L1/399"],["L1/401","L1/399"],["L1/401","L1/402"],["L1/401","L1/405"],["L1/402","L1/401"],["L1/402","L1/403"],["L1/403","L1/402"],["L1/404","L1/370"],["L1/404","L1/405"],["L1/405","L1/401"],["L1/405","L1/404"],["L1/405","L1/406"],["L1/406","L1/405"],["L1/406","L1/448"],["L1/407","L1/448"],["L1/408","L1/409"],["L1/408","L1/410"],["L1/408","L1/448"],["L1/409","L1/408"],["L1/410","L1/408"],["L1/410","L1/411"],["L1/410","L1/427"],["L1/411","L1/410"],["L1/412","L1/413"],["L1/412","L1/426"],["L1/412","L1/427"],["L1/413","L1/412"],["L1/413","L1/420"],["L1/414","L1/415"],["L1/414","L1/420"],["L1/415","L1/387"],["L1/415","L1/414"],["L1/416","L1/399"],["L1/416","L1/421"],["L1/416","L1/444"],["L1/417","L1/418"],["L1/417","L1/419"],["L1/417","L1/423"],["L1/418","L1/417"],["L1/419","L1/417"],["L1/419","L1/420"],["L1/420","L1/413"],["L1/420","L1/414"],["L1/420","L1/419"],["L1/421","L1/416"],["L1/421","L1/422"],["L1/421","L1/423"],["L1/422","L1/421"],["L1/423","L1/417"],["L1/423","L1/421"],["L1/423","L1/424"],["L1/424","L1/423"],["L1/425","L1/426"],["L1/426","L1/412"],["L1/426","L1/425"],["L1/427","L1/410"],["L1/427","L1/412"],["L1/427","L1/428"],["L1/428","L1/427"],["L1/429","L1/430"],["L1/430","L1/389"],["L1/430","L1/429"],["L1/430","L1/432"],["L1/431","L1/432"],["L1/432","L1/388"],["L1/432","L1/430"],["L1/432","L1/431"],["L1/433","L1/389"],["L1/433","L1/390"],["L1/433","L1/391"],["L1/444","L1/396"],["L1/444","L1/416"],["L1/447","L1/386"],["L1/447","L1/387"],["L1/448","L1/406"],["L1/448","L1/407"],["L1/448","L1/408"],["L2/280","L2/307"],["L2/281","L1/370"],["L2/281","L2/291"],["L2/291","L2/281"],["L2/291","L2/292"],["L2/291","L2/334"],["L2/292","L2/291"],["L2/292","L2/293"],["L2/292","L2/318"],["L2/293","L2/292"],["L2/293","L2/294"],["L2/294","L2/293"],["L2/295","L2/296"],["L2/295","L2/298"],["L2/295","L2/300"],["L2/296","L2/295"],["L2/296","L2/297"],["L2/297","L2/296"],["L2/298","L2/295"],["L2/298","L2/299"],["L2/298","L2/318"],["L2/299","L2/298"],["L2/300","L2/295"],["L2/300","L2/301"],["L2/301","L2/300"],["L2/301","L2/302"],["L2/301","L2/303"],["L2/302","L2/301"],["L2/303","L2/301"],["L2/303","L2/304"],["L2/303","L2/305"],["L2/304","L2/303"],["L2/305","L2/303"],["L2/305","L2/306"],["L2/306","L2/305"],["L2/306","L2/307"],["L2/306","L2/308"],["L2/307","L2/280"],["L2/307","L2/306"],["L2/308","L2/306"],["L2/308","L2/309"],["L2/309","L2/308"],["L2/309","L2/315"],["L2/310","L2/311"],["L2/310","L2/315"],["L2/311","L2/310"],["L2/311","L2/312"],["L2/312","L2/311"],["L2/312","L2/313"],["L2/312","L2/314"],["L2/313","L2/312"],["L2/314","L2/312"],["L2/315","L2/309"],["L2/315","L2/310"],["L2/315","L2/316"],["L2/316","L2/315"],["L2/316","L2/319"],["L2/316","L2/330"],["L2/317","L2/320"],["L2/317","L2/330"],["L2/318","L2/292"],["L2/318","L2/298"],["L2/318","L2/322"],["L2/319","L2/316"],["L2/320","L2/317"],["L2/320","L2/321"],["L2/320","L2/322"],["L2/321","L2/320"],["L2/322","L2/318"],["L2/322","L2/320"],["L2/322","L2/323"],["L2/323","L2/322"],["L2/330","L2/316"],["L2/330","L2/317"],["L2/334","L2/291"]],"cabins":["L1/370","L2/281"],"stations":{"PHARMACY":{"name":"Pharmacy","node":"L1/384"},"WARD-A":{"name":"Ward A","node":"L2/297"},"WARD-B":{"name":"Ward B","node":"L2/294"},"COLLECTION":{"name":"Specimen desk","node":"L1/398"},"STORES":{"name":"Supply store","node":"L1/409"},"LAB":{"name":"Lab intake","node":"L2/299"}},"courierSize":[0.785,0.54,1.43]}</script>
@@ -2443,8 +2535,18 @@ print(json.dumps({c["id"]: {"active": run(c, active_rule), "candidate": run(c, c
   const phaseNames = {approach:"Approaching lift", waiting:"Waiting at approach", denied:"Stopped at approach",
     boarding:"Boarding lift", riding:"In cabin", landing:"Confirming landing", delivering:"Approaching ward",
     awaiting_receipt:"Awaiting ward scan", porter_offered:"Awaiting porter acceptance", porter_transit:"Porter in transit", received:"Received at Ward B"};
-  const actionNames = {approveMapping:"Verify floor mapping", clearPriority:"Clear patient priority", restoreFeed:"Restore facilities feed",
-    offerPorter:"Offer porter handoff", acceptPorter:"Accept porter handoff", wardScan:"Scan at Ward B"};
+  const actionNames = {approveMapping:"Confirm the floor names", clearPriority:"Patient transfer finished", restoreFeed:"Connection restored",
+    offerPorter:"Give the parcel to a porter", acceptPorter:"Porter takes the parcel", wardScan:"Ward scans the parcel"};
+  // The adapter's reasons, in everyday words.
+  const plainWhy = {
+    "Dispatch, approved landing and facilities status agree":"Everything matches the hospital's order. The lift is called once.",
+    "Facilities must verify the landing mapping":"The robot's map changed and nobody has confirmed the floor names yet. The robot waits.",
+    "Requested destination is outside this trip":"This delivery is for floor 2. The robot asked for floor 1, so the lift does not move.",
+    "Facilities has priority for a patient transfer":"A patient needs the lift. The robot waits.",
+    "Lift status is stale":"The lift's status is out of date. The robot waits until it is fresh again.",
+    "Awaiting car at the pickup landing":"The lift is on another floor. The robot waits for it.",
+    "Awaiting the lift approach":"The robot is on its way to the lift."};
+  const verdictWords = {pending:"Checking…", allow:"Allowed", hold:"Wait", deny:"Refused"};
   const outcomeNames = {pending:"Pending", allow:"Allow", hold:"Hold", deny:"Deny"};
   let simulation, playing = false, frameId = 0, previousFrame = 0;
   let view = "control", lastFloor = "", lastActions = "", lastEvents = -1;
@@ -2568,7 +2670,7 @@ print(json.dumps({c["id"]: {"active": run(c, active_rule), "candidate": run(c, c
   function count(value, noun) { return value + " " + noun + (value === 1 ? "" : "s"); }
   function renderEvents(state) {
     text("phase", phaseNames[state.journey.phase]);
-    text("holder", state.journey.holder);
+    text("holder", state.journey.holder === "RX-01" ? "The robot" : state.journey.holder === "Porter" ? "A porter" : state.journey.holder);
     text("receipts", state.journey.receipts);
     if (state.events.length === lastEvents) return;
     lastEvents = state.events.length;
@@ -2589,6 +2691,7 @@ print(json.dumps({c["id"]: {"active": run(c, active_rule), "candidate": run(c, c
     renderTopology(state);
     renderEvents(state);
     renderWire(state);
+    renderSimple(state);
     text("clock", clock(state.time));
     const finished = state.journey.phase === "received" || state.journey.phase === "denied";
     if (finished && playing) setPlaying(false);
@@ -2671,6 +2774,36 @@ print(json.dumps({c["id"]: {"active": run(c, active_rule), "candidate": run(c, c
     node.textContent = outcomeNames[wire.decision] + " · " + wire.calls + " lift call" + (wire.calls === 1 ? "" : "s") + agrees;
     node.dataset.match = agrees.includes("differs") ? "no" : "yes";
   }
+  // The simple view: one verdict, one sentence, and the checks behind it.
+  function renderSimple(state) {
+    const j = state.journey, f = state.facilities, done = j.phase === "received";
+    byId("verdict").dataset.type = done ? "allow" : j.outcome;
+    text("verdict-word", done ? "Delivered" : j.holder === "Porter" ? "Porter delivers" : verdictWords[j.outcome]);
+    text("verdict-why", done ? "Ward B scanned the parcel. One delivery, one receipt." : j.holder === "Porter" ? "A porter is carrying the parcel to Ward B. The ward still sees who has it."
+      : plainWhy[j.reason] ?? j.reason + ".");
+    text("next-label", state.actions.length ? "What staff can do now" : j.phase === "denied" ? "Nothing to do at the lift. Dispatch has to issue a new order." : "");
+    const sealed = wire && !wire.error && wire.decision;
+    const checks = [
+      ["Signed order from the hospital", wire ? !!sealed : null, "The mission and the lift grant are signed, and the order system countersigned."],
+      ["Right floor for this delivery", j.rawFloor === "Upper", j.rawFloor === "Upper" ? "Floor 2, as ordered." : "The robot asked for floor 1. The order says floor 2."],
+      ["Floor names confirmed", j.mapRevision === j.approvedRevision, j.mapRevision === j.approvedRevision ? "Robot, lift and hospital mean the same floor." : "The robot has a new map that nobody has confirmed."],
+      ["No patient waiting for the lift", !f.priority, f.priority ? "A patient transfer has priority." : "The lift is free for robots."],
+      ["Lift status is up to date", f.connected, f.connected ? "The lift reported its position just now." : "No fresh report from the lift."],
+      ["Message sealed on the way", wire ? !!sealed : null, "The fleet server carried it and could not read it."]];
+    const key = JSON.stringify(checks);
+    if (key === renderSimple.last) return;
+    renderSimple.last = key;
+    byId("checks").replaceChildren(...checks.map(([name, ok, note]) => {
+      const li = html("li"); li.dataset.ok = ok === null ? "wait" : String(ok);
+      li.append(html("i", ok === null ? "…" : ok ? "✓" : "✗"), html("b", name), html("span", note));
+      return li;
+    }));
+  }
+  document.querySelectorAll("#situations button").forEach(b => b.addEventListener("click", () => {
+    document.querySelectorAll("#situations button").forEach(o => o.setAttribute("aria-pressed", String(o === b)));
+    byId("round").value = b.dataset.round;
+    reset();
+  }));
   function reset() {
     setPlaying(false);
     openGate();
@@ -2681,6 +2814,9 @@ print(json.dumps({c["id"]: {"active": run(c, active_rule), "candidate": run(c, c
     byId("floor").value = "auto";
     lastFloor = lastActions = ""; lastEvents = -1; renderTopology.last = "";
     text("action-status", "");
+    renderSimple.last = "";
+    // Go straight to the moment of the decision. Play shows the rest.
+    for (let i = 0; i < 1200 && simulation.state().journey.outcome === "pending"; i++) simulation.advance(.1);
     render();
   }
   byId("play").addEventListener("click", () => setPlaying(!playing));
@@ -2827,12 +2963,6 @@ print(json.dumps({c["id"]: {"active": run(c, active_rule), "candidate": run(c, c
   byId("workflow").addEventListener("change", renderReview);
 
   // ---- Navigation ---------------------------------------------------------
-  document.querySelectorAll("nav button[data-view]").forEach(tab => tab.addEventListener("click", () => {
-    view = tab.dataset.view;
-    if (view !== "control") setPlaying(false);
-    document.querySelectorAll("nav button[data-view]").forEach(other => other.setAttribute("aria-pressed", String(other === tab)));
-    ["control", "study", "review"].forEach(name => { byId("view-" + name).hidden = name !== view; });
-  }));
   reset();
   renderStudy();
   renderReview();

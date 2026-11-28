@@ -85,19 +85,23 @@ node presentation/build-deck.cjs   # writes presentation/demo.html with the meas
 
 ## Ward safety control room
 
-Open [ward-safety/index.html](ward-safety/index.html) in any modern browser. It runs offline from that one file. Pick a **Simulation round**, press **To decision**, and watch whether the lift adapter allows, holds or denies RX-01's call for the Ward B delivery.
+Open [ward-safety/index.html](ward-safety/index.html) in any modern browser. It runs offline from that one file and asks one question: may this robot use the lift?
 
-| Round | Expected decision | What to try next |
-| --- | --- | --- |
-| Verified floor mapping | Allow, 1 forwarded call, 1 cabin entry | **Play** to the ward, then **Scan at Ward B** |
-| Unverified map revision | Hold, 0 calls | **Verify floor mapping**, then play on |
-| Wrong-floor request | Deny, 0 calls | No recovery at the lift. Restart the round |
-| Patient transfer priority | Hold, 0 calls | **Clear patient priority**, or **Offer porter handoff** and accept it |
-| Wi-Fi handover | Hold, 0 calls | **Restore facilities feed** |
+1. **Pick a situation.** Five buttons: a normal delivery, a changed map, a wrong floor, a patient who needs the lift, a dropped connection.
+2. **Read the decision.** One word (Allowed, Wait or Refused), one sentence why, and what staff can do next. **Play** shows the rest of the trip.
+3. **See why.** Six checks with a tick or a cross.
 
-**Trust study** shows the held-out results of 10,000 simulated missions and a route heatmap. A dashed grey lane was never observed. A blue lane was observed rarely. **Workflow review** replays a policy change, parcel custody checks and a two-vendor lift queue.
+| Situation | Decision | Lift calls | What staff can do |
+| --- | --- | --- | --- |
+| Normal delivery | Allowed | 1 | Play to the ward, then the ward scans the parcel |
+| The map changed | Wait | 0 | Confirm the floor names, or give the parcel to a porter |
+| Wrong floor | Refused | 0 | Nothing at the lift. Dispatch issues a new order |
+| A patient needs the lift | Wait | 0 | Wait for the transfer, or give the parcel to a porter |
+| Connection drops | Wait | 0 | Wait for the connection, or give the parcel to a porter |
 
-The control room was written by the team with Claude. It reuses the imported fleet engine and clinic map. Every number comes from local simulation with fictional data. Rebuild with `node ward-safety/build.cjs` (needs Python 3 for the map and policy replay). The nurse's order passes the request gate from `gate/` before the robot is dispatched, and **Send a forged order** shows a refusal. Under **Message security**, each round's lift call is also sent for real through the chosen pipeline, and the page shows whether the answer over the wire agrees with the simulation. The plan and current status are in [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md).
+Everything else is behind three expanders at the bottom: all the detail (every device on the path, the event log, message security, playback controls), the evidence from 10,000 simulated deliveries with a route heatmap, and three other checks (previewing a rule change, tracking the parcel, sharing the lift between suppliers).
+
+The control room was written by the team with Claude. It reuses the imported fleet engine and clinic map. Every number comes from local simulation with fictional data. Rebuild with `node ward-safety/build.cjs` (needs Python 3 for the map and policy replay). The nurse's order passes the request gate from `gate/` before the robot is dispatched, and **Send a forged order** shows a refusal. Under **All the detail**, each situation's lift call is also sent for real through the chosen pipeline, and the page shows whether the answer over the wire agrees with the simulation. The plan and current status are in [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md).
 
 ## Pitch materials
 

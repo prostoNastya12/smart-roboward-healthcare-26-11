@@ -66,8 +66,18 @@
   const phaseNames = {approach:"Approaching lift", waiting:"Waiting at approach", denied:"Stopped at approach",
     boarding:"Boarding lift", riding:"In cabin", landing:"Confirming landing", delivering:"Approaching ward",
     awaiting_receipt:"Awaiting ward scan", porter_offered:"Awaiting porter acceptance", porter_transit:"Porter in transit", received:"Received at Ward B"};
-  const actionNames = {approveMapping:"Verify floor mapping", clearPriority:"Clear patient priority", restoreFeed:"Restore facilities feed",
-    offerPorter:"Offer porter handoff", acceptPorter:"Accept porter handoff", wardScan:"Scan at Ward B"};
+  const actionNames = {approveMapping:"Confirm the floor names", clearPriority:"Patient transfer finished", restoreFeed:"Connection restored",
+    offerPorter:"Give the parcel to a porter", acceptPorter:"Porter takes the parcel", wardScan:"Ward scans the parcel"};
+  // The adapter's reasons, in everyday words.
+  const plainWhy = {
+    "Dispatch, approved landing and facilities status agree":"Everything matches the hospital's order. The lift is called once.",
+    "Facilities must verify the landing mapping":"The robot's map changed and nobody has confirmed the floor names yet. The robot waits.",
+    "Requested destination is outside this trip":"This delivery is for floor 2. The robot asked for floor 1, so the lift does not move.",
+    "Facilities has priority for a patient transfer":"A patient needs the lift. The robot waits.",
+    "Lift status is stale":"The lift's status is out of date. The robot waits until it is fresh again.",
+    "Awaiting car at the pickup landing":"The lift is on another floor. The robot waits for it.",
+    "Awaiting the lift approach":"The robot is on its way to the lift."};
+  const verdictWords = {pending:"Checking…", allow:"Allowed", hold:"Wait", deny:"Refused"};
   const outcomeNames = {pending:"Pending", allow:"Allow", hold:"Hold", deny:"Deny"};
   let simulation, playing = false, frameId = 0, previousFrame = 0;
   let view = "control", lastFloor = "", lastActions = "", lastEvents = -1;
@@ -191,7 +201,7 @@
   function count(value, noun) { return value + " " + noun + (value === 1 ? "" : "s"); }
   function renderEvents(state) {
     text("phase", phaseNames[state.journey.phase]);
-    text("holder", state.journey.holder);
+    text("holder", state.journey.holder === "RX-01" ? "The robot" : state.journey.holder === "Porter" ? "A porter" : state.journey.holder);
     text("receipts", state.journey.receipts);
     if (state.events.length === lastEvents) return;
     lastEvents = state.events.length;
@@ -212,6 +222,7 @@
     renderTopology(state);
     renderEvents(state);
     renderWire(state);
+    renderSimple(state);
     text("clock", clock(state.time));
     const finished = state.journey.phase === "received" || state.journey.phase === "denied";
     if (finished && playing) setPlaying(false);
@@ -294,6 +305,36 @@
     node.textContent = outcomeNames[wire.decision] + " · " + wire.calls + " lift call" + (wire.calls === 1 ? "" : "s") + agrees;
     node.dataset.match = agrees.includes("differs") ? "no" : "yes";
   }
+  // The simple view: one verdict, one sentence, and the checks behind it.
+  function renderSimple(state) {
+    const j = state.journey, f = state.facilities, done = j.phase === "received";
+    byId("verdict").dataset.type = done ? "allow" : j.outcome;
+    text("verdict-word", done ? "Delivered" : j.holder === "Porter" ? "Porter delivers" : verdictWords[j.outcome]);
+    text("verdict-why", done ? "Ward B scanned the parcel. One delivery, one receipt." : j.holder === "Porter" ? "A porter is carrying the parcel to Ward B. The ward still sees who has it."
+      : plainWhy[j.reason] ?? j.reason + ".");
+    text("next-label", state.actions.length ? "What staff can do now" : j.phase === "denied" ? "Nothing to do at the lift. Dispatch has to issue a new order." : "");
+    const sealed = wire && !wire.error && wire.decision;
+    const checks = [
+      ["Signed order from the hospital", wire ? !!sealed : null, "The mission and the lift grant are signed, and the order system countersigned."],
+      ["Right floor for this delivery", j.rawFloor === "Upper", j.rawFloor === "Upper" ? "Floor 2, as ordered." : "The robot asked for floor 1. The order says floor 2."],
+      ["Floor names confirmed", j.mapRevision === j.approvedRevision, j.mapRevision === j.approvedRevision ? "Robot, lift and hospital mean the same floor." : "The robot has a new map that nobody has confirmed."],
+      ["No patient waiting for the lift", !f.priority, f.priority ? "A patient transfer has priority." : "The lift is free for robots."],
+      ["Lift status is up to date", f.connected, f.connected ? "The lift reported its position just now." : "No fresh report from the lift."],
+      ["Message sealed on the way", wire ? !!sealed : null, "The fleet server carried it and could not read it."]];
+    const key = JSON.stringify(checks);
+    if (key === renderSimple.last) return;
+    renderSimple.last = key;
+    byId("checks").replaceChildren(...checks.map(([name, ok, note]) => {
+      const li = html("li"); li.dataset.ok = ok === null ? "wait" : String(ok);
+      li.append(html("i", ok === null ? "…" : ok ? "✓" : "✗"), html("b", name), html("span", note));
+      return li;
+    }));
+  }
+  document.querySelectorAll("#situations button").forEach(b => b.addEventListener("click", () => {
+    document.querySelectorAll("#situations button").forEach(o => o.setAttribute("aria-pressed", String(o === b)));
+    byId("round").value = b.dataset.round;
+    reset();
+  }));
   function reset() {
     setPlaying(false);
     openGate();
@@ -304,6 +345,9 @@
     byId("floor").value = "auto";
     lastFloor = lastActions = ""; lastEvents = -1; renderTopology.last = "";
     text("action-status", "");
+    renderSimple.last = "";
+    // Go straight to the moment of the decision. Play shows the rest.
+    for (let i = 0; i < 1200 && simulation.state().journey.outcome === "pending"; i++) simulation.advance(.1);
     render();
   }
   byId("play").addEventListener("click", () => setPlaying(!playing));
@@ -450,12 +494,6 @@
   byId("workflow").addEventListener("change", renderReview);
 
   // ---- Navigation ---------------------------------------------------------
-  document.querySelectorAll("nav button[data-view]").forEach(tab => tab.addEventListener("click", () => {
-    view = tab.dataset.view;
-    if (view !== "control") setPlaying(false);
-    document.querySelectorAll("nav button[data-view]").forEach(other => other.setAttribute("aria-pressed", String(other === tab)));
-    ["control", "study", "review"].forEach(name => { byId("view-" + name).hidden = name !== view; });
-  }));
   reset();
   renderStudy();
   renderReview();
