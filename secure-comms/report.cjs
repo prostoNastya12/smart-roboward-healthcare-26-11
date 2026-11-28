@@ -6,7 +6,8 @@ const path = require("node:path");
 const info = require("./info.js");
 
 function report(doc) {
-  const ids = Object.keys(doc.pipelines), r = doc.results, win = doc.decision.winner;
+  const ids = Object.keys(doc.pipelines), r = doc.results, win = doc.decision.winner, adopted = doc.decision.adopted;
+  const fields = doc.fields, sees = view => fields.filter(f => view[f.key]).map(f => f.label.toLowerCase()).join(", ") || "nothing";
   const mark = ok => ok ? "✓" : "✗";
   const line = cells => "| " + cells.join(" | ") + " |";
   const table = (head, rows) => [line(head), line(head.map(() => "---")), ...rows.map(line)].join("\n");
@@ -18,26 +19,32 @@ function report(doc) {
     "**Status of these numbers: " + doc.meta.label + ".** The cryptography is real (Ed25519, X25519, HKDF, AES-256-GCM, HMAC-SHA-256). " +
     "The devices, trips and keys are fictional and created at run time. The network admission step in B and the adapter's capacity in the flood are models.", "",
     "## Decision", "",
-    "**Chosen: " + win + ", " + doc.pipelines[win].name + ".** It blocked " + r[win].summary.blocked + " of " + r[win].summary.of + " attacks and passed " +
-    r[win].summary.legitPassed + " of " + r[win].summary.legitOf + " legitimate cases.", "",
-    "The rule was fixed before the first run: a pipeline that fails a legitimate case is out, then the most attacks blocked wins, then fewer supplier requirements, then fewer bytes.", "",
-    table(["Pipeline", "Source", "Attacks blocked", "Legitimate", "Bytes per call", "Setup bytes", "ms per call", "Supplier requirements", "Eligible"],
-      ids.map(id => [id + " · " + doc.pipelines[id].name, info[id].source, r[id].summary.blocked + " / " + r[id].summary.of, r[id].summary.legitPassed + " / " + r[id].summary.legitOf,
-        r[id].cost.bytesPerCall, r[id].cost.setupBytes, r[id].cost.msPerCall, info[id].needs.length, doc.decision.eligible.includes(id) ? "yes" : "no"])), "",
+    "**Adopted: " + adopted + ", " + doc.pipelines[adopted].name + ".** It blocked " + r[adopted].summary.blocked + " of " + r[adopted].summary.of + " attacks, closed " +
+    r[adopted].summary.limitsBlocked + " of " + r[adopted].summary.limits + " known limits, and passed " + r[adopted].summary.legitPassed + " of " + r[adopted].summary.legitOf + " legitimate cases.", "",
+    "How we got there. A to G are seven candidates, compared under a rule fixed before the first run: a pipeline that fails a legitimate case is out, then the most attacks blocked wins, then fewer supplier requirements, then fewer bytes. " +
+    "**" + win + ", " + doc.pipelines[win].name + ",** won with " + r[win].summary.blocked + " of " + r[win].summary.of + ". H and I were then built on " + win + " to close what it left open. " +
+    "The team asked for the strongest design, so the platform uses " + adopted + ". Attacks were added and hardened after each review, so the counts are for the final suite and every pipeline was re-measured against it.", "",
+    table(["Pipeline", "Source", "Attacks blocked", "Limits closed", "Legitimate", "Bytes per call", "Setup bytes", "ms per call", "Supplier requirements", "Role"],
+      ids.map(id => [id + " · " + doc.pipelines[id].name, info[id].source, r[id].summary.blocked + " / " + r[id].summary.of, r[id].summary.limitsBlocked + " / " + r[id].summary.limits,
+        r[id].summary.legitPassed + " / " + r[id].summary.legitOf, r[id].cost.bytesPerCall, r[id].cost.setupBytes, r[id].cost.msPerCall, info[id].vendorNeeds,
+        id === adopted ? "adopted" : id === win ? "rule winner" : doc.pipelines[id].extension ? "built on the winner" : "candidate"])), "",
     "Timing was measured once on one laptop. Treat it as an order of magnitude.", "",
     "## Attack matrix", "", "✓ the attack had no effect. ✗ the design has no defence against it, or its defence failed.", "",
     table(["ID", "Attack", ...ids], core.map(attackRow)), "",
-    "### Known limits", "", "Reported on purpose. None of the seven candidates stops them.", "",
+    "### Known limits", "", "Reported on purpose. None of the seven candidates stops them. H and I close some.", "",
     table(["ID", "Attack", ...ids], limits.map(attackRow)), "",
     "### Legitimate work", "",
     table(["ID", "Case", ...ids], doc.legit.map(l => [l.id, l.name, ...ids.map(id => mark(r[id].legit[l.id].pass))])), "",
-    "## What happened in the chosen pipeline", "",
-    table(["ID", "Attack", "Attacker wins if", "Observed in " + win], doc.attacks.map(a => [a.id, a.name, a.wins, r[win].attacks[a.id].detail])), "",
+    "## Who sees what during one delivery", "",
+    "Measured by searching what each party handled. The sender's software attaches a medication order and a private marker, as careless software does.", "",
+    table(["Pipeline", ...Object.keys(r[adopted].exposure)], ids.map(id => [id, ...Object.values(r[id].exposure).map(sees)])), "",
+    "## What happened in the adopted pipeline", "",
+    table(["ID", "Attack", "Attacker wins if", "Observed in " + adopted], doc.attacks.map(a => [a.id, a.name + (a.scenario ? " (pitch scenario: " + a.scenario + ")" : ""), a.wins, r[adopted].attacks[a.id].detail])), "",
     "## Why not the others", "",
     table(["Pipeline", "Weakest point", "Attacks that got through"],
       ids.filter(id => id !== win && !doc.pipelines[id].extension).map(id => [id + " · " + doc.pipelines[id].name, info[id].weakest, core.filter(a => !r[id].attacks[a.id].blocked).map(a => a.id).join(", ") || "none"])), "",
-    ...ids.filter(id => doc.pipelines[id].extension).flatMap(id => ["## Extension " + id + ": " + doc.pipelines[id].name, "",
-      info[id].idea + " We added it after the first results, to close a known limit. It is reported and is not a candidate under the selection rule.", "",
+    ...ids.filter(id => doc.pipelines[id].extension).flatMap(id => ["## Built on the winner: " + id + ", " + doc.pipelines[id].name, "",
+      info[id].idea + " Source: " + info[id].source.toLowerCase() + ".", "",
       "It blocked " + r[id].summary.blocked + " of " + r[id].summary.of + " attacks and " + r[id].summary.limitsBlocked + " of " + r[id].summary.limits + " known limits: " +
       limits.filter(a => r[id].attacks[a.id].blocked).map(a => a.id + " (" + r[id].attacks[a.id].detail + ")").join(", ") + ". Weakest point: " + info[id].weakest, ""]),
     "## Fairness check: the simpler designs with a trip table", "",
@@ -68,8 +75,24 @@ function report(doc) {
       ["A and B failed the retry case only because the test harness gave them no retry cache", "They have it now. T03 also replays under a new request ID"],
       ["A flood sent straight to the adapter bypasses the breaker", "Not fixed. Reported as limit T24"],
       ["The fleet manager reads trip and floor", "Not fixed. Reported as limit T23"]]), "",
-    "## What the chosen pipeline needs", "", ...info[win].needs.map(n => "- " + n), "",
-    "Weakest point: " + info[win].weakest, "",
+    "## Second review, of H and I", "",
+    "The same kind of reviewer attacked the two new pipelines. It confirmed twelve findings. The important ones and what changed:", "",
+    table(["Finding", "What changed"], [
+      ["The fleet manager could relabel a robot's genuine calls so the adapter refused them, isolating the robot and blaming it in the signed log", "The adapter no longer uses anything the relay says about a call. Refusals count only for a fresh call from the robot itself. T22 now includes this"],
+      ["The fleet manager could not read the call but still read trip, floor and destination from the mission it delivers", "Missions, grants and orders now travel sealed to a one-time key of the robot. T23 and the who-sees-what table now include the mission leg"],
+      ["Answer sizes differed by outcome", "Sealed requests and answers are padded to a fixed step"],
+      ["A genuine earlier mission could be replayed inside its ten-minute window", "A sealed mission opens once, and missions are numbered per robot. T25 now includes this"],
+      ["A compromised dispatcher working with one robot could re-issue a real grant under that robot's key", "The key in a grant must be the key the hospital certified for the named robot, and a trip yields one lift call however many grants exist. T20 now includes this"],
+      ["Several robots calling at the same moment failed", "Exchanges on one session take turns. Now legitimate case L09"],
+      ["An attacker with the adapter's key could rebuild the log, and a key change broke verification", "The outside witness only appends, and each entry names its signing key"],
+      ["Three attacks held back a handshake frame instead of the call in tunnelled pipelines, so they tested nothing there", "T10, T11 and T22 now start from open connections"],
+      ["A lost answer to a held call became a counted refusal", "The exact message answered last gets the same answer again"],
+      ["The direct flood was stopped only by the modelled firewall rule", "Not fixed. A flood from the wired path that poses as the relay is limit T28"],
+      ["Five honest wrong-floor calls in ten seconds isolate a robot for a minute", "Kept as designed, and documented here"]]), "",
+    "## What the adopted pipeline needs", "", "Everything in G:", "", ...info.G.needs.map(n => "- " + n), "", "And in addition:", "",
+    "- Clinical order system that signs each delivery order", ...info[adopted].needs.filter(n => !n.startsWith("Everything")).map(n => "- " + n), "",
+    "Weakest point: " + info[adopted].weakest, "",
+    "A hospital that cannot get all of this can start lower in the table. Each row above says what it would be giving up.", "",
     "## Flood model", "",
     "The adapter handles " + doc.meta.flood.adapterFramesPerSecond + " frames per second. One compromised robot sends " + doc.meta.flood.junkPerSecond +
     " junk calls per second for " + doc.meta.flood.seconds + " seconds while two robots send " + doc.meta.flood.legitimatePerSecond + " legitimate calls per second.", "",

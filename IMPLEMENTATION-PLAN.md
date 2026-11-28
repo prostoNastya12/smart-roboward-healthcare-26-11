@@ -1,10 +1,12 @@
 # Smart RoboWard implementation plan
 
-**Version 2.1 · written 28 November 2026, 00:30 CET, results and review added 01:30 CET · Submission 28 November 2026, 11:00 CET · IFOHRA Challenge 9**
+**Version 3 · 28 November 2026 · Submission 28 November 2026, 11:00 CET · IFOHRA Challenge 9**
+
+Version history: version 2 (00:30) set the security focus, the seven candidates and the selection rule. Version 2.1 (01:30) added the first results and review. Version 3 (this one) adds the challenge material, the two pipelines built on the winner, the second review and the submission steps.
 
 Version 1 of this plan finished the control room, slides and video. Version 2 changes the focus. The project is about making robot communication in a hospital more secure. The simulator and the pages exist to show and test that. This plan defines the security work, how it is measured, and how one pipeline is chosen.
 
-Sections 1 to 8 are the plan as written before the first run, with additions marked "added after review". Results are in [section 10](#10-results-and-decision) and status in [section 9](#9-work-packages). Everything here runs on local, fictional data. Nothing is merged into `master` until the team says so.
+Sections 1 to 8 are the plan as written before the first run, with additions marked as added later. Section 9 is the work list and its status, section 10 the results and decision, section 11 what the team does in the morning, section 12 how the work fits the challenge. Everything here runs on local, fictional data. Nothing is merged into `master` until the team says so.
 
 ## 1. Goal
 
@@ -64,6 +66,8 @@ Seven designs. Each is a complete, runnable implementation of steps 3 and 4 with
 
 | H | Layered pipeline with dual control | **Extension, added after the first results** | G, and the adapter also requires a second signature from the clinical order system, independent of the dispatcher. Reported, not a candidate under the selection rule |
 
+| I | Zero-trust relay | **Built on H after the second look at the challenge** | H, and the fleet manager is trusted with nothing: robot and lift adapter share a sealed session through it, missions travel sealed and signed, the adapter has its own breaker. **Adopted** |
+
 Why these seven: A and B are what exists today. C is the teammate's answer. D and E are the two textbook answers, and they fail in different, instructive ways. F is our answer. G tests whether combining them closes what each one leaves open.
 
 ### What each layer in G is for
@@ -112,6 +116,12 @@ Every attack runs against every pipeline. An attack counts as **blocked** only b
 
 T20, T21, T23 and T24 are known limits. We expect every candidate to lose them, including G. They mark the edge of what this design covers. T20 and T21 were in the plan from the start. T23 and T24 were found by the review and could not be fixed tonight.
 
+| T25 | Compromised fleet manager reroutes a robot *(added from the pitch: medication theft)* | FLEET | The robot accepts a mission the hospital did not order |
+| T26 | Compromised fleet manager takes the lift hostage *(added from the pitch: lift not coming)* | FLEET | The lift receives 10 or more calls nobody ordered |
+| T27 | Compromised fleet manager stops relaying *(limit)* | FLEET | Robots can no longer call the lift |
+| T28 | Flood the lift adapter from the wired path, posing as the relay *(limit, added after the second review)* | PATH | Fewer than 90% of legitimate calls are served |
+| T29 | A replaced fleet manager keeps using its old credentials *(added after the second review)* | FLEET | The lift receives a call |
+
 The review also made six existing attacks harder: T03 replays under a new request ID, T09 gives the retired robot a real trip first, T12 swaps in a genuine answer obtained by another robot, T16 cuts the log as well as editing it, and T17 hides the marker in the request ID.
 
 ### Legitimate workload
@@ -126,6 +136,9 @@ A pipeline that blocks everything is useless. Each pipeline must also pass all f
 | L04 | Two robots, two trips | Both allowed, two lift calls |
 | L05 | Key rotation: the robot gets a new key and certificate | The next trip succeeds with the new key |
 | L06 | Held for a patient transfer, the robot retries every 31 seconds *(added after review)* | Allowed once the hold ends, exactly one lift call, robot not isolated |
+| L07 | Recovery: the fleet manager's credentials are revoked and replaced | The next delivery succeeds |
+| L08 | The robot accepts the hospital's own mission | Accepted, destination Ward B |
+| L09 | Three robots call at the same moment, five times over *(added after the second review)* | 15 of 15 allowed |
 
 ### Cost
 
@@ -142,7 +155,9 @@ Fixed before the first run, so the numbers cannot steer the rule:
 
 Acceptance for this plan: the chosen pipeline passes every legitimate case and blocks all but at most one of the attacks that are not listed as limits. Limits are reported separately.
 
-An extension added after the first results (H) is measured and reported. It does not compete under this rule, because the rule and the candidates were fixed first.
+H and I were built after the first results. They are measured and reported. They do not compete under this rule, because the rule and the candidates were fixed first.
+
+On 28 November the team lead asked for the strongest pipeline to be selected. That is a second, separate decision: among all nine, the design that blocks the most attacks and limits while passing every legitimate case. It is recorded in `results.json` as `adopted`, next to the rule's `winner`.
 
 ## 7. Architecture
 
@@ -185,71 +200,111 @@ Rules for the code:
 
 **H, dual control.** The clinical order system signs `{trip, robot, floor}` for each real order. The robot sends that statement with its call. The adapter refuses a grant that has no matching statement.
 
+**I, zero-trust relay.** The robot opens a second session, with the lift adapter itself, inside its session with the fleet manager. The fleet manager forwards those frames and cannot open them. The adapter uses nothing the fleet manager says about a call. Before a trip the robot registers a one-time key signed with its identity. The dispatcher seals the mission, the grant and the order statement to that key. The robot opens a mission once, checks the dispatcher's signature, the order statement, the time window and a per-robot counter, and only then moves. Sealed requests and answers are padded to a fixed step. The adapter keeps its own refusal counter per robot. A firewall rule that only the relay's address reaches the adapter is modelled.
+
 **Capacity model for the flood.** The adapter processes at most 20 frames per second. One compromised robot sends 100 junk calls per second for 5 seconds while two other robots send 4 legitimate calls per second. This is a model, as in the teammate's benchmark, and is labelled so.
 
 ## 9. Work packages
 
+### Done before version 3
+
+| # | Package | Status |
+| --- | --- | --- |
+| 1 to 6 | Primitives, certificates, network with attacker taps, pipelines A to G, attack suite, cost measurement | Done |
+| 7 | First independent review | Done. Eleven findings: nine fixed, two became limits T23 and T24 |
+| 8 to 12 | Selection rule applied, comparison page with live wire, control room wired to the pipeline, documents, tests | Done |
+
+### Tonight, version 3
+
 | # | Package | Done when | Status |
 | --- | --- | --- | --- |
-| 1 | Merge the teammate's newest `master` into our branch | Tests pass after the merge | Done, `2963d4c` merged |
-| 2 | Primitives and certificates in `comms.js` | Unit tests for sign, verify, key agreement, encryption, certificate checks | Done |
-| 3 | Network with attacker taps | A tap can read, change, drop, hold and answer a frame | Done, used by T04, T10 to T13 and T22 |
-| 4 | Pipelines A to G | Each passes L01 | Done, plus extension H |
-| 5 | Attack suite and legitimate cases | Every cell of the matrix is produced by running code | Done: 24 attacks, 6 legitimate cases, 8 pipelines |
-| 6 | Cost measurement | Bytes and time per pipeline in `results.json` | Done |
-| 7 | Independent review of the attack code | Findings fixed or listed | Done. Eleven confirmed findings: nine fixed, two reported as limits T23 and T24 |
-| 8 | Apply the selection rule and record the decision | Section 10 filled from `results.json` | Done |
-| 9 | Comparison page with a live wire | The page shows the matrix, constraints and choice, and re-runs any attack in the browser | Done, `site/security-pipelines.html`. A full re-run in the browser matched the saved run |
-| 10 | Chosen pipeline in the control room | The over-the-wire decision agrees with the simulation in each round | Done, agrees in all five rounds |
-| 11 | Documents | README, control board, handoff, German summary and slides match the results | Done. `RESULTS.md` and the slide numbers are generated from `results.json` |
-| 12 | Tests, commit, push to `feature/ward-safety-console` | All tests pass. Nothing merged to `master` | Done, 57 tests |
-
-Not in this plan, by request: re-recording the video. It is scheduled for the morning and should show the comparison page.
+| 13 | Read the challenge repository | Brief, submission rules and the team's pitch are understood and written down | Done, `CHALLENGE-FIT.md` |
+| 14 | Turn the two pitch scenarios into attacks | Lift hostage and robot rerouting run against every pipeline | Done, T26 and T25 |
+| 15 | Pipeline I, zero-trust relay | Passes every legitimate case. Closes T23, T24 and T25 | Done |
+| 16 | Who sees what | Measured per pipeline and party, including the mission leg | Done, in `results.json`, the report and the page |
+| 17 | Recovery and concurrency cases | L07, L08, L09 | Done |
+| 18 | Demo over real sockets | Relay and adapter as HTTP servers, attacker as a separate process with no keys | Done, `node secure-comms/network-demo.cjs` |
+| 19 | Second independent review, of H and I | Findings fixed or listed | Done. Twelve findings: ten fixed, one became limit T28, one kept and documented |
+| 20 | Adopt the strongest pipeline | Page, control room, slides and documents use it | Done, pipeline I |
+| 21 | Submission materials | README in the challenge's structure, slides as PDF in `presentation/`, video linked | Done |
+| 22 | Tests, commit, push to `feature/ward-safety-console` | All tests pass. Nothing pushed to any `main` or `master` | Done |
+| 23 | Demo video showing everything end to end | Recorded from the real pages, checked frame by frame | See section 11 |
 
 ## 10. Results and decision
 
-Measured on 28 November 2026 with `node secure-comms/run.cjs`. Simulated devices, real cryptography, attacks written by the team. The full generated report is [secure-comms/RESULTS.md](secure-comms/RESULTS.md).
+Measured on 28 November 2026 with `node secure-comms/run.cjs`. Simulated devices, real cryptography, attacks written by the team, two reviews by a second reviewer. The full generated report is [secure-comms/RESULTS.md](secure-comms/RESULTS.md). The suite grew with each review, and every pipeline was measured again against the final suite.
 
-| Pipeline | Attacks blocked | Legitimate | Bytes per call | ms per call |
-| --- | --- | --- | --- | --- |
-| A · Open network | 1 / 20 | 6 / 6 | 480 | 0.01 |
-| B · Network admission only | 3 / 20 | 6 / 6 | 480 | 0.01 |
-| C · Signed single-use tickets | 7 / 20 | 6 / 6 | 802 | 0.02 |
-| D · Per-device signed messages | 11 / 20 | 6 / 6 | 2236 | 0.65 |
-| E · Encrypted channel, mutual authentication | 11 / 20 | 6 / 6 | 934 | 0.74 |
-| F · Trip capability with proof of possession | 13 / 20 | 6 / 6 | 2946 | 0.78 |
-| G · Layered pipeline | 20 / 20 | 6 / 6 | 4132 | 1.79 |
-| H · Layered pipeline with dual control | 20 / 20 | 6 / 6 | 5166 | 2.11 |
+| Pipeline | Attacks blocked | Limits closed | Legitimate | Bytes per call | ms per call |
+| --- | --- | --- | --- | --- | --- |
+| A · Open network | 1 / 23 | 0 / 6 | 9 / 9 | 480 | 0.01 |
+| B · Network admission only | 3 / 23 | 0 / 6 | 9 / 9 | 480 | 0.01 |
+| C · Signed single-use tickets | 8 / 23 | 0 / 6 | 9 / 9 | 802 | 0.02 |
+| D · Per-device signed messages | 13 / 23 | 0 / 6 | 9 / 9 | 2236 | 1.23 |
+| E · Encrypted channel, mutual authentication | 12 / 23 | 0 / 6 | 9 / 9 | 934 | 1.02 |
+| F · Trip capability with proof of possession | 15 / 23 | 0 / 6 | 9 / 9 | 3394 | 1.06 |
+| G · Layered pipeline | 22 / 23 | 0 / 6 | 9 / 9 | 4728 | 3.23 |
+| H · Layered pipeline with dual control | 22 / 23 | 1 / 6 | 9 / 9 | 5824 | 2.69 |
+| I · Zero-trust relay | 23 / 23 | 3 / 6 | 9 / 9 | 19018 | 3.94 |
 
-**Decision: G, the layered pipeline.** Every candidate passes the legitimate cases, so rule 2 decides: G blocks 20 of 20, the next best 13. The acceptance bar in section 6 is met.
+**Rule winner among the seven candidates: G.** It blocks 22 of 23. The next best candidate blocks 15.
+
+**Adopted: I, the zero-trust relay.** It blocks 23 of 23 and closes 3 of 6 limits. It is the only design here that stops both scenarios in the team's pitch when the cloud fleet manager is the attacker.
 
 What the numbers say about each idea:
 
-- **Admission control (B)** stops outsiders and nothing else. One compromised device inside the network has the same power as on an open network.
-- **Tickets (C)**, the teammate's method, bind the floor to the trip and stop replays. A ticket is a bearer token in clear, so whoever copies it first can use it, the fleet manager sees every ticket, and a retired robot keeps the one it was given.
+- **Admission control (B)** stops outsiders and nothing else.
+- **Tickets (C)**, the teammate's method, bind the floor to the trip and stop replays. A ticket is a bearer token in clear: whoever copies it first can use it, the fleet manager sees every ticket, and a retired robot keeps the one it was given.
 - **Signatures (D)** prove who is asking. They do not say whether that robot may ask for that floor.
-- **An encrypted channel (E)** hides and protects each hop. A compromised fleet manager is still trusted by the adapter, and a held message is accepted later.
+- **An encrypted channel (E)** protects each hop. A compromised fleet manager is still trusted by the adapter.
 - **Our trip grant (F)** closes the authorization gap end to end. It travels in clear and does nothing about floods, stale lift status or the log.
-- **Layering (G)** closes all of those together.
+- **Layering (G)** closes those together, but still trusts the fleet manager to read calls and to hand the robot its mission.
+- **Dual control (H)** stops a compromised dispatcher acting alone.
+- **The zero-trust relay (I)** removes the fleet manager from the list of things that must be trusted.
 
-Fairness check, requested by the review: with an online trip table at the adapter, D and E each block 13 of 20 and A and B block 4 and 6. D then matches F's count. G stays ahead in both readings.
+Fairness check: with an online trip table at the adapter, D and E block 15 and 14 of 23, A and B block 4 and 6. G and I stay ahead in both readings.
 
-**Known limits of G:** a compromised dispatcher (T20), traffic analysis (T21), a fleet manager that reads what it relays (T23), and a flood sent straight to the adapter (T24). Also untested: a compromised lift adapter or certificate authority, jamming, physical tampering. A log signed by the adapter stops verifying if the adapter's key is replaced.
+**What still gets through I:**
 
-**Extension H** adds a second signature from the clinical order system. It blocks T20 as well, at the cost of one more supplier integration and about a kilobyte more per call. Recommendation: adopt H where the hospital's order system can sign. Otherwise G.
+- T21 · Traffic analysis. Frame timing and sender show when RX-01 called.
+- T27 · Compromised fleet manager stops relaying. Robot deliveries stop. The lift received 0 calls and stays free for staff. Fallback: porter.
+- T28 · Flood the lift adapter from the wired path, posing as the relay. 2 of 20 legitimate calls served (10%), adapter refused 440 frames as overloaded.
 
-**What G costs:** seven things to obtain from suppliers, listed in the report, about four kilobytes per lift call and one to two milliseconds of processing on a laptop. The supplier requirements are the real cost. The most demanding are a signing key on each robot and a lift adapter that verifies grants.
+Also untested: a compromised lift adapter or certificate authority, jamming, physical tampering with a robot. The firewall rule in I and the admission step in B are modelled. Five honest wrong-floor calls within ten seconds isolate a robot for one minute.
 
-**Next security steps, in order:** encrypt the call end to end from robot to adapter so the fleet manager cannot read it (T23). Authenticate before spending capacity at the adapter, or firewall it to the fleet manager (T24). Name the signing key in each log entry. Have outsiders write attacks.
+**What I costs:** 19,018 bytes per lift call on the wire because of the tunnel and the padding, about 3.94 ms of processing on a laptop, and the longest list of supplier requirements. The hard ones are a signing key and mission check on each robot, a lift adapter that ends the robot's sealed session and verifies grants, and an order system that signs. A hospital that cannot get all of that can start lower in the table and knows exactly what it gives up.
+
+**Over real sockets:** `node secure-comms/network-demo.cjs` runs the relay and the adapter as HTTP servers and an attacker as a separate process with no keys. Against I the attacker reads nothing and causes no lift call. The same attacker against A reads everything and moves the lift.
+
+**Next security steps, in order:** authenticate before spending capacity at the adapter (T28). A second relay path so a silent fleet manager does not stop deliveries (T27). Cover traffic or batching against timing (T21). Attacks written by outsiders. A vendor lift interface.
 
 ## 11. For the morning
 
+The submission is the state of the **challenge repository's `main` branch** at the deadline, with slides in `/presentation/`, a README that describes the solution, how to run it and links the demo, and one "Final submission" issue.
+
+Nothing has been pushed to that repository and no issue has been opened. That is the team's step.
+
 | # | Task | Owner | Latest |
 | --- | --- | --- | --- |
-| 1 | Read section 10 and open the comparison page. Agree or change the choice between G and H | Team | 08:00 |
-| 2 | Decide whether pull request 1 goes into `master`. It now contains the security work as well | Repository owner | 08:30 |
-| 3 | Re-record the video with the security comparison first. The current video predates it | Claude-proficient manager | 09:15 |
-| 4 | Rehearse the eight slides with the new talk track | Product manager | 09:30 |
-| 5 | Dry run on the presentation laptop with Wi-Fi off. Check that "Run now" works in that browser | Claude-proficient manager | 09:45 |
-| 6 | Confirm pitch length and deadline with the organizers | Product manager | 09:45 |
-| 7 | Re-read claims and disclosure, then submit | Team | 10:45 |
+| 1 | Open `site/security-pipelines.html` and read section 10. Confirm pipeline I, or pick another | Team | 09:30 |
+| 2 | Watch the video with sound once | Anyone | 09:40 |
+| 3 | Put the work on the challenge repository's `main`, with the commands below | Someone with push rights | 10:15 |
+| 4 | Open the "Final submission" issue, once | Same person | 10:20 |
+| 5 | Dry run on the presentation laptop. Check that "Run now" works in that browser | Presenter | 10:30 |
+| 6 | Rotate the API key in the challenge README if the team used it. It is in clear text there | Team with the organizers | When convenient |
+
+Commands for step 3, from this repository, on the branch `feature/ward-safety-console`:
+
+```sh
+git remote add challenge https://github.com/hackathon-white-fish-26/challenge-09-ifohra-oth-amberg-weiden.git
+git fetch challenge
+git checkout -b submission feature/ward-safety-console
+git merge challenge/main --allow-unrelated-histories    # keeps the organizers' files and the team's pitch PDF
+# README.md will conflict: keep ours, and keep the organizers' endpoint lines only if the team still needs them there
+git push challenge submission:main
+```
+
+Do not push the `submission` branch to the teammate's public repository. It would carry the organizers' challenge image, which the team removed from that repository's history on purpose.
+
+## 12. How the work fits the challenge
+
+See [CHALLENGE-FIT.md](CHALLENGE-FIT.md): the brief requirement by requirement, the three judging criteria with our weak points, and the two pitch scenarios mapped to attacks T25 and T26.

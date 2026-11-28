@@ -8,7 +8,7 @@ Transportroboter im Krankenhaus bekommen ihre Aufträge über das Netzwerk und t
 
 ## Unser Vorgehen
 
-Wir wollten nicht raten, welcher Schutz der beste ist. Wir haben sieben Kommunikationswege zwischen Roboter und Aufzug gebaut, vom offenen Netz bis zu unserem mehrschichtigen Entwurf. Alle sieben wurden mit denselben Angriffen getestet. Die Regel für die Auswahl stand vor dem ersten Durchlauf fest.
+Wir wollten nicht raten, welcher Schutz der beste ist. Wir haben sieben Kommunikationswege zwischen Roboter und Aufzug gebaut, vom offenen Netz bis zu unserem mehrschichtigen Entwurf. Alle wurden mit denselben Angriffen getestet. Die Regel für die Auswahl stand vor dem ersten Durchlauf fest. Auf dem Sieger haben wir danach zwei stärkere Wege aufgebaut.
 
 | | Kommunikationsweg | Herkunft |
 | --- | --- | --- |
@@ -19,33 +19,37 @@ Wir wollten nicht raten, welcher Schutz der beste ist. Wir haben sieben Kommunik
 | E | Verschlüsselter Kanal mit gegenseitiger Authentifizierung | Standardverfahren, Prinzip von Mutual TLS |
 | F | Fahrtberechtigung mit Besitznachweis | Unser Vorschlag |
 | G | Mehrschichtiger Weg | Kombination aus E, F, Datensparsamkeit, Schutzschalter und Aufzugsprüfung |
+| H | G mit Vier-Augen-Prinzip | Zweite Signatur des klinischen Auftragssystems |
+| I | Zero-Trust-Relais | H, und dem Flottenserver wird nichts mehr anvertraut |
 
 ## Ergebnis
 
-Die Zahlen stehen in `secure-comms/RESULTS.md` und werden aus der Messung erzeugt. Gewählt wurde **G, der mehrschichtige Weg**. Er hat alle 20 Angriffe der Hauptliste abgewehrt, der nächstbeste Weg 13. Alle Wege bestehen die 6 Normalfälle. Die einzelnen Schutzmaßnahmen scheitern jeweils an anderer Stelle:
+Die Zahlen stehen in `secure-comms/RESULTS.md` und werden aus der Messung erzeugt. Unter den sieben Kandidaten gewann **G** mit 22 von 23 abgewehrten Angriffen. Eingesetzt wird **I, das Zero-Trust-Relais**: 23 von 23, dazu 3 von 6 bekannten Grenzfällen. Alle Wege bestehen die 9 Normalfälle.
 
 - **Netzzugangskontrolle** hält Außenstehende ab. Ein kompromittiertes Gerät im Netz kann alles.
 - **Tickets** binden das Stockwerk an die Fahrt. Wer ein Ticket mitliest, kann es zuerst benutzen.
 - **Signaturen** beweisen, wer fragt. Sie sagen nicht, ob dieses Gerät dieses Stockwerk anfordern darf.
-- **Verschlüsselung** schützt jede Teilstrecke. Ein kompromittierter Server des Flottenherstellers kann trotzdem Aufzugsrufe erfinden.
-- **Die Fahrtberechtigung** schließt diese Lücke. Sie reist aber im Klartext und begrenzt keine Überlastung.
+- **Verschlüsselung** schützt jede Teilstrecke. Ein kompromittierter Flottenserver kann trotzdem Aufzugsrufe erfinden und Roboter umleiten.
+- **Die Fahrtberechtigung** schließt die erste Lücke. Sie reist aber im Klartext.
+- **Das Zero-Trust-Relais** vertraut dem Flottenserver nichts mehr an.
 
-## Der gewählte Weg
+## Der eingesetzte Weg
 
-1. Die Leitstelle signiert für jede Fahrt eine Berechtigung: dieser Roboter, dieser Aufzug, dieses Stockwerk, zehn Minuten.
-2. Der Roboter signiert jeden Ruf mit seinem eigenen Schlüssel.
-3. Beide Netzstrecken sind verschlüsselt, mit frischen Schlüsseln je Verbindung.
-4. Der Flottenserver trennt einen Roboter ab, der das System flutet.
-5. Der Aufzugsadapter prüft die Berechtigung, den aktuellen Zustand des Aufzugs, den Vorrang für Patiententransporte und einen Sensor am Aufzug, bevor sich etwas bewegt.
-6. Der Roboter sendet nur, was ein Aufzug braucht. Jede Entscheidung steht in einem signierten Protokoll.
+1. Die Leitstelle signiert jeden Fahrauftrag. Der Roboter prüft die Signatur, bevor er losfährt. Ein gehackter Flottenserver kann ihn nicht in den Keller schicken.
+2. Für jeden Aufzugsruf braucht der Roboter eine Berechtigung: dieser Roboter, dieser Aufzug, dieses Stockwerk, zehn Minuten. Das klinische Auftragssystem zeichnet gegen.
+3. Roboter und Aufzugsadapter sprechen in einer versiegelten Sitzung. Der Flottenserver leitet sie weiter und kann sie nicht lesen.
+4. Der Aufzugsadapter prüft außerdem den Zustand des Aufzugs, den Vorrang für Patiententransporte und einen Sensor am Aufzug.
+5. Ein Roboter, der das System flutet, wird allein abgetrennt. Alles andere läuft weiter.
+6. Jede Entscheidung steht in einem signierten Protokoll, dessen Stand ein Zeuge außerhalb des Adapters hält.
+
+Niemand auf dem Weg sieht Patient, Medikament, Station, Fahrt oder Stockwerk. Der Aufzug erfährt nur das Stockwerk.
 
 ## Grenzen
 
-- Die Geräte sind simuliert. Die Kryptografie ist echt (Ed25519, X25519, AES-256-GCM).
-- Die Angriffe hat das Team selbst geschrieben. Das ist keine unabhängige Prüfung.
-- Vier Angriffe gelingen bei allen sieben Wegen: eine kompromittierte Leitstelle, ein Beobachter, der am Zeitpunkt der Nachrichten erkennt, wann ein Roboter den Aufzug ruft, ein Flottenserver, der mitliest, was er weiterleitet, und eine Überlastung direkt am Aufzugsadapter. Die Erweiterung H schließt den ersten Fall mit einer zweiten Signatur des klinischen Auftragssystems.
-- Ein zweiter Prüfer, der den Code nicht geschrieben hat, hat eine frühere Fassung angegriffen und elf Schwachstellen bestätigt. Neun sind behoben und jetzt Teil der Tests, zwei stehen in der Liste oben.
-- Der gewählte Weg verlangt am meisten von den Herstellern: sieben Voraussetzungen, von der Zertifizierungsstelle bis zum Sensor am Aufzug.
+- Die Geräte sind simuliert. Die Kryptografie ist echt (Ed25519, X25519, AES-256-GCM). Eine Vorführung über echte Netzwerkverbindungen liegt bei.
+- Die Angriffe hat das Team selbst geschrieben. Ein zweiter Prüfer, der den Code nicht geschrieben hat, hat ihn zweimal angegriffen. Seine Funde sind behoben oder unten genannt. Das ist keine unabhängige Prüfung.
+- Drei Angriffe gelingen weiterhin: ein Beobachter erkennt am Zeitpunkt der Nachrichten, wann ein Roboter den Aufzug ruft. Ein Flottenserver kann aufhören weiterzuleiten, dann pausieren die Roboter und Träger übernehmen, der Aufzug bleibt frei. Und eine Überlastung aus dem kabelgebundenen Netz trifft den Adapter.
+- Der eingesetzte Weg verlangt am meisten von den Herstellern: Schlüssel auf den Robotern, ein Adapter, der Berechtigungen prüft, ein Auftragssystem, das signiert.
 
 ## Offenlegung
 

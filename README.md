@@ -1,4 +1,65 @@
-# Smart RoboWard · IFOHRA Challenge 9
+<!-- summary:start -->
+# Smart RoboWard · Challenge 9: Secure integration of robotics in clinical environments
+
+**Challenge owner:** IFOHRA and OTH Amberg-Weiden · **Event:** Healthcare Hackathon Bayern München, 26 to 28 November 2026
+
+## Project summary
+
+Hospital delivery robots call lifts over the network, often through fleet software in the cloud. That link is a new door into the hospital. Smart RoboWard secures it.
+
+We did not pick one defence and argue for it. We built seven ways for a robot to ask a lift for a floor, attacked each with the same 29 attacks, and let the result choose. Then we built two stronger designs on the winner. The one we adopted is a **zero-trust relay**: nothing in the middle is trusted, and nothing moves without a signed order.
+
+- The robot only accepts a mission signed by the hospital.
+- Every lift call needs a grant for this robot, this lift, this floor and ten minutes, countersigned by the clinical order system.
+- Robot and lift adapter talk in a sealed session that the fleet manager carries and cannot read.
+- The lift adapter also checks patient priority, fresh lift status and a sensor at the lift, and writes every decision to a signed log.
+- A flooding or compromised robot is isolated alone. The rest of the hospital keeps working.
+
+| | Pipeline | Where it comes from | Attacks blocked | Known limits closed |
+| --- | --- | --- | --- | --- |
+| A | Open network | Baseline | 1 of 23 | 0 of 6 |
+| B | Network admission only | Common hospital practice, admission step modelled | 3 of 23 | 0 of 6 |
+| C | Signed single-use tickets | Teammate's gate, method M1, real code | 8 of 23 | 0 of 6 |
+| D | Per-device signed messages | Standard practice | 13 of 23 | 0 of 6 |
+| E | Encrypted channel, mutual authentication | Standard practice, the idea behind mutual TLS | 12 of 23 | 0 of 6 |
+| F | Trip capability with proof of possession | Our proposal | 15 of 23 | 0 of 6 |
+| G | Layered pipeline | Combination of the above, the teammate's M3 and M4, and our lift admission | 22 of 23 | 0 of 6 |
+| H | Layered pipeline with dual control | G plus a second signature from the clinical order system | 22 of 23 | 1 of 6 |
+| I | Zero-trust relay | H plus a sealed robot-to-lift session through the fleet manager, signed missions and an adapter-side breaker | 23 of 23 | 3 of 6 |
+
+All nine pass the 9 normal-operation cases. Under the rule fixed before the first run, **G** won among the seven candidates A to G. **I** is built on it and is what the platform uses. What still gets through I: traffic analysis; compromised fleet manager stops relaying; flood the lift adapter from the wired path, posing as the relay.
+
+The cryptography is real (Ed25519, X25519, HKDF, AES-256-GCM, HMAC-SHA-256 from the standard library). The devices, trips and keys are fictional. We wrote the attacks ourselves, and a second reviewer who did not write the code attacked it twice. This is our own measurement, not an independent audit. More: [how this answers the challenge](CHALLENGE-FIT.md) · [measured results](secure-comms/RESULTS.md) · [plan and decisions](IMPLEMENTATION-PLAN.md).
+
+## How to run
+
+Needs Node.js 20 or newer and Python 3.9 or newer. No packages are installed. Everything runs offline.
+
+```sh
+node secure-comms/run.cjs            # attack every pipeline, writes secure-comms/results.json
+node secure-comms/network-demo.cjs   # the adopted pipeline over real sockets, with a separate attacker process
+node --test clinic3d/fleet.test.cjs ward-safety/*.test.cjs gate/*.test.cjs secure-comms/*.test.cjs
+```
+
+Then open these files in a current browser:
+
+| Open | To see |
+| --- | --- |
+| [site/security-pipelines.html](site/security-pipelines.html) | The attack matrix. Select any cell to run that attack again in the browser and see the frames on the wire |
+| [site/ward-safety.html](site/ward-safety.html) | One delivery at the shared lift: allow, hold or deny, with recovery and porter handoff |
+| [site/hacker-demo.html](site/hacker-demo.html) | A simulated hacker against the request gate in the 3D clinic |
+| [site/gate-results.html](site/gate-results.html) | The request gate benchmark |
+
+## Demo
+
+- Video: [presentation/media/smart-roboward-demo-v2.mp4](presentation/media/smart-roboward-demo-v2.mp4)
+- Slides: [presentation/Smart-RoboWard-security-pipelines.pdf](presentation/Smart-RoboWard-security-pipelines.pdf), and the same deck as one offline file, [presentation/demo.html](presentation/demo.html)
+- Talk track: [presentation/SCRIPT.md](presentation/SCRIPT.md) · German summary: [docs/Zusammenfassung-DE.md](docs/Zusammenfassung-DE.md)
+
+---
+
+# Details
+<!-- summary:end -->
 
 **Start here.** Open the [3D fleet console](output/visualizations/Clinic-World.html) in Edge, Chrome or Firefox. A laptop with WebGL can run the console offline. The prototype uses fictional ward deliveries, a local robot controller and a shared lift.
 
@@ -11,34 +72,15 @@
 
 ## Secure communication pipelines
 
-The core of the project. We built seven ways for a robot to ask a hospital lift for a floor, attacked each with the same 24 attacks, and chose one by a rule fixed before the first run.
+The comparison lives in `secure-comms/`. `comms.js` holds the protocol code for all nine pipelines, `attacks.js` the 29 attacks and 9 legitimate cases, `run.cjs` the measurement, `report.cjs` the generated report, and `network-demo.cjs` the demo over real sockets. Pipeline C runs the teammate's `gate/gate.cjs` unchanged. Pipelines G, H and I run the ward safety controller's admission check unchanged.
 
-| | Pipeline | Where it comes from | Attacks blocked |
-| --- | --- | --- | --- |
-| A | Open network | Baseline | 1 of 20 |
-| B | Network admission only | Common hospital practice, admission step modelled | 3 of 20 |
-| C | Signed single-use tickets | Teammate's gate, method M1, real code | 7 of 20 |
-| D | Per-device signed messages | Standard practice | 11 of 20 |
-| E | Encrypted channel, mutual authentication | Standard practice, the idea behind mutual TLS | 11 of 20 |
-| F | Trip capability with proof of possession | Our proposal | 13 of 20 |
-| G | Layered pipeline | Combination of the above, the teammate's M3 and M4, and our lift admission | 20 of 20 |
-| H | Layered pipeline with dual control | Extension of G with a second signature from the clinical order system. Reported, not a candidate | 20 of 20 |
-
-**Chosen: G, the layered pipeline, with 20 of 20.** The next best blocked 13. All eight pass the 6 legitimate cases. A further 4 attacks are reported as known limits and get through all seven candidates: a compromised dispatcher, traffic analysis, a fleet manager that reads what it relays, and a flood sent straight to the adapter. Extension H closes the first of these.
-
-A second reviewer, who did not write the code, attacked an earlier version and confirmed eleven findings, including a way to lock a genuine robot out through the circuit breaker. Nine are fixed and now have their own attacks or tests. Two are reported as limits. The report lists them.
-
-- Open [site/security-pipelines.html](site/security-pipelines.html) for the full matrix. Select any cell to run that attack again in your browser and see the frames on the wire.
-- Read [secure-comms/RESULTS.md](secure-comms/RESULTS.md) for the generated report: what each pipeline needs from suppliers, why the others lost, the fairness check and the review findings.
-- Read [IMPLEMENTATION-PLAN.md](IMPLEMENTATION-PLAN.md) for the threat model, the attack definitions and the selection rule.
-
-The cryptography is real: Ed25519 signatures, X25519 key agreement, HKDF, AES-256-GCM and HMAC-SHA-256 from the platform's standard library. The devices, trips and keys are fictional. The team wrote the attacks, so this is our own measurement and not an independent audit. Written on site with Claude.
+Two reviews by a second reviewer, who did not write the code, are summarised in [secure-comms/RESULTS.md](secure-comms/RESULTS.md) with what each finding changed. Findings that could not be fixed are in the matrix as known limits.
 
 ```sh
 node secure-comms/run.cjs          # measure, writes secure-comms/results.json
 node secure-comms/report.cjs       # writes secure-comms/RESULTS.md
 node secure-comms/build-page.cjs   # writes site/security-pipelines.html
-node --test secure-comms/*.test.cjs
+node presentation/build-deck.cjs   # writes presentation/demo.html with the measured numbers
 ```
 
 ## Ward safety control room

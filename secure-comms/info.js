@@ -30,6 +30,9 @@
       keys: "One key pair per device, one grant per trip, fresh session keys", weakest: "It trusts the dispatcher. A compromised dispatcher can still issue a wrong grant. Message timing remains visible.", vendorNeeds: 7},
     H: {source: "Extension of G, added after the first results", idea: "Everything in G. In addition the lift adapter requires a second signature from the clinical order system, independent of the dispatcher, naming the same robot and floor.",
       needs: ["Everything G needs", "Clinical order system that signs each delivery order"],
-      keys: "As G, plus one signed order per trip", weakest: "Both the dispatcher and the order system would have to be compromised. Message timing remains visible.", vendorNeeds: 8}
+      keys: "As G, plus one signed order per trip", weakest: "Both the dispatcher and the order system would have to be compromised. Message timing remains visible.", vendorNeeds: 8},
+    I: {source: "Built after the review and the challenge material, on top of H", idea: "Everything in H. The fleet manager becomes a relay that is trusted with nothing: robot and lift adapter share their own encrypted session through it, the robot only accepts missions signed by the hospital, and the adapter keeps its own breaker.",
+      needs: ["Everything H needs", "Robots that check a signed mission before moving", "Lift adapter that ends the robot's encrypted session itself", "Firewall rule: only the relay's address reaches the lift adapter"],
+      keys: "As H, plus a second set of fresh session keys per robot", weakest: "A compromised fleet manager can still stop relaying, which pauses robot deliveries, and message timing remains visible. The firewall rule is modelled.", vendorNeeds: 11}
   };
 });

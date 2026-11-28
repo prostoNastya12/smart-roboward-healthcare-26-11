@@ -4,11 +4,15 @@
 
 ## Paste into the next session
 
-> Read `IMPLEMENTATION-PLAN.md` (sections 10 and 11) and `secure-comms/RESULTS.md` in `smart-roboward-healthcare-26-11`, continue on `feature/ward-safety-console`, and work through "For the morning". The security comparison, the control room, the slides and the documents are finished. Open items: the team's decision between G and H, the pull request, re-recording the video, and the dry run.
+> Read `IMPLEMENTATION-PLAN.md` sections 10 and 11, `CHALLENGE-FIT.md` and `secure-comms/RESULTS.md` in `smart-roboward-healthcare-26-11`. Continue on `feature/ward-safety-console`. The security work, pages, slides and documents are finished. What is left is the team's: confirm the adopted pipeline, push to the challenge repository's `main`, open the final submission issue.
 
 ## Security work, 28 November
 
-The project's focus is now the security of robot-to-lift communication. `secure-comms/` holds seven candidate pipelines and one extension with real cryptography, an attack suite, a runner, a generated report and a comparison page. The layered pipeline G was chosen by a rule fixed before the first run. An independent review found eleven issues: nine are fixed and tested, two are reported as limits. Run `node secure-comms/run.cjs`, then `report.cjs`, `build-page.cjs` and `presentation/build-deck.cjs` after any change to `comms.js` or `attacks.js`.
+The project's focus is the security of robot communication. `secure-comms/` holds seven candidate pipelines and two built on the winner, with real cryptography, 29 attacks, 9 legitimate cases, a runner, a generated report, a comparison page and a demo over real sockets. Pipeline G won under the rule fixed before the first run. Pipeline I, the zero-trust relay, is adopted across the platform. Two independent reviews found 23 issues: 19 fixed and tested, 3 reported as limits, 1 kept and documented.
+
+After any change to `comms.js` or `attacks.js`: `node secure-comms/run.cjs`, then `report.cjs`, `build-page.cjs`, `ward-safety/build.cjs` and `presentation/build-deck.cjs`.
+
+The challenge repository is `hackathon-white-fish-26/challenge-09-ifohra-oth-amberg-weiden`. Its `main` at the deadline is the submission. Nothing has been pushed there.
 
 ## Goal and decisions
 
@@ -26,7 +30,7 @@ Use the team repository and the feature branch based on `master` at `4d935e4`. T
 | [Workflow review](ward-safety/workflows.js) | Policy preview replays a candidate that drops Ward B. Custody fixtures exercise tote reuse, duplicate scans and corrections. A two-vendor queue models capacity, retries and patient priority. |
 | [Mission study](ward-safety/study.cjs) and [saved results](ward-safety/study-summary.json) | Seed `20261127`, 6,000 training, 2,000 calibration and 2,000 held-out missions across 30 directed station pairs. Overall outcomes were 9,740 receipts, 199 refused requests and 61 timeouts. The advisory detected 90/100 simulated equipment holds and 96/100 mismatched destinations on the held-out set, with 1.39 false alerts per 100 benign missions. The baseline detected 0/100 and 96/100 respectively. The batch uses the shared fleet engine and its own mismatch rule. It does not measure the new lift adapter or a hospital deployment. |
 | [Browser console](ward-safety/index.html) | Finished on 27 November. Built from `panel.html`, `panel.css`, `panel.js` and the embedded data by `node ward-safety/build.cjs`. All five rounds, recovery actions, porter handoff, both floors, the heatmap and the workflow tables were exercised in a browser. The [3D fleet console](output/visualizations/Clinic-World.html) is a separate entry point. |
-| Verification | 57 Node tests pass across the shared fleet, gate, ward controller, workflows, study, page builds and the secure pipelines. The Python replay matched all 20 scripted cases over 100 input events. `master` up to `b4f48e2` is merged into the feature branch. |
+| Verification | All Node tests pass across the shared fleet, gate, ward controller, workflows, study, page builds and the secure pipelines. The Python replay matched all 20 scripted cases over 100 input events. `master` up to `b4f48e2` is merged into the feature branch. |
 
 GitHub was reachable. The lift, fleet, Wi-Fi handover and ward scanner use local synthetic data. There is no configured hospital API, device endpoint or live telemetry feed.
 

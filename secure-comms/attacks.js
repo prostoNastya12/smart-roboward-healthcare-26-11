@@ -19,10 +19,22 @@
   let options = {};
   const setOptions = o => { options = o || {}; };                         // used by run.cjs for the fairness variants
   const world = async id => { const w = await makeWorld(id, options); if (observer) observer(w); return w; };
-  async function fresh(id) {
+  // A world in which RX-01 has a trip to Ward B, has accepted its mission and stands at the lift.
+  // `sealedMission` leaves the mission undelivered, for the attacks that are about the mission itself.
+  async function fresh(id, o = {}) {
     const w = await world(id);
     await w.dispatch(TRIP, "RX-01", "L2");
+    if (!o.sealedMission) await w.pipe.acceptMission(w.nodes["RX-01"], await w.pipe.mission(TRIP));
     w.arrive("RX-01");
+    return w;
+  }
+  // The robot's connections are already open, as they are in normal operation, so the next frame on the Wi-Fi hop is the call itself.
+  async function warmedUp(id) {
+    const w = await fresh(id);
+    await w.dispatch("TRIP-WARM", "RX-01", "L2");
+    await w.pipe.call(w.nodes["RX-01"], claimsFor("RX-01", "TRIP-WARM"));
+    w.tick(2); w.arrive("RX-01");
+    w.net.captured.length = 0;
     return w;
   }
   const rx = w => w.nodes["RX-01"];
@@ -59,8 +71,8 @@
   const stolenFrom = w => {
     const bag = {};
     for (const item of w.net.captured) walk(parse(item.frame), o => {
-      if (typeof o.token === "string") bag.token = o.token;
-      if (o.cap && o.cap.body) bag.cap = o.cap;
+      if (typeof o.token === "string" && (o.claims?.trip ?? TRIP) === TRIP) bag.token = o.token;
+      if (o.cap && o.cap.body && o.cap.body.trip === TRIP) bag.cap = o.cap;
       if (o.order && o.order.body) bag.order = o.order;
       if (o.cert && o.cert.body && o.cert.body.id === "RX-01") bag.cert = o.cert;
       return false;
@@ -69,7 +81,8 @@
   };
 
   // One compromised robot floods while two others work. `direct` sends the junk straight to the adapter, past the fleet manager.
-  async function flood(id, direct) {
+  async function flood(id, mode) {
+    const direct = !!mode, o = mode === "spoofed" ? {noRetry: true, inside: true} : {noRetry: true};
     const w = await world(id), seconds = 5, junkPerSecond = 100, robots = ["RX-01", "LAB-02"], perSecond = 4;
         w.capacity = 20;
         const trips = [];
@@ -84,7 +97,7 @@
             w.setTime(start + s + i / work.length);
             const job = work[i];
             if (job) { w.arrive(job.robot); await w.pipe.call(w.nodes[job.robot], claimsFor(job.robot, job.trip), {noRetry: true}); }
-            else if (direct) await w.pipe.direct(w.nodes["SUP-03"], claimsFor("SUP-03", "JUNK-" + s + "-" + i), {noRetry: true});
+            else if (direct) await w.pipe.direct(w.nodes["SUP-03"], claimsFor("SUP-03", "JUNK-" + s + "-" + i), o);
             else await w.pipe.call(w.nodes["SUP-03"], claimsFor("SUP-03", "JUNK-" + s + "-" + i), {noRetry: true});
           }
         }
@@ -175,27 +188,27 @@
       }},
     {id: "T10", name: "Steal a credential off the wire and use it elsewhere", position: "PATH", wins: "The lift receives a call triggered by the attacker's device",
       async run(id) {
-        const w = await fresh(id);
-        // Let the handshake through, hold back the robot's actual call, and keep a copy.
-        w.net.taps.push({hop: "wifi", request: frame => { const f = parse(frame); return f && (f.t === "hello" || f.t === "fin") ? undefined : null; }});
+        const w = await warmedUp(id), before = calls(w);
+        // Hold back the robot's call and keep a copy.
+        w.net.taps.push({hop: "wifi", request: () => null});
         await legit(w, {noRetry: true});
         w.net.taps.length = 0;
         const stolen = stolenFrom(w);
         await w.pipe.call(w.nodes["SUP-03"], claimsFor("RX-01", TRIP), {stolen, claimFrom: "RX-01"});
         const found = Object.keys(stolen).join(", ") || "nothing";
-        return {blocked: calls(w) === 0, detail: calls(w) + " lift call(s) from SUP-03. Lifted off the wire: " + found};
+        return {blocked: calls(w) === before, detail: (calls(w) - before) + " lift call(s) from SUP-03. Lifted off the wire: " + found};
       }},
     {id: "T11", name: "Hold a lift call for two minutes, then release it", position: "PATH", wins: "The lift receives the stale call",
       async run(id) {
-        const w = await fresh(id);
+        const w = await warmedUp(id), before = calls(w);
         let held = null;
-        w.net.taps.push({hop: "wifi", request: frame => { const f = parse(frame); if (f && (f.t === "hello" || f.t === "fin")) return undefined; held = frame; return null; }});
+        w.net.taps.push({hop: "wifi", request: frame => { held = frame; return null; }});
         await legit(w, {noRetry: true});
         w.net.taps.length = 0;
         w.tick(120);
         w.arrive("RX-01");
         if (held) await w.net.rpc("wifi", "RX-01", "fleet", held, {inside: true});
-        return {blocked: calls(w) === 0, detail: calls(w) + " lift call(s) from a message delivered 120 s late"};
+        return {blocked: calls(w) === before, detail: (calls(w) - before) + " lift call(s) from a message delivered 120 s late"};
       }},
     {id: "T12", name: "Forge or replay the adapter's reply", position: "PATH", wins: "The robot believes a refused call was allowed",
       async run(id) {
@@ -312,7 +325,16 @@
         w.arrive("SUP-03");
         await w.pipe.call(w.nodes["SUP-03"], claimsFor("SUP-03", "TRIP-EVIL", "Ground"));
         const n = w.lift.calls.filter(c => c.trip === "TRIP-EVIL").length;
-        return {blocked: n === 0, detail: n + " lift call(s) on a grant the dispatcher should not have issued"};
+        // Second try, with a robot helping: the dispatcher re-issues RX-01's real grant, naming the helper's key, five times.
+        const before = calls(w), real = rx(w).x.caps[TRIP], sup = w.nodes["SUP-03"];
+        if (real) for (let i = 0; i < 5; i++) {
+          const body = {...real.body, capId: "cap-minted-" + i, robotKey: sup.key.pub};
+          const cap = {body, sig: await sign(w.nodes.dispatcher.key.priv, canon(body)), cert: w.nodes.dispatcher.cert};
+          w.tick(1); w.arrive("RX-01");
+          await w.pipe.call(sup, claimsFor("RX-01", TRIP), {stolen: {cap, order: rx(w).x.orders?.[TRIP]}, claimFrom: "RX-01"});
+        }
+        const minted = calls(w) - before;
+        return {blocked: n === 0 && minted === 0, detail: n + " lift call(s) on a grant with no order behind it, " + minted + " on re-issued grants naming another robot's key"};
       }},
     {id: "T21", name: "Traffic analysis", position: "PATH", wins: "The attacker can tell when a robot called the lift", limit: true,
       async run(id) {
@@ -325,32 +347,113 @@
       }}
     ,{id: "T22", name: "Lock out a genuine robot by abusing the breaker", position: "PATH", wins: "RX-01's next legitimate call, two minutes later, is refused",
       async run(id) {
-        const w = await fresh(id), held = [];
-        // Hold back three of RX-01's calls, including its automatic retries, then pour them in at once, and again once they are stale.
-        w.net.taps.push({hop: "wifi", request: frame => { const f = parse(frame); if (f && (f.t === "hello" || f.t === "fin")) return undefined; held.push(frame); return null; }});
-        for (let i = 0; i < 3; i++) await legit(w);
-        w.net.taps.length = 0;
-        for (const frame of held) await w.net.rpc("wifi", "RX-01", "fleet", frame, {inside: true});
-        w.tick(31);
-        for (const frame of held) await w.net.rpc("wifi", "RX-01", "fleet", frame, {inside: true});
-        w.tick(120);
-        await w.dispatch("TRIP-2", "RX-01", "L2");
-        w.arrive("RX-01");
-        const r = await w.pipe.call(rx(w), claimsFor("RX-01", "TRIP-2"));
-        return {blocked: r.decision === "allow", detail: "After " + held.length + " held frames were released twice, RX-01's next call got: " + (r.decision ?? "no answer")};
+        const locked = [];
+        const after = async (w, label) => {
+          w.tick(120);
+          await w.dispatch("TRIP-2", "RX-01", "L2");
+          w.arrive("RX-01");
+          const r = await w.pipe.call(rx(w), claimsFor("RX-01", "TRIP-2"));
+          if (r.decision !== "allow") locked.push(label + ": " + (r.decision ?? "no answer"));
+        };
+        {
+          // On the network path: hold back three genuine calls, pour them in at once, and again once they are stale.
+          const w = await warmedUp(id), held = [];
+          for (let i = 0; i < 3; i++) await w.dispatch("TRIP-H" + i, "RX-01", "L2");
+          w.net.taps.push({hop: "wifi", request: frame => { held.push(frame); return null; }});
+          for (let i = 0; i < 3; i++) await w.pipe.call(rx(w), claimsFor("RX-01", "TRIP-H" + i));
+          w.net.taps.length = 0;
+          for (const frame of held) await w.net.rpc("wifi", "RX-01", "fleet", frame, {inside: true});
+          w.tick(31);
+          for (const frame of held) await w.net.rpc("wifi", "RX-01", "fleet", frame, {inside: true});
+          await after(w, "held and released");
+        }
+        {
+          // As the fleet manager: relabel six genuine calls as coming from another robot, so the adapter refuses them.
+          const w = await warmedUp(id), upstream = w.pipe.upstream?.bind(w.pipe), relay = w.pipe.relay.bind(w.pipe);
+          const relabel = text => text.replaceAll('"onBehalfOf":"RX-01"', '"onBehalfOf":"LAB-02"').replaceAll('"robot":"RX-01"', '"robot":"LAB-02"');
+          if (upstream) w.pipe.upstream = text => upstream(relabel(text));
+          w.pipe.relay = frame => relay(relabel(frame));
+          for (let i = 0; i < 6; i++) { await w.dispatch("TRIP-R" + i, "RX-01", "L2"); w.tick(1); w.arrive("RX-01"); await w.pipe.call(rx(w), claimsFor("RX-01", "TRIP-R" + i)); }
+          if (upstream) w.pipe.upstream = upstream;
+          w.pipe.relay = relay;
+          await after(w, "relabelled by the fleet manager");
+        }
+        return {blocked: locked.length === 0, detail: locked.length ? "RX-01 locked out. " + locked.join("; ") : "RX-01's next call was allowed after both attempts"};
       }},
     {id: "T23", name: "Compromised fleet manager reads the deliveries it relays", position: "FLEET", wins: "The fleet manager sees the trip and the floor", limit: true,
       async run(id) {
-        const w = await fresh(id), seen = [];
+        const w = await fresh(id, {sealedMission: true}), seen = [];
         const relay = w.pipe.relay.bind(w.pipe), upstream = w.pipe.upstream?.bind(w.pipe);
         w.pipe.relay = frame => { seen.push(frame); return relay(frame); };
         if (upstream) w.pipe.upstream = text => { seen.push(text); return upstream(text); };
+        // The fleet manager carries the mission to the robot and then relays the robot's call.
+        const mission = await w.pipe.mission(TRIP);
+        seen.push(JSON.stringify(mission));
+        await w.pipe.acceptMission(rx(w), mission);
         await legit(w);
-        const readable = seen.some(text => text.includes(TRIP) && text.includes('"Upper"'));
-        return {blocked: !readable, detail: readable ? "The fleet manager handles the trip and floor in clear" : "The fleet manager cannot read the call"};
+        const all = seen.join("\n"), learned = [[TRIP, "trip"], ['"Upper"', "floor"], ['"L2"', "floor"], ["WARD-B", "destination"]].filter(([needle]) => all.includes(needle)).map(([, label]) => label);
+        const unique = [...new Set(learned)];
+        return {blocked: unique.length === 0, detail: unique.length ? "The fleet manager handles in clear: " + unique.join(", ") : "The fleet manager carried the mission and the call and could read neither"};
       }},
     {id: "T24", name: "Flood the lift adapter directly, past the fleet manager", position: "DEV", wins: "Fewer than 90% of other robots' legitimate calls are served", limit: true,
-      run: id => flood(id, true)}
+      run: id => flood(id, true)},
+    // Added after reading the challenge material: the team's pitch names two scenarios, both through the cloud fleet manager.
+    {id: "T25", name: "Compromised fleet manager reroutes a robot", position: "FLEET", wins: "The robot accepts a mission the hospital did not order", scenario: "Medication theft",
+      async run(id) {
+        const accepted = [];
+        const tries = {
+          "changed destination": async (w, m) => {
+            const c = structuredClone(m);
+            if (!walk(c, o => { if (o.destination === "WARD-B") { o.destination = "BASEMENT"; return true; } return false; }) && typeof c.ct === "string") c.ct = flip(c.ct);
+            return c;
+          },
+          "earlier mission replayed inside its time window": async w => {
+            await w.dispatch("TRIP-EARLY", "RX-01", "L1", {destination: "LOADING-DOCK"});
+            const early = await w.pipe.mission("TRIP-EARLY");
+            await w.pipe.acceptMission(rx(w), early);                       // the robot ran that errand a few minutes ago
+            w.tick(300);
+            return early;
+          },
+          "invented mission": async (w, m) => ({trip: "TRIP-FAKE", robot: "RX-01", destination: "BASEMENT", floor: "L1"}),
+          "old mission replayed": async w => { await w.dispatch("TRIP-OLD", "RX-01", "L1", {destination: "LOADING-DOCK"}); const old = await w.pipe.mission("TRIP-OLD"); w.tick(700); return old; },
+          "another robot's mission": async w => { await w.dispatch("TRIP-SUP", "SUP-03", "L1", {destination: "LOADING-DOCK"}); const c = structuredClone(await w.pipe.mission("TRIP-SUP")); if (!c.body) c.robot = "RX-01"; return c; }
+        };
+        for (const [label, make] of Object.entries(tries)) {
+          const w = await fresh(id, {sealedMission: true}), genuine = await w.pipe.mission(TRIP);
+          const r = await w.pipe.acceptMission(rx(w), await make(w, genuine));
+          if (r.accepted && r.destination !== "WARD-B") accepted.push(label + " to " + r.destination);
+        }
+        return {blocked: accepted.length === 0, detail: accepted.length ? "Robot accepted: " + accepted.join("; ") : "Robot refused all 5 false missions"};
+      }},
+    {id: "T26", name: "Compromised fleet manager takes the lift hostage", position: "FLEET", wins: "The lift receives 10 or more calls nobody ordered", scenario: "Heart attack, lift not coming",
+      async run(id) {
+        const w = await fresh(id), stolen = {token: rx(w).x.tickets[TRIP], cap: rx(w).x.caps[TRIP], order: rx(w).x.orders?.[TRIP], cert: rx(w).cert};
+        for (let i = 0; i < 50; i++) {
+          w.tick(1);
+          await w.pipe.direct(w.nodes.fleet, claimsFor(i % 2 ? "RX-01" : "LAB-02", i % 3 ? TRIP : "TRIP-X" + i), {stolen, claimFrom: "RX-01", inside: true});
+        }
+        return {blocked: calls(w) < 10, detail: calls(w) + " lift call(s) from 50 attempts by the fleet manager"};
+      }},
+    {id: "T27", name: "Compromised fleet manager stops relaying", position: "FLEET", wins: "Robots can no longer call the lift", limit: true,
+      async run(id) {
+        const w = await fresh(id);
+        w.pipe.fleet = async () => null;
+        const r = await legit(w, {noRetry: true});
+        return {blocked: r.decision === "allow", detail: r.decision === "allow" ? "Robot still got through" : "Robot deliveries stop. The lift received " + calls(w) + " calls and stays free for staff. Fallback: porter"};
+      }},
+    // Added after the second review.
+    {id: "T28", name: "Flood the lift adapter from the wired path, posing as the relay", position: "PATH", wins: "Fewer than 90% of other robots' legitimate calls are served", limit: true,
+      run: id => flood(id, "spoofed")},
+    {id: "T29", name: "A replaced fleet manager keeps using its old credentials", position: "FLEET", wins: "The lift receives a call",
+      async run(id) {
+        const w = await fresh(id), old = w.nodes.fleet;
+        const stolen = {token: rx(w).x.tickets[TRIP], cap: rx(w).x.caps[TRIP], order: rx(w).x.orders?.[TRIP], cert: rx(w).cert};
+        w.revoke("fleet");
+        await w.rotate("fleet");
+        old.id = "fleet";
+        await w.pipe.direct(old, claimsFor("RX-01", TRIP), {stolen, claimFrom: "RX-01", inside: true});
+        return {blocked: calls(w) === 0, detail: calls(w) + " lift call(s) through the retired fleet manager"};
+      }}
   ];
 
   const LEGIT = [
@@ -410,8 +513,58 @@
           w.arrive("RX-01");
         }
         return {pass: answers.at(-1) === "allow" && calls(w) === 1, detail: "Last answer " + answers.at(-1) + " after " + answers.filter(a => a === "hold").length + " holds, " + calls(w) + " lift call(s)"};
+      }},
+    {id: "L07", name: "Recovery: the fleet manager's credentials are revoked and replaced",
+      async run(id) {
+        const w = await fresh(id);
+        await legit(w);
+        w.revoke("fleet");
+        await w.rotate("fleet");
+        w.tick(20);
+        await w.dispatch("TRIP-3", "RX-01", "L2");
+        w.arrive("RX-01");
+        const r = await w.pipe.call(rx(w), claimsFor("RX-01", "TRIP-3"));
+        return {pass: r.decision === "allow" && calls(w) === 2, detail: (r.decision ?? "no answer") + " after the replacement, " + calls(w) + " lift call(s)"};
+      }},
+    {id: "L08", name: "The robot accepts the hospital's own mission",
+      async run(id) {
+        const w = await fresh(id, {sealedMission: true}), r = await w.pipe.acceptMission(rx(w), await w.pipe.mission(TRIP));
+        return {pass: r.accepted === true && r.destination === "WARD-B", detail: r.accepted ? "Accepted, destination " + r.destination : "Refused: " + r.reason};
+      }},
+    {id: "L09", name: "Three robots call at the same moment, five times over",
+      async run(id) {
+        const w = await fresh(id), robots = ["RX-01", "LAB-02", "SUP-03"];
+        let allowed = 0;
+        for (let round = 0; round < 5; round++) {
+          w.tick(3);
+          for (const robot of robots) { await w.dispatch("TRIP-" + robot + round, robot, "L2"); w.arrive(robot); }
+          const answers = await Promise.all(robots.map(robot => w.pipe.call(w.nodes[robot], claimsFor(robot, "TRIP-" + robot + round))));
+          allowed += answers.filter(a => a.decision === "allow").length;
+        }
+        return {pass: allowed === 15 && calls(w) === 15, detail: allowed + " of 15 simultaneous calls allowed, " + calls(w) + " lift call(s)"};
       }}
   ];
+
+  // Who sees what during one routine delivery. Each vantage point is searched for each kind of information.
+  const FIELDS = [["patient", [MARKER], "Patient marker"], ["order", ["MED-ORDER 4471"], "Medication order"], ["ward", ["WARD-B"], "Destination ward"],
+    ["trip", [TRIP], "Trip"], ["floor", ['"Upper"', '"L2"'], "Floor"], ["robot", ["RX-01"], "Which robot"]];
+  async function exposure(id) {
+    const w = await fresh(id, {sealedMission: true}), relayed = [];
+    const mission = await w.pipe.mission(TRIP);
+    relayed.push(JSON.stringify(mission));                                 // the fleet manager delivers the mission
+    await w.pipe.acceptMission(rx(w), mission);
+    const relay = w.pipe.relay.bind(w.pipe), upstream = w.pipe.upstream?.bind(w.pipe);
+    w.pipe.relay = frame => { relayed.push(frame); return relay(frame); };
+    if (upstream) w.pipe.upstream = text => { relayed.push(text); return upstream(text); };
+    await legit(w);
+    const views = {
+      "Network observer": wire(w) + (id === "A" || id === "B" ? JSON.stringify(mission) : ""),
+      "Fleet manager": relayed.join("\n"),
+      "Lift adapter records": JSON.stringify([w.pipe.log, w.pipe.inbox ?? [], [...w.pipe.cache.keys()]]),
+      "Lift controller": JSON.stringify(w.lift.calls)
+    };
+    return Object.fromEntries(Object.entries(views).map(([who, text]) => [who, Object.fromEntries(FIELDS.map(([key, needles]) => [key, needles.some(n => text.includes(n))]))]));
+  }
 
   // Bytes on the wire and processing time for a routine call.
   async function cost(id, runs = 200) {
@@ -433,7 +586,7 @@
     for (const a of ATTACKS) attacks[a.id] = await a.run(id);
     for (const l of LEGIT) legit[l.id] = await l.run(id);
     const core = ATTACKS.filter(a => !a.limit);
-    return {attacks, legit, cost: o.skipCost ? null : await cost(id, o.costRuns),
+    return {attacks, legit, cost: o.skipCost ? null : await cost(id, o.costRuns), exposure: await exposure(id),
       summary: {blocked: core.filter(a => attacks[a.id].blocked).length, of: core.length,
         limitsBlocked: ATTACKS.filter(a => a.limit && attacks[a.id].blocked).length, limits: ATTACKS.length - core.length,
         legitPassed: LEGIT.filter(l => legit[l.id].pass).length, legitOf: LEGIT.length}};
@@ -448,5 +601,5 @@
     return {eligible, winner: eligible[0] ?? null};
   }
 
-  return {ATTACKS, LEGIT, runPipeline, cost, choose, fresh, observe, setOptions};
+  return {ATTACKS, LEGIT, FIELDS, runPipeline, cost, exposure, choose, fresh, observe, setOptions};
 });

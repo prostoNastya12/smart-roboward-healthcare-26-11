@@ -7,8 +7,8 @@
 </style></head><body><main>
 <!--__HEADER__-->
 <div class="ops-heading">
-  <div><h1>Secure communication pipelines</h1><p class="lede">Seven ways for a robot to ask a hospital lift for a floor, and one extension. The same attacks against each. One is chosen.</p></div>
-  <dl class="ops-counts"><div><dt>Pipelines</dt><dd id="n-pipes">8</dd></div><div><dt>Attacks</dt><dd id="n-attacks">21</dd></div><div><dt>Chosen</dt><dd id="n-chosen">–</dd></div></dl>
+  <div><h1>Secure communication pipelines</h1><p class="lede">Seven ways for a robot to ask a hospital lift for a floor, the same attacks against each, and two stronger designs built on the winner.</p></div>
+  <dl class="ops-counts"><div><dt>Pipelines</dt><dd id="n-pipes">8</dd></div><div><dt>Attacks</dt><dd id="n-attacks">21</dd></div><div><dt>Adopted</dt><dd id="n-chosen">–</dd></div></dl>
 </div>
 <p class="note"><strong>Simulated devices, real cryptography.</strong> Every device, trip and key is fictional and created when the test runs. Signatures, key agreement and encryption are the real algorithms from the browser's standard library. The team wrote the attacks, so this is our own measurement, not an independent audit. A second reviewer attacked an earlier version and its findings are fixed or listed as limits below.</p>
 
@@ -16,7 +16,7 @@
 
 <section class="ops-card" style="margin-top:14px">
   <div class="card-heading"><h2>Every attack against every pipeline</h2><span class="device-ref" id="matrix-source">saved run</span></div>
-  <p class="section-note">A to G are the seven candidates. H extends the chosen one. A tick means the attack had no effect. A cross means the design has no defence against it, or its defence failed. Select a cell to see what happened and to run it again in this browser.</p>
+  <p class="section-note">A to G are the seven candidates. H and I were built on the winner afterwards. A tick means the attack had no effect. A cross means the design has no defence against it, or its defence failed. Select a cell to see what happened and to run it again in this browser.</p>
   <div class="tablewrap"><table class="data matrix" id="matrix"><thead></thead><tbody></tbody><tfoot></tfoot></table></div>
   <div class="matrix-actions"><button type="button" id="rerun">Run all attacks again in this browser</button><output id="rerun-status" aria-live="polite"></output></div>
 </section>
@@ -34,11 +34,17 @@
   </div>
 </section>
 
+<section class="ops-card" style="margin-top:14px">
+  <div class="card-heading"><h2>Who sees what during one delivery</h2><label class="see-pick">Pipeline <select id="see-pipe"></select></label></div>
+  <p class="section-note">Measured by searching what each party handled during a routine delivery. The sender's software attaches a medication order and a private marker, as careless software does. The mission the fleet manager delivers to the robot is included.</p>
+  <div class="tablewrap"><table class="data see" id="see"><thead></thead><tbody></tbody></table></div>
+</section>
+
 <div class="section-title"><h2>The pipelines</h2><span class="device-ref">source · idea · what it needs</span></div>
 <div class="card-grid pipes" id="pipes"></div>
 
 <section class="ops-card" style="margin-top:14px">
-  <div class="card-heading"><h2>What each layer of the chosen pipeline is for</h2><span class="device-ref">G</span></div>
+  <div class="card-heading"><h2>What each layer of the adopted pipeline is for</h2><span class="device-ref">I = G + H + three more</span></div>
   <div class="tablewrap"><table class="data"><thead><tr><th>Layer</th><th>Stops</th><th>Taken from</th></tr></thead><tbody>
     <tr><th>Encrypted, mutually authenticated hops with fresh keys</th><td>Eavesdropping, tampering, replay, impersonating the adapter, later decryption with stolen keys</td><td>E</td></tr>
     <tr><th>Trip grant bound to the robot's key</th><td>A compromised fleet manager, another robot, a stolen grant, a wrong floor, a call with no delivery behind it</td><td>F, our proposal</td></tr>
@@ -46,7 +52,11 @@
     <tr><th>Circuit breaker per authenticated robot</th><td>One flooding device starving the others</td><td>Teammate's gate, M4</td></tr>
     <tr><th>Lift admission: floor mapping, patient priority, fresh status</th><td>Acting on stale or ambiguous information</td><td>Ward safety controller</td></tr>
     <tr><th>Presence reading from a lobby sensor</th><td>A valid robot calling the lift when it is not there</td><td>New</td></tr>
-    <tr><th>Hash-chained log, each entry signed by the adapter</th><td>Rewriting the record afterwards</td><td>Extends the teammate's audit chain</td></tr>
+    <tr><th>Hash-chained log, each entry signed by the adapter, head held by an outside witness</th><td>Rewriting or cutting the record afterwards</td><td>Extends the teammate's audit chain</td></tr>
+    <tr><th>Second signature from the clinical order system</th><td>A compromised dispatcher issuing a grant nobody ordered</td><td>H</td></tr>
+    <tr><th>Robot and lift adapter share their own encrypted session through the fleet manager</th><td>A compromised fleet manager reading or changing calls</td><td>I</td></tr>
+    <tr><th>Missions signed by the dispatcher, checked by the robot before it moves</th><td>A compromised fleet manager sending a robot somewhere else</td><td>I</td></tr>
+    <tr><th>Breaker at the adapter, and a firewall rule that only the relay reaches it (modelled)</th><td>A flood aimed straight at the adapter</td><td>I</td></tr>
   </tbody></table></div>
 </section>
 

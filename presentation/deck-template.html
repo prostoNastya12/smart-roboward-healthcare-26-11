@@ -70,9 +70,9 @@
 
   <section class="slide">
     <div class="kicker">Our method</div>
-    <h2>We attacked seven designs the same way</h2>
+    <h2>We attacked every design the same way</h2>
     <div class="row">
-      <div class="card"><h3>{{PIPELINES}} pipelines</h3><p>From an open network to our layered design, all running code.</p></div>
+      <div class="card"><h3>{{PIPELINES}} pipelines</h3><p>{{CANDIDATES}} candidates, then two stronger ones built on the winner.</p></div>
       <div class="card"><h3>{{ATTACKS}} attacks</h3><p>Outsider, insider, hacked robot, hacked supplier, stolen keys.</p></div>
       <div class="card"><h3>One rule</h3><p>Fixed before the first run. Most attacks blocked wins.</p></div>
     </div>
@@ -80,7 +80,7 @@
 
   <section class="slide" style="padding:72px 120px; gap:36px">
     <div class="kicker">Attacks blocked, of {{OF}}</div>
-    <h2>Layering beats every single defence</h2>
+    <h2>Trust nothing in the middle</h2>
     {{BARS}}
   </section>
 
@@ -90,8 +90,8 @@
   </section>
 
   <section class="slide">
-    <div class="kicker">The chosen pipeline</div>
-    <h2>Checked at every step before the lift moves</h2>
+    <div class="kicker">The adopted pipeline</div>
+    <h2>The fleet manager carries it and cannot read it</h2>
     {{FLOW}}
   </section>
 
@@ -99,11 +99,11 @@
     <div class="kicker">Measured on simulated devices</div>
     <h2>What the tests show</h2>
     <div class="cols">
-      <div class="stat"><div class="num">{{WIN_BLOCKED}}/{{OF}}</div><div class="label"><b>attacks blocked</b><br>next best design: {{NEXT_BLOCKED}} of {{OF}}</div></div>
-      <div class="stat"><div class="num">{{FLOOD}}%</div><div class="label"><b>lift calls served during a flood</b><br>every other design: {{FLOOD_OTHERS}}%</div></div>
+      <div class="stat"><div class="num">{{WIN_BLOCKED}}/{{OF}}</div><div class="label"><b>attacks blocked</b><br>best single defence: {{NEXT_BLOCKED}} of {{OF}}</div></div>
+      <div class="stat"><div class="num">{{FLOOD}}%</div><div class="label"><b>lift calls served during a flood</b><br>designs without a breaker: {{FLOOD_OTHERS}}%</div></div>
       <div class="stat"><div class="num">{{LEGIT}}/{{LEGIT_OF}}</div><div class="label"><b>normal operations still work</b><br>retry, handover, key change</div></div>
     </div>
-    <p class="tag">Real cryptography, fictional devices. We wrote the attacks ourselves. {{LIMITS}} attacks still get through, and we show them.</p>
+    <p class="tag">Real cryptography, fictional devices. We wrote the attacks, and a second reviewer attacked our code. {{LIMITS}} attacks still get through, and we show them.</p>
   </section>
 
   <section class="slide">

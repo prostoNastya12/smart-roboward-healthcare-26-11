@@ -41,6 +41,25 @@ test("the chosen pipeline meets the plan's acceptance bar and still loses the tw
   for (const limit of A.ATTACKS.filter(a => a.limit)) assert.equal(g.attacks[limit.id].blocked, false, limit.id);
 });
 
+test("the adopted pipeline is the zero-trust relay: every attack blocked, and exactly the stated limits remain", () => {
+  assert.equal(saved.decision.adopted, "I");
+  const i = saved.results.I;
+  assert.equal(i.summary.blocked, i.summary.of);
+  assert.equal(i.summary.legitPassed, i.summary.legitOf);
+  assert.deepEqual(A.ATTACKS.filter(a => !i.attacks[a.id].blocked).map(a => a.id), ["T21", "T27", "T28"]);
+  for (const a of A.ATTACKS) if (saved.results.H.attacks[a.id].blocked) assert.equal(i.attacks[a.id].blocked, true, a.id);
+  // The two scenarios from the team's pitch.
+  assert.equal(i.attacks.T25.blocked, true); assert.equal(saved.results.G.attacks.T25.blocked, false);
+  assert.equal(i.attacks.T26.blocked, true); assert.equal(saved.results.E.attacks.T26.blocked, false);
+});
+
+test("in the adopted pipeline nobody in the middle sees the patient, the order, the ward, the trip or the floor", () => {
+  const view = saved.results.I.exposure;
+  for (const who of ["Network observer", "Fleet manager"]) for (const field of ["patient", "order", "ward", "trip", "floor"]) assert.equal(view[who][field], false, who + " " + field);
+  for (const who of Object.keys(view)) for (const field of ["patient", "order", "ward"]) assert.equal(view[who][field], false, who + " " + field);
+  assert.equal(saved.results.A.exposure["Network observer"].patient, true);
+});
+
 test("the dual-control extension closes the dispatcher limit without losing anything the chosen pipeline had", () => {
   const g = saved.results.G, h = saved.results.H;
   assert.equal(h.attacks.T20.blocked, true);

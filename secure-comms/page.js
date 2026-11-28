@@ -8,20 +8,21 @@
   const cases = [...SecureAttacks.ATTACKS.map(a => ({...a, kind: "attack"})), ...SecureAttacks.LEGIT.map(l => ({...l, kind: "legit"}))];
   const positions = {OUT: "outside the network", PATH: "on the network path", DEV: "a compromised robot", FLEET: "the compromised fleet manager",
     LEAK: "keys stolen later", LOG: "write access to the log", NONE: "a careless sender", DISPATCHER: "the compromised dispatcher"};
-  let results = saved.results, chosen = saved.decision.winner, selected = null;
+  // `chosen` is the design the platform uses: the strongest overall. `ruleWinner` is the winner among the seven original candidates.
+  let results = saved.results, chosen = saved.decision.adopted, selected = null;
+  const ruleWinner = saved.decision.winner;
   const outcome = (id, c) => c.kind === "attack" ? results[id].attacks[c.id] : results[id].legit[c.id];
   const good = (c, r) => c.kind === "attack" ? r.blocked : r.pass;
 
   function renderDecision() {
-    const s = results[chosen].summary, runner = saved.decision.eligible[1], out = ids.filter(id => !saved.decision.eligible.includes(id) && !saved.pipelines[id].extension);
-    const extension = ids.find(id => saved.pipelines[id].extension);
+    const s = results[chosen].summary, w = results[ruleWinner].summary, runner = saved.decision.eligible[1];
     $("n-chosen").textContent = chosen; $("n-pipes").textContent = ids.length;
     $("decision").replaceChildren(el("div", chosen, "big"),
-      el("h2", "Chosen: " + saved.pipelines[chosen].name + ". It blocked " + s.blocked + " of " + s.of + " attacks and passed " + s.legitPassed + " of " + s.legitOf + " legitimate cases."),
-      el("p", "The rule was fixed before the first run. A pipeline that fails a legitimate case is out" + (out.length ? " (" + out.join(" and ") + ")" : "") +
-        ". Among the rest, the most attacks blocked wins. Next best: " + runner + " with " + results[runner].summary.blocked + " of " + results[runner].summary.of +
-        ". The price of " + chosen + " is " + SecureInfo[chosen].needs.length + " things to obtain from suppliers and " + results[chosen].cost.bytesPerCall + " bytes per lift call." +
-        (extension ? " Pipeline " + extension + " is " + chosen + " plus a second signature from the clinical order system. We added it after the first results to close one known limit. It is reported, not a candidate." : "")));
+      el("h2", "Adopted: " + saved.pipelines[chosen].name + ". It blocked " + s.blocked + " of " + s.of + " attacks, " + s.limitsBlocked + " of " + s.limits + " known limits, and passed " + s.legitPassed + " of " + s.legitOf + " legitimate cases."),
+      el("p", "A to G are the seven candidates we compared under a rule fixed before the first run: fail a legitimate case and you are out, then most attacks blocked wins. " +
+        ruleWinner + " won with " + w.blocked + " of " + w.of + ". Next best: " + runner + " with " + results[runner].summary.blocked + ". " +
+        "We then built H and " + chosen + " on top of " + ruleWinner + " to close what it left open, and adopted the strongest. " + chosen + " treats the fleet manager as a relay that is trusted with nothing. " +
+        "Its price is " + saved.results[chosen].cost.bytesPerCall.toLocaleString("en") + " bytes per lift call and the longest list of supplier requirements."));
   }
   function renderMatrix() {
     const head = $("matrix").tHead, body = $("matrix").tBodies[0], foot = $("matrix").tFoot;
@@ -33,6 +34,7 @@
     const row = c => {
       const tr = el("tr", null, c.limit ? "limit" : ""), th = el("th"); th.scope = "row";
       th.append(el("b", c.id), document.createTextNode(c.name));
+      if (c.scenario) th.append(el("i", "Pitch scenario: " + c.scenario));
       if (c.position) th.append(el("small", "Attacker: " + positions[c.position]));
       tr.append(th);
       ids.forEach(id => {
@@ -46,18 +48,19 @@
       return tr;
     };
     rows.push(group("Attacks"), ...cases.filter(c => c.kind === "attack" && !c.limit).map(row));
-    rows.push(group("Known limits, expected to get through"), ...cases.filter(c => c.limit).map(row));
+    rows.push(group("Known limits of the seven candidates"), ...cases.filter(c => c.limit).map(row));
     rows.push(group("Legitimate work that must still succeed"), ...cases.filter(c => c.kind === "legit").map(row));
     body.replaceChildren(...rows);
     const total = (label, value, cls) => { const tr = el("tr", null, cls); const th = el("th", label); th.scope = "row"; tr.append(th);
       ids.forEach(id => tr.append(el("td", value(id), id === chosen ? "chosen" : ""))); return tr; };
     foot.replaceChildren(
       total("Attacks blocked", id => results[id].summary.blocked + " / " + results[id].summary.of),
+      total("Known limits closed", id => results[id].summary.limitsBlocked + " / " + results[id].summary.limits),
       total("Legitimate cases passed", id => results[id].summary.legitPassed + " / " + results[id].summary.legitOf),
       total("Bytes per lift call, both hops", id => saved.results[id].cost.bytesPerCall.toLocaleString("en"), "plain"),
       total("Extra bytes to open a connection", id => saved.results[id].cost.setupBytes.toLocaleString("en"), "plain"),
       total("Processing per call, saved run", id => saved.results[id].cost.msPerCall + " ms", "plain"),
-      total("Things to obtain from suppliers", id => String(SecureInfo[id].needs.length), "plain"));
+      total("Supplier requirements, counted", id => String(SecureInfo[id].vendorNeeds), "plain"));
   }
   function renderPipes() {
     $("pipes").replaceChildren(...ids.map(id => {
@@ -145,7 +148,23 @@
     $("rerun").disabled = false;
   });
 
+  // ---- who sees what ----
+  function renderExposure() {
+    const id = $("see-pipe").value, view = saved.results[id].exposure, table = $("see");
+    const head = el("tr"); head.append(el("th", "Who"));
+    saved.fields.forEach(f => { const th = el("th", f.label); th.scope = "col"; head.append(th); });
+    table.tHead.replaceChildren(head);
+    table.tBodies[0].replaceChildren(...Object.entries(view).map(([who, sees]) => {
+      const tr = el("tr"), th = el("th", who); th.scope = "row"; tr.append(th);
+      saved.fields.forEach(f => tr.append(el("td", sees[f.key] ? "sees it" : "–", sees[f.key] ? "sees" : "blind")));
+      return tr;
+    }));
+  }
+  ids.forEach(id => { const o = el("option", id + " · " + saved.pipelines[id].name); o.value = id; $("see-pipe").append(o); });
+  $("see-pipe").value = chosen;
+  $("see-pipe").addEventListener("change", renderExposure);
+
   $("n-attacks").textContent = SecureAttacks.ATTACKS.length;
-  renderDecision(); renderMatrix(); renderPipes(); renderLimits();
-  pick(chosen, "T07", false);
+  renderDecision(); renderMatrix(); renderPipes(); renderLimits(); renderExposure();
+  pick(chosen, "T25", false);
 })();

@@ -254,17 +254,19 @@
     render();
   }
   byId("forge").addEventListener("click", forge);
-  // The same lift call, sent for real through the chosen secure pipeline (secure-comms, pipeline G):
-  // encrypted hops, a signed trip grant bound to RX-01's key, and the same admission function this simulation uses.
+  // The same lift call, sent for real through the adopted secure pipeline (secure-comms, pipeline I, the zero-trust relay):
+  // a session between robot and lift adapter that the fleet manager cannot read, a signed mission, a signed trip grant bound
+  // to RX-01's key and countersigned by the order system, and the same admission function this simulation uses.
   let wire = null, wireRun = 0;
   async function wireCheck(round) {
     const run = ++wireRun;
     wire = null;
     text("wire-channel", "Checking…"); text("wire-grant", "Checking…"); text("wire-decision", "Checking…");
     try {
-      const w = await SecureComms.makeWorld("G");
+      const w = await SecureComms.makeWorld("I");
       await w.dispatch("TRIP-WB", "RX-01", "L2");
       w.arrive("RX-01");
+      const mission = await w.pipe.acceptMission(w.nodes["RX-01"], await w.pipe.mission("TRIP-WB"));
       if (round === "priority") w.site.priority = true;
       if (round === "roam") { w.feedBlocked = true; w.site.seenAt = null; }
       const claims = SecureComms.claimsFor("RX-01", "TRIP-WB", round === "forbidden" ? "Ground" : "Upper");
@@ -274,8 +276,8 @@
       const frames = w.net.captured, sealed = frames.filter(f => f.frame.includes('"t":"rec"')).length;
       const readable = frames.some(f => f.frame.includes("TRIP-WB") || f.frame.includes('"rawFloor"'));
       wire = {decision: reply.decision, reason: reply.reason, calls: w.lift.calls.length};
-      text("wire-channel", readable ? "Readable on the network" : "Encrypted · " + sealed + " sealed records · both ends proved");
-      text("wire-grant", "Signed by dispatch · bound to RX-01's key");
+      text("wire-channel", readable ? "Readable on the network" : "Encrypted robot to lift · " + sealed + " sealed records · relay cannot read");
+      text("wire-grant", (mission.accepted ? "Mission and grant signed by dispatch" : "Mission refused") + " · order system countersigned · bound to RX-01's key");
     } catch (error) {
       if (run !== wireRun) return;
       wire = {error: true};

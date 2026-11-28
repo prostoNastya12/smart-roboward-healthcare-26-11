@@ -103,6 +103,50 @@ test("a call with a non-numeric time or an unexpected envelope field is refused"
   }
 });
 
+test("the log survives an adapter key change, and a history rebuilt with the adapter's own key is caught by the witness", async () => {
+  const w = await makeWorld("I");
+  const deliver = async trip => { await w.dispatch(trip, "RX-01", "L2"); w.tick(3); w.arrive("RX-01"); return w.pipe.call(w.nodes["RX-01"], claimsFor("RX-01", trip)); };
+  await deliver("TRIP-1");
+  await w.pipe.call(w.nodes["RX-01"], claimsFor("RX-01", "TRIP-NONE"));
+  await w.rotate("adapter");
+  assert.equal((await deliver("TRIP-2")).decision, "allow");
+  assert.equal(await w.pipe.verifyAudit(), true);
+  // An attacker holding the adapter's key drops the refusal and re-signs everything after it.
+  const kept = w.pipe.chain.filter(e => e.event !== "deny"), me = w.nodes.adapter;
+  let prev = "genesis";
+  for (const [i, e] of kept.entries()) {
+    e.seq = i; e.prev = prev; e.key = me.key.pub;
+    e.hash = prev = await tools.sha256hex(e.prev + JSON.stringify([e.seq, e.ts, e.event, e.detail]));
+    e.sig = await tools.sign(me.key.priv, e.hash);
+    w.witness.accept(e);                                                   // the witness refuses: it already holds a different history
+  }
+  w.pipe.chain.splice(0, w.pipe.chain.length, ...kept);
+  assert.equal(await w.pipe.verifyAudit(), false);
+});
+
+test("a sealed mission opens once, only for its robot, and only in order", async () => {
+  const w = await makeWorld("I"), rx = w.nodes["RX-01"], sup = w.nodes["SUP-03"];
+  await w.dispatch("TRIP-1", "RX-01", "L2"); await w.dispatch("TRIP-2", "RX-01", "L2");
+  const first = await w.pipe.mission("TRIP-1"), second = await w.pipe.mission("TRIP-2");
+  assert.ok(!JSON.stringify(first).includes("WARD-B") && !JSON.stringify(first).includes("TRIP-1"));
+  assert.equal((await w.pipe.acceptMission(sup, first)).accepted, false);
+  assert.equal((await w.pipe.acceptMission(rx, second)).accepted, true);
+  assert.match((await w.pipe.acceptMission(rx, second)).reason, /already opened/);
+  assert.match((await w.pipe.acceptMission(rx, first)).reason, /older than the last one/);
+});
+
+test("in the zero-trust relay, answers have one size and the relay's labels cannot isolate a robot", async () => {
+  const w = await makeWorld("I"), rx = w.nodes["RX-01"], upstream = w.pipe.upstream.bind(w.pipe), sizes = new Set();
+  w.pipe.upstream = async text => { const out = await upstream(text.replace('{"tunnel"', '{"onBehalfOf":"LAB-02","tunnel"')); if (out && out.includes('\\"t\\":\\"rec')) sizes.add(out.length); return out; };
+  await w.dispatch("TRIP-1", "RX-01", "L2"); w.arrive("RX-01");
+  assert.equal((await w.pipe.call(rx, claimsFor("RX-01", "TRIP-1"))).decision, "allow");
+  for (let i = 0; i < 5; i++) { w.tick(1); assert.equal((await w.pipe.call(rx, claimsFor("RX-01", "TRIP-NONE" + i))).decision, "deny"); }
+  assert.equal(w.pipe.adapterIsolated("RX-01"), true);                       // five refusals of its own doing do isolate it
+  assert.equal((await w.pipe.call(rx, claimsFor("RX-01", "TRIP-NONE9"))).decision, null);
+  assert.equal(w.pipe.adapterIsolated("LAB-02"), false);
+  assert.ok(sizes.size <= 1, [...sizes].join(","));
+});
+
 test("a signed answer is refused when it is old or belongs to another request", async () => {
   const w = await makeWorld("F");
   const reply = await tools.signedReply(w.nodes.adapter, w, "req-1", "allow", "ok");

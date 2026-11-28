@@ -70,18 +70,18 @@
 
   <section class="slide">
     <div class="kicker">Our method</div>
-    <h2>We attacked seven designs the same way</h2>
+    <h2>We attacked every design the same way</h2>
     <div class="row">
-      <div class="card"><h3>7 pipelines</h3><p>From an open network to our layered design, all running code.</p></div>
-      <div class="card"><h3>24 attacks</h3><p>Outsider, insider, hacked robot, hacked supplier, stolen keys.</p></div>
+      <div class="card"><h3>9 pipelines</h3><p>7 candidates, then two stronger ones built on the winner.</p></div>
+      <div class="card"><h3>29 attacks</h3><p>Outsider, insider, hacked robot, hacked supplier, stolen keys.</p></div>
       <div class="card"><h3>One rule</h3><p>Fixed before the first run. Most attacks blocked wins.</p></div>
     </div>
   </section>
 
   <section class="slide" style="padding:72px 120px; gap:36px">
-    <div class="kicker">Attacks blocked, of 20</div>
-    <h2>Layering beats every single defence</h2>
-    <svg class="bars" viewBox="0 0 1680 542" role="img" aria-label="Attacks blocked by each pipeline"><g class=""><text x="0" y="48">A · Open network</text><rect x="620" y="8" width="46.5" height="56" rx="10" fill="#4d6b60"/><text class="val" x="684.5" y="50">1</text></g><g class=""><text x="0" y="124">B · Network admission only</text><rect x="620" y="84" width="139.5" height="56" rx="10" fill="#4d6b60"/><text class="val" x="777.5" y="126">3</text></g><g class=""><text x="0" y="200">C · Signed single-use tickets</text><rect x="620" y="160" width="325.5" height="56" rx="10" fill="#4d6b60"/><text class="val" x="963.5" y="202">7</text></g><g class=""><text x="0" y="276">D · Per-device signed messages</text><rect x="620" y="236" width="511.5" height="56" rx="10" fill="#4d6b60"/><text class="val" x="1149.5" y="278">11</text></g><g class=""><text x="0" y="352">E · Encrypted channel</text><rect x="620" y="312" width="511.5" height="56" rx="10" fill="#4d6b60"/><text class="val" x="1149.5" y="354">11</text></g><g class=""><text x="0" y="428">F · Trip capability with proof of possession</text><rect x="620" y="388" width="604.5" height="56" rx="10" fill="#4d6b60"/><text class="val" x="1242.5" y="430">13</text></g><g class="hot"><text x="0" y="504">G · Layered pipeline</text><rect x="620" y="464" width="930" height="56" rx="10" fill="#c1de94"/><text class="val" x="1568" y="506">20</text></g></svg>
+    <div class="kicker">Attacks blocked, of 23</div>
+    <h2>Trust nothing in the middle</h2>
+    <svg class="bars" viewBox="0 0 1680 568" role="img" aria-label="Attacks blocked by each pipeline"><g class=""><text x="0" y="42">A · Open network</text><rect x="620" y="8" width="40.43478260869565" height="46" rx="10" fill="#4d6b60"/><text class="val" x="678.4347826086956" y="44">1</text></g><g class=""><text x="0" y="104">B · Network admission only</text><rect x="620" y="70" width="121.30434782608694" height="46" rx="10" fill="#4d6b60"/><text class="val" x="759.304347826087" y="106">3</text></g><g class=""><text x="0" y="166">C · Signed single-use tickets</text><rect x="620" y="132" width="323.4782608695652" height="46" rx="10" fill="#4d6b60"/><text class="val" x="961.4782608695652" y="168">8</text></g><g class=""><text x="0" y="228">D · Per-device signed messages</text><rect x="620" y="194" width="525.6521739130434" height="46" rx="10" fill="#4d6b60"/><text class="val" x="1163.6521739130435" y="230">13</text></g><g class=""><text x="0" y="290">E · Encrypted channel</text><rect x="620" y="256" width="485.21739130434776" height="46" rx="10" fill="#4d6b60"/><text class="val" x="1123.2173913043478" y="292">12</text></g><g class=""><text x="0" y="352">F · Trip capability with proof of possession</text><rect x="620" y="318" width="606.5217391304348" height="46" rx="10" fill="#4d6b60"/><text class="val" x="1244.5217391304348" y="354">15</text></g><g class=""><text x="0" y="414">G · Layered pipeline</text><rect x="620" y="380" width="889.5652173913043" height="46" rx="10" fill="#4d6b60"/><text class="val" x="1527.5652173913043" y="416">22</text></g><g class=""><text x="0" y="476">H · Layered + dual control</text><rect x="620" y="442" width="889.5652173913043" height="46" rx="10" fill="#4d6b60"/><text class="val" x="1527.5652173913043" y="478">22</text></g><g class="hot"><text x="0" y="538">I · Zero-trust relay</text><rect x="620" y="504" width="929.9999999999999" height="46" rx="10" fill="#c1de94"/><text class="val" x="1568" y="540">23</text></g></svg>
   </section>
 
   <section class="slide" style="padding:56px 120px; gap:28px">
@@ -90,20 +90,20 @@
   </section>
 
   <section class="slide">
-    <div class="kicker">The chosen pipeline</div>
-    <h2>Checked at every step before the lift moves</h2>
-    <svg class="flow" viewBox="0 0 1680 420" role="img" aria-label="A lift call passes two encrypted hops, the fleet manager and the lift adapter"><g class="hot"><rect x="0" y="120" width="300" height="180" rx="20" fill="#c1de94" stroke="#c1de94" stroke-width="2"/><text x="150" y="200" text-anchor="middle">Robot</text><text class="sub" x="150" y="244" text-anchor="middle">signs each call</text></g><path d="M306 210 H335" stroke="#b4c8ba" stroke-width="3"/><g class=""><rect x="345" y="120" width="300" height="180" rx="20" fill="#153a32" stroke="#2c5247" stroke-width="2"/><text x="495" y="200" text-anchor="middle">Encrypted hop</text><text class="sub" x="495" y="244" text-anchor="middle">fresh keys</text></g><path d="M651 210 H680" stroke="#b4c8ba" stroke-width="3"/><g class="hot"><rect x="690" y="120" width="300" height="180" rx="20" fill="#c1de94" stroke="#c1de94" stroke-width="2"/><text x="840" y="200" text-anchor="middle">Fleet manager</text><text class="sub" x="840" y="244" text-anchor="middle">breaker per robot</text></g><path d="M996 210 H1025" stroke="#b4c8ba" stroke-width="3"/><g class=""><rect x="1035" y="120" width="300" height="180" rx="20" fill="#153a32" stroke="#2c5247" stroke-width="2"/><text x="1185" y="200" text-anchor="middle">Encrypted hop</text><text class="sub" x="1185" y="244" text-anchor="middle">fresh keys</text></g><path d="M1341 210 H1370" stroke="#b4c8ba" stroke-width="3"/><g class="hot"><rect x="1380" y="120" width="300" height="180" rx="20" fill="#c1de94" stroke="#c1de94" stroke-width="2"/><text x="1530" y="200" text-anchor="middle">Lift adapter</text><text class="sub" x="1530" y="244" text-anchor="middle">grant · status · sensor</text></g><text class="sub" x="840" y="60" text-anchor="middle">The dispatcher signs one grant per trip: this robot, this lift, this floor, ten minutes</text><text class="sub" x="840" y="370" text-anchor="middle">Every decision goes into a signed log. Only the fields a lift needs leave the robot.</text></svg>
+    <div class="kicker">The adopted pipeline</div>
+    <h2>The fleet manager carries it and cannot read it</h2>
+    <svg class="flow" viewBox="0 0 1680 420" role="img" aria-label="A lift call travels in a sealed tunnel from robot to lift adapter through the fleet manager"><g class="hot"><rect x="0" y="120" width="300" height="180" rx="20" fill="#c1de94" stroke="#c1de94" stroke-width="2"/><text x="150" y="200" text-anchor="middle">Robot</text><text class="sub" x="150" y="244" text-anchor="middle">checks mission, signs call</text></g><path d="M306 210 H335" stroke="#b4c8ba" stroke-width="3"/><g class=""><rect x="345" y="120" width="300" height="180" rx="20" fill="#153a32" stroke="#2c5247" stroke-width="2"/><text x="495" y="200" text-anchor="middle">Sealed tunnel</text><text class="sub" x="495" y="244" text-anchor="middle">robot to lift</text></g><path d="M651 210 H680" stroke="#b4c8ba" stroke-width="3"/><g class="hot"><rect x="690" y="120" width="300" height="180" rx="20" fill="#c1de94" stroke="#c1de94" stroke-width="2"/><text x="840" y="200" text-anchor="middle">Fleet manager</text><text class="sub" x="840" y="244" text-anchor="middle">relays, reads nothing</text></g><path d="M996 210 H1025" stroke="#b4c8ba" stroke-width="3"/><g class=""><rect x="1035" y="120" width="300" height="180" rx="20" fill="#153a32" stroke="#2c5247" stroke-width="2"/><text x="1185" y="200" text-anchor="middle">Sealed tunnel</text><text class="sub" x="1185" y="244" text-anchor="middle">robot to lift</text></g><path d="M1341 210 H1370" stroke="#b4c8ba" stroke-width="3"/><g class="hot"><rect x="1380" y="120" width="300" height="180" rx="20" fill="#c1de94" stroke="#c1de94" stroke-width="2"/><text x="1530" y="200" text-anchor="middle">Lift adapter</text><text class="sub" x="1530" y="244" text-anchor="middle">grant · order · status</text></g><text class="sub" x="840" y="60" text-anchor="middle">Dispatch signs one mission and one grant per trip. The clinical order system countersigns.</text><text class="sub" x="840" y="370" text-anchor="middle">Every decision goes into a signed log. Only the fields a lift needs leave the robot.</text></svg>
   </section>
 
   <section class="slide">
     <div class="kicker">Measured on simulated devices</div>
     <h2>What the tests show</h2>
     <div class="cols">
-      <div class="stat"><div class="num">20/20</div><div class="label"><b>attacks blocked</b><br>next best design: 13 of 20</div></div>
-      <div class="stat"><div class="num">100%</div><div class="label"><b>lift calls served during a flood</b><br>every other design: 10%</div></div>
-      <div class="stat"><div class="num">6/6</div><div class="label"><b>normal operations still work</b><br>retry, handover, key change</div></div>
+      <div class="stat"><div class="num">23/23</div><div class="label"><b>attacks blocked</b><br>best single defence: 15 of 23</div></div>
+      <div class="stat"><div class="num">100%</div><div class="label"><b>lift calls served during a flood</b><br>designs without a breaker: 10%</div></div>
+      <div class="stat"><div class="num">9/9</div><div class="label"><b>normal operations still work</b><br>retry, handover, key change</div></div>
     </div>
-    <p class="tag">Real cryptography, fictional devices. We wrote the attacks ourselves. 4 attacks still get through, and we show them.</p>
+    <p class="tag">Real cryptography, fictional devices. We wrote the attacks, and a second reviewer attacked our code. 3 attacks still get through, and we show them.</p>
   </section>
 
   <section class="slide">
