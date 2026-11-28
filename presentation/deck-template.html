@@ -46,6 +46,10 @@
   .bars text { font: 600 30px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #b4c8ba; }
   .bars .hot text { fill: #f6fbf3; }
   .bars .val { font-size: 40px; font-variant-numeric: tabular-nums; }
+  .card .score { font-size: 26px; color: var(--accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .card .tagline { font-size: 24px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .card.best { border: 3px solid var(--accent); }
+  .card.best h3 { color: var(--accent); }
   .flow .tiny { font-weight: 400; font-size: 22px; fill: #b4c8ba; }
 </style>
 </head>
@@ -72,21 +76,22 @@
     <div class="kicker">Our method</div>
     <h2>We attacked every design the same way</h2>
     <div class="row">
-      <div class="card"><h3>{{PIPELINES}} pipelines</h3><p>{{CANDIDATES}} candidates, then two stronger ones built on the winner.</p></div>
+      <div class="card"><h3>{{PIPELINES}} approaches</h3><p>Every one we found, from doing nothing to combining everything.</p></div>
       <div class="card"><h3>{{ATTACKS}} attacks</h3><p>Outsider, insider, hacked robot, hacked supplier, stolen keys.</p></div>
       <div class="card"><h3>One rule</h3><p>Fixed before the first run. Most attacks blocked wins.</p></div>
     </div>
   </section>
 
+{{APPROACHES}}
   <section class="slide" style="padding:72px 120px; gap:36px">
     <div class="kicker">Attacks blocked, of {{OF}}</div>
-    <h2>Trust nothing in the middle</h2>
+    <h2>The ranking: number one stops them all</h2>
     {{BARS}}
   </section>
 
   <section class="slide" style="padding:56px 120px; gap:28px">
     <h2>Demo</h2>
-    <div class="media"><video src="media/smart-roboward-demo-v1.mp4" muted playsinline preload="auto" data-autoplay></video></div>
+    <div class="media"><video src="media/smart-roboward-demo-v2.mp4" muted playsinline preload="auto" data-autoplay></video></div>
   </section>
 
   <section class="slide">

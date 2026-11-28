@@ -141,12 +141,42 @@
       }
       results = fresh;
       $("matrix-source").textContent = "run in this browser just now";
-      renderMatrix(); renderPipes();
+      renderMatrix(); renderPipes(); renderLadder();
       $("rerun-status").textContent = differences.length ? "Finished. Different from the saved run: " + differences.join(", ") + "."
         : "Finished. All " + (cases.length * ids.length) + " outcomes match the saved run.";
     } catch (error) { $("rerun-status").textContent = "Could not run here: " + error.message; }
     $("rerun").disabled = false;
   });
+
+  // ---- the nine approaches in plain words, best first ----
+  function renderLadder() {
+    const score = id => results[id].summary.blocked * 100 + results[id].summary.limitsBlocked;
+    const ranked = [...ids].sort((a, b) => score(b) - score(a)), of = results[chosen].summary.of;
+    $("ladder-of").textContent = of;
+    $("ladder").replaceChildren(...ranked.map((id, i) => {
+      const p = SecureInfo[id].plain, s = results[id].summary, li = el("li", null, "rung" + (i === 0 ? " first" : i < 3 ? " podium" : ""));
+      const rank = el("div", null, "rank"); rank.append(el("b", String(i + 1)), el("span", i === 0 ? "Number one" : i < 3 ? "Runner-up" : ""));
+      const body = el("div", null, "rung-body"), head = el("h3");
+      head.append(el("span", id, "letter"), document.createTextNode(p.name));
+      const tag = el("span", id === "C" ? "Teammate's idea" : id === "F" ? "Our idea" : "GHI".includes(id) ? "Combination" : id === "A" ? "Starting point" : "Standard practice", "origin");
+      head.append(tag);
+      const facts = el("dl");
+      facts.append(el("dt", "Stops"), el("dd", p.good), el("dt", "Still open"), el("dd", p.gap));
+      body.append(head, el("p", p.like, "like"), facts);
+      const meter = el("div", null, "meter"), bar = el("div", null, "bar"), fill = el("i");
+      fill.style.width = Math.max(2, 100 * s.blocked / of) + "%";
+      bar.append(fill);
+      meter.append(el("strong", s.blocked + " of " + of), el("span", "attacks stopped"), bar);
+      meter.setAttribute("aria-label", s.blocked + " of " + of + " attacks stopped");
+      li.append(rank, body, meter);
+      return li;
+    }));
+    $("recipe").replaceChildren(...SecureInfo.recipe.map(r => {
+      const li = el("li");
+      li.append(el("b", r.piece), el("span", r.why), el("i", "from " + r.from));
+      return li;
+    }));
+  }
 
   // ---- who sees what ----
   function renderExposure() {
@@ -165,6 +195,6 @@
   $("see-pipe").addEventListener("change", renderExposure);
 
   $("n-attacks").textContent = SecureAttacks.ATTACKS.length;
-  renderDecision(); renderMatrix(); renderPipes(); renderLimits(); renderExposure();
+  renderDecision(); renderLadder(); renderMatrix(); renderPipes(); renderLimits(); renderExposure();
   pick(chosen, "T25", false);
 })();

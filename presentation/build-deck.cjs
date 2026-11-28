@@ -13,7 +13,7 @@ function buildDeck() {
   const rowH = 62, left = 620, width = 1680, scale = (width - left - 130) / of;
   const bars = '<svg class="bars" viewBox="0 0 ' + width + " " + (ids.length * rowH + 10) + '" role="img" aria-label="Attacks blocked by each pipeline">' + ids.map((id, i) => {
     const n = r[id].summary.blocked, y = i * rowH + 8, hot = id === win;
-    return '<g class="' + (hot ? "hot" : "") + '"><text x="0" y="' + (y + 34) + '">' + id + " · " + doc.pipelines[id].name.replace(", mutual authentication", "").replace("Layered pipeline with dual control", "Layered + dual control") + "</text>" +
+    return '<g class="' + (hot ? "hot" : "") + '"><text x="0" y="' + (y + 34) + '">' + id + " · " + require("../secure-comms/info.js")[id].plain.name.replace(", courier cannot open it", "") + "</text>" +
       '<rect x="' + left + '" y="' + y + '" width="' + Math.max(6, n * scale) + '" height="46" rx="10" fill="' + (hot ? "#c1de94" : "#4d6b60") + '"/>' +
       '<text class="val" x="' + (left + Math.max(6, n * scale) + 18) + '" y="' + (y + 36) + '">' + n + "</text></g>";
   }).join("") + "</svg>";
@@ -26,7 +26,14 @@ function buildDeck() {
       '" y="244" text-anchor="middle">' + sub + "</text></g>" + (i < steps.length - 1 ? '<path d="M' + (x + w + 6) + " 210 H" + (x + w + gap - 10) + '" stroke="#b4c8ba" stroke-width="3"/>' : "");
   }).join("") + '<text class="sub" x="840" y="60" text-anchor="middle">Dispatch signs one mission and one grant per trip. The clinical order system countersigns.</text>' +
     '<text class="sub" x="840" y="370" text-anchor="middle">Every decision goes into a signed log. Only the fields a lift needs leave the robot.</text></svg>';
-  const values = {PIPELINES: ids.length, ATTACKS: doc.attacks.length, OF: of, BARS: bars, FLOW: flow, WIN_BLOCKED: r[win].summary.blocked, NEXT_BLOCKED: r[next].summary.blocked,
+  // Three slides that introduce the nine approaches in everyday words, three per slide, weakest group first.
+  const info = require("../secure-comms/info.js");
+  const groups = [["Where hospitals start", "ABC", "Approaches 1 to 3"], ["One defence at a time", "DEF", "Approaches 4 to 6"], ["Combine them: number one", "GHI", "Approaches 7 to 9"]];
+  const approaches = groups.map(([title, letters, kicker]) => '  <section class="slide">\n    <div class="kicker">' + kicker + '</div>\n    <h2>' + title + '</h2>\n    <div class="row">\n' +
+    [...letters].map(id => '      <div class="card' + (id === win ? " best" : "") + '"><div class="tagline">' + (id === win ? "Number one" : id === "C" ? "Teammate's idea" : id === "F" ? "Our idea" : "GH".includes(id) ? "Combination" : id === "A" ? "Starting point" : "Standard practice") +
+      "</div><h3>" + info[id].plain.name + "</h3><p>" + info[id].plain.short + '</p><div class="score">' + r[id].summary.blocked + " of " + of + " attacks stopped</div></div>").join("\n") +
+    "\n    </div>\n  </section>\n").join("\n");
+  const values = {APPROACHES: approaches,PIPELINES: ids.length, ATTACKS: doc.attacks.length, OF: of, BARS: bars, FLOW: flow, WIN_BLOCKED: r[win].summary.blocked, NEXT_BLOCKED: r[next].summary.blocked,
     FLOOD: r[win].attacks.T14.retainedPct, FLOOD_OTHERS: floodOthers.join(" to "), LEGIT: r[win].summary.legitPassed, LEGIT_OF: r[win].summary.legitOf,
     LIMITS: doc.attacks.filter(a => a.limit && !r[win].attacks[a.id].blocked).length + (of - r[win].summary.blocked), CANDIDATES: ids.filter(id => !doc.pipelines[id].extension).length};
   return fs.readFileSync(path.join(__dirname, "deck-template.html"), "utf8").replace(/\{\{([A-Z_]+)\}\}/g, (_, key) => {

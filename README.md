@@ -103,7 +103,7 @@ The control room was written by the team with Claude. It reuses the imported fle
 
 | File | Use |
 | --- | --- |
-| [presentation/demo.html](presentation/demo.html) | Eight slides in one offline file, built from the measured results by `node presentation/build-deck.cjs`. Arrows to move, `f` fullscreen, `p` play or pause, `m` sound, `t` timer |
+| [presentation/demo.html](presentation/demo.html) | Eleven slides in one offline file, built from the measured results by `node presentation/build-deck.cjs`. Arrows to move, `f` fullscreen, `p` play or pause, `m` sound, `t` timer |
 | [presentation/SCRIPT.md](presentation/SCRIPT.md) | Talk track, about four minutes |
 | [presentation/media/smart-roboward-demo-v1.mp4](presentation/media/smart-roboward-demo-v1.mp4) | 76-second narrated fallback video, recorded from the real pages with a locally generated voice |
 | [docs/Zusammenfassung-DE.md](docs/Zusammenfassung-DE.md) | One-page German summary for the jury |

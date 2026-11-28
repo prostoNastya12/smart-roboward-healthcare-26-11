@@ -46,6 +46,10 @@
   .bars text { font: 600 30px system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #b4c8ba; }
   .bars .hot text { fill: #f6fbf3; }
   .bars .val { font-size: 40px; font-variant-numeric: tabular-nums; }
+  .card .score { font-size: 26px; color: var(--accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .card .tagline { font-size: 24px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .card.best { border: 3px solid var(--accent); }
+  .card.best h3 { color: var(--accent); }
   .flow .tiny { font-weight: 400; font-size: 22px; fill: #b4c8ba; }
 </style>
 </head>
@@ -72,21 +76,51 @@
     <div class="kicker">Our method</div>
     <h2>We attacked every design the same way</h2>
     <div class="row">
-      <div class="card"><h3>9 pipelines</h3><p>7 candidates, then two stronger ones built on the winner.</p></div>
+      <div class="card"><h3>9 approaches</h3><p>Every one we found, from doing nothing to combining everything.</p></div>
       <div class="card"><h3>29 attacks</h3><p>Outsider, insider, hacked robot, hacked supplier, stolen keys.</p></div>
       <div class="card"><h3>One rule</h3><p>Fixed before the first run. Most attacks blocked wins.</p></div>
     </div>
   </section>
 
+  <section class="slide">
+    <div class="kicker">Approaches 1 to 3</div>
+    <h2>Where hospitals start</h2>
+    <div class="row">
+      <div class="card"><div class="tagline">Starting point</div><h3>Open network</h3><p>Anyone who reaches the lift can call it.</p><div class="score">1 of 23 attacks stopped</div></div>
+      <div class="card"><div class="tagline">Standard practice</div><h3>Guest list at the entrance</h3><p>Keeps outsiders out. Inside, anything goes.</p><div class="score">3 of 23 attacks stopped</div></div>
+      <div class="card"><div class="tagline">Teammate's idea</div><h3>Single-use tickets</h3><p>Valid once, for one floor. A copied ticket still works.</p><div class="score">8 of 23 attacks stopped</div></div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="kicker">Approaches 4 to 6</div>
+    <h2>One defence at a time</h2>
+    <div class="row">
+      <div class="card"><div class="tagline">Standard practice</div><h3>A badge on every message</h3><p>Proves who is asking. Not whether they may.</p><div class="score">13 of 23 attacks stopped</div></div>
+      <div class="card"><div class="tagline">Standard practice</div><h3>Armoured van between stops</h3><p>Nobody outside can read it. The server in the middle can.</p><div class="score">12 of 23 attacks stopped</div></div>
+      <div class="card"><div class="tagline">Our idea</div><h3>Boarding pass for one trip</h3><p>This robot, this lift, this floor, ten minutes.</p><div class="score">15 of 23 attacks stopped</div></div>
+    </div>
+  </section>
+
+  <section class="slide">
+    <div class="kicker">Approaches 7 to 9</div>
+    <h2>Combine them: number one</h2>
+    <div class="row">
+      <div class="card"><div class="tagline">Combination</div><h3>Van, boarding pass and a guard</h3><p>Encryption, trip grant and a check of the lift itself.</p><div class="score">22 of 23 attacks stopped</div></div>
+      <div class="card"><div class="tagline">Combination</div><h3>Two signatures</h3><p>G, and no single system can order a trip alone.</p><div class="score">22 of 23 attacks stopped</div></div>
+      <div class="card best"><div class="tagline">Number one</div><h3>Sealed envelope, courier cannot open it</h3><p>Everything above. Nothing in the middle is trusted.</p><div class="score">23 of 23 attacks stopped</div></div>
+    </div>
+  </section>
+
   <section class="slide" style="padding:72px 120px; gap:36px">
     <div class="kicker">Attacks blocked, of 23</div>
-    <h2>Trust nothing in the middle</h2>
-    <svg class="bars" viewBox="0 0 1680 568" role="img" aria-label="Attacks blocked by each pipeline"><g class=""><text x="0" y="42">A · Open network</text><rect x="620" y="8" width="40.43478260869565" height="46" rx="10" fill="#4d6b60"/><text class="val" x="678.4347826086956" y="44">1</text></g><g class=""><text x="0" y="104">B · Network admission only</text><rect x="620" y="70" width="121.30434782608694" height="46" rx="10" fill="#4d6b60"/><text class="val" x="759.304347826087" y="106">3</text></g><g class=""><text x="0" y="166">C · Signed single-use tickets</text><rect x="620" y="132" width="323.4782608695652" height="46" rx="10" fill="#4d6b60"/><text class="val" x="961.4782608695652" y="168">8</text></g><g class=""><text x="0" y="228">D · Per-device signed messages</text><rect x="620" y="194" width="525.6521739130434" height="46" rx="10" fill="#4d6b60"/><text class="val" x="1163.6521739130435" y="230">13</text></g><g class=""><text x="0" y="290">E · Encrypted channel</text><rect x="620" y="256" width="485.21739130434776" height="46" rx="10" fill="#4d6b60"/><text class="val" x="1123.2173913043478" y="292">12</text></g><g class=""><text x="0" y="352">F · Trip capability with proof of possession</text><rect x="620" y="318" width="606.5217391304348" height="46" rx="10" fill="#4d6b60"/><text class="val" x="1244.5217391304348" y="354">15</text></g><g class=""><text x="0" y="414">G · Layered pipeline</text><rect x="620" y="380" width="889.5652173913043" height="46" rx="10" fill="#4d6b60"/><text class="val" x="1527.5652173913043" y="416">22</text></g><g class=""><text x="0" y="476">H · Layered + dual control</text><rect x="620" y="442" width="889.5652173913043" height="46" rx="10" fill="#4d6b60"/><text class="val" x="1527.5652173913043" y="478">22</text></g><g class="hot"><text x="0" y="538">I · Zero-trust relay</text><rect x="620" y="504" width="929.9999999999999" height="46" rx="10" fill="#c1de94"/><text class="val" x="1568" y="540">23</text></g></svg>
+    <h2>The ranking: number one stops them all</h2>
+    <svg class="bars" viewBox="0 0 1680 568" role="img" aria-label="Attacks blocked by each pipeline"><g class=""><text x="0" y="42">A · Open network</text><rect x="620" y="8" width="40.43478260869565" height="46" rx="10" fill="#4d6b60"/><text class="val" x="678.4347826086956" y="44">1</text></g><g class=""><text x="0" y="104">B · Guest list at the entrance</text><rect x="620" y="70" width="121.30434782608694" height="46" rx="10" fill="#4d6b60"/><text class="val" x="759.304347826087" y="106">3</text></g><g class=""><text x="0" y="166">C · Single-use tickets</text><rect x="620" y="132" width="323.4782608695652" height="46" rx="10" fill="#4d6b60"/><text class="val" x="961.4782608695652" y="168">8</text></g><g class=""><text x="0" y="228">D · A badge on every message</text><rect x="620" y="194" width="525.6521739130434" height="46" rx="10" fill="#4d6b60"/><text class="val" x="1163.6521739130435" y="230">13</text></g><g class=""><text x="0" y="290">E · Armoured van between stops</text><rect x="620" y="256" width="485.21739130434776" height="46" rx="10" fill="#4d6b60"/><text class="val" x="1123.2173913043478" y="292">12</text></g><g class=""><text x="0" y="352">F · Boarding pass for one trip</text><rect x="620" y="318" width="606.5217391304348" height="46" rx="10" fill="#4d6b60"/><text class="val" x="1244.5217391304348" y="354">15</text></g><g class=""><text x="0" y="414">G · Van, boarding pass and a guard</text><rect x="620" y="380" width="889.5652173913043" height="46" rx="10" fill="#4d6b60"/><text class="val" x="1527.5652173913043" y="416">22</text></g><g class=""><text x="0" y="476">H · Two signatures</text><rect x="620" y="442" width="889.5652173913043" height="46" rx="10" fill="#4d6b60"/><text class="val" x="1527.5652173913043" y="478">22</text></g><g class="hot"><text x="0" y="538">I · Sealed envelope</text><rect x="620" y="504" width="929.9999999999999" height="46" rx="10" fill="#c1de94"/><text class="val" x="1568" y="540">23</text></g></svg>
   </section>
 
   <section class="slide" style="padding:56px 120px; gap:28px">
     <h2>Demo</h2>
-    <div class="media"><video src="media/smart-roboward-demo-v1.mp4" muted playsinline preload="auto" data-autoplay></video></div>
+    <div class="media"><video src="media/smart-roboward-demo-v2.mp4" muted playsinline preload="auto" data-autoplay></video></div>
   </section>
 
   <section class="slide">

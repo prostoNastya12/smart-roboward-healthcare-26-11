@@ -165,6 +165,44 @@ table.data tbody th{font-weight:600}
 code{font-family:var(--mono);font-size:12px}
 @media(max-width:760px){.decision{grid-template-columns:1fr}.decision .big{grid-row:auto}.frames li{grid-template-columns:1fr}.wire-pick select{min-width:0;width:100%}.wire-pick label{flex:1 1 100%}}
 
+.ladder-intro{font-size:15px;color:var(--muted);max-width:80ch;margin:0 0 12px}
+.ladder{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.rung{display:grid;grid-template-columns:92px minmax(0,1fr) 210px;gap:18px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 18px}
+.rung .rank{display:grid;justify-items:center;gap:2px}
+.rung .rank b{font:650 30px/1 Inter,"Segoe UI",sans-serif;letter-spacing:-.04em;color:#8a9a93;font-variant-numeric:tabular-nums}
+.rung .rank span{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:center}
+.rung h3{font-size:18px;letter-spacing:-.03em;display:flex;align-items:baseline;gap:9px;flex-wrap:wrap}
+.rung .letter{font:600 12px var(--mono);background:#dfe7e1;color:var(--ink);border-radius:4px;padding:2px 7px}
+.rung .origin{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:2px 8px}
+.rung .like{font-size:14px;color:var(--ink);margin:3px 0 6px}
+.rung dl{margin:0;display:grid;grid-template-columns:76px minmax(0,1fr);gap:2px 10px;font-size:13px;color:var(--muted)}
+.rung dt{font:600 10px/1.9 var(--mono);text-transform:uppercase;letter-spacing:.05em}
+.rung dd{margin:0}
+.meter{display:grid;gap:3px}
+.meter strong{font:650 22px/1.1 Inter,"Segoe UI",sans-serif;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.meter span{font-size:11px;color:var(--muted)}
+.meter .bar{height:8px;border-radius:99px;background:#e3eae4;overflow:hidden;margin-top:3px}
+.meter .bar i{display:block;height:100%;border-radius:99px;background:#9db3a8}
+.rung.podium{border-color:#b9cfbd}
+.rung.podium .rank b{color:var(--green)}
+.rung.podium .meter .bar i{background:#5c9c7c}
+.rung.first{border:2px solid var(--green);background:#f3faf0;padding:18px 20px}
+.rung.first .rank b{font-size:46px;color:var(--green)}
+.rung.first .rank span{color:var(--green)}
+.rung.first h3{font-size:22px}
+.rung.first .letter{background:var(--green);color:#fff}
+.rung.first .meter strong{font-size:28px;color:var(--green)}
+.rung.first .meter .bar i{background:var(--green)}
+.recipe-card{margin-top:14px}
+.recipe{list-style:none;margin:0;padding:2px 15px 16px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;counter-reset:piece}
+.recipe li{position:relative;display:grid;gap:4px;align-content:start;border:1px solid var(--line);border-radius:8px;background:var(--soft);padding:12px 13px 11px 40px;counter-increment:piece}
+.recipe li:before{content:counter(piece);position:absolute;left:12px;top:12px;width:20px;height:20px;border-radius:50%;background:var(--green);color:#fff;font:600 11px/20px var(--mono);text-align:center}
+.recipe b{font-size:14px;line-height:1.3}
+.recipe span{font-size:12px;color:var(--muted)}
+.recipe i{font:600 10px var(--mono);font-style:normal;text-transform:uppercase;letter-spacing:.05em;color:var(--green)}
+@media(max-width:1000px){.recipe{grid-template-columns:repeat(2,minmax(0,1fr))}.rung{grid-template-columns:64px minmax(0,1fr) 150px;gap:12px}}
+@media(max-width:700px){.rung{grid-template-columns:48px minmax(0,1fr);padding:12px}.rung .meter{grid-column:1/-1}.rung.first .rank b{font-size:34px}.recipe{grid-template-columns:1fr}.rung dl{grid-template-columns:1fr}}
+
 </style></head><body><main>
 <header class="app-head"><a class="brand" href="index.html"><i class="brand-mark" aria-hidden="true"></i>Smart RoboWard</a>
   <nav class="mode" aria-label="Pages"><a href="index.html">Overview</a><a href="Clinic-World.html">Fleet console</a><a href="security-pipelines.html" aria-current="page">Secure pipelines</a><a href="ward-safety.html">Ward safety</a><a href="Smart-RoboWard-replay.html">Lift replay</a><a href="hacker-demo.html">Live hack demo</a><a href="gate-results.html">Gate results</a></nav>
@@ -177,6 +215,16 @@ code{font-family:var(--mono);font-size:12px}
 <p class="note"><strong>Simulated devices, real cryptography.</strong> Every device, trip and key is fictional and created when the test runs. Signatures, key agreement and encryption are the real algorithms from the browser's standard library. The team wrote the attacks, so this is our own measurement, not an independent audit. A second reviewer attacked an earlier version and its findings are fixed or listed as limits below.</p>
 
 <section class="ops-card decision" id="decision"></section>
+
+<div class="section-title"><h2>Nine approaches, ranked</h2><span class="device-ref">best first · attacks stopped out of <span id="ladder-of"></span></span></div>
+<p class="ladder-intro">We tried every approach we could find, from doing nothing to combining everything. Each one was attacked in exactly the same way. Here they are in order, in everyday words.</p>
+<ol class="ladder" id="ladder"></ol>
+
+<section class="ops-card recipe-card">
+  <div class="card-heading"><h2>How number one is built</h2><span class="device-ref">the best parts of the others, combined</span></div>
+  <p class="section-note">No single idea was enough. Number one takes the piece each approach is good at and adds two of its own.</p>
+  <ol class="recipe" id="recipe"></ol>
+</section>
 
 <section class="ops-card" style="margin-top:14px">
   <div class="card-heading"><h2>Every attack against every pipeline</h2><span class="device-ref" id="matrix-source">saved run</span></div>
@@ -2602,7 +2650,7 @@ module.exports = {Gate, makeWorld, issueToken, PATIENT_NAMES, LIMITS};
   else root.SecureInfo = create();
 })(globalThis, function () {
   "use strict";
-  return {
+  const info = {
     A: {source: "Baseline", idea: "Plain messages on the robotics network. The lift adapter accepts any call that names a known trip.",
       needs: [], keys: "None", weakest: "Anyone who can reach the adapter can move the lift.", vendorNeeds: 0},
     B: {source: "Common hospital practice", idea: "Enterprise Wi-Fi admits only enrolled devices. Inside the network, messages are plain. The admission step is modelled.",
@@ -2631,6 +2679,42 @@ module.exports = {Gate, makeWorld, issueToken, PATIENT_NAMES, LIMITS};
       needs: ["Everything H needs", "Robots that check a signed mission before moving", "Lift adapter that ends the robot's encrypted session itself", "Firewall rule: only the relay's address reaches the lift adapter"],
       keys: "As H, plus a second set of fresh session keys per robot", weakest: "A compromised fleet manager can still stop relaying, which pauses robot deliveries, and message timing remains visible. The firewall rule is modelled.", vendorNeeds: 11}
   };
+  // The same nine approaches in everyday words, for the ranked overview on the page and in the slides.
+  // `like` is a picture from daily life, `good` what it stops, `gap` what it leaves open, `short` one line for a slide.
+  const plain = {
+    A: {name: "Open network", group: "Where hospitals start", like: "An unlocked door.", short: "Anyone who reaches the lift can call it.",
+      good: "Nothing. It is the starting point we measure against.", gap: "Anyone who can reach the lift's interface can move the lift."},
+    B: {name: "Guest list at the entrance", group: "Where hospitals start", like: "A guest list at the building entrance. Once you are inside, nobody checks again.", short: "Keeps outsiders out. Inside, anything goes.",
+      good: "Keeps strangers off the robot network.", gap: "One hacked device inside the network can do everything."},
+    C: {name: "Single-use tickets", group: "Where hospitals start", like: "A cinema ticket. Valid once, for one seat. But whoever holds it gets in.", short: "Valid once, for one floor. A copied ticket still works.",
+      good: "Stops replayed calls and calls for the wrong floor.", gap: "A copied ticket works for the thief, and the fleet manager sees every ticket."},
+    D: {name: "A badge on every message", group: "One defence at a time", like: "A staff badge on every message. It proves who you are, not where you may go.", short: "Proves who is asking. Not whether they may.",
+      good: "Nobody can pretend to be another robot or change a message.", gap: "A genuine robot can still ask for any floor, and everything is readable."},
+    E: {name: "Armoured van between stops", group: "One defence at a time", like: "An armoured van between each pair of stops. But the depot in the middle opens every parcel.", short: "Nobody outside can read it. The server in the middle can.",
+      good: "Nobody on the network can read or change anything.", gap: "A hacked fleet server in the middle can invent lift calls and send robots elsewhere."},
+    F: {name: "Boarding pass for one trip", group: "One defence at a time", like: "A boarding pass in your name, for one flight, checked against your ID at the gate.", short: "This robot, this lift, this floor, ten minutes.",
+      good: "Only the right robot gets the right floor, and only for this delivery.", gap: "It travels in the open, and nothing stops a flood."},
+    G: {name: "Van, boarding pass and a guard", group: "Combine them", like: "The armoured van, the boarding pass, and a guard who checks the lift is really free.", short: "Encryption, trip grant and a check of the lift itself.",
+      good: "Almost everything, including floods and acting on old information.", gap: "It still trusts the fleet server to read calls and to hand robots their missions."},
+    H: {name: "Two signatures", group: "Combine them", like: "Everything in G, and two signatures on the cheque.", short: "G, and no single system can order a trip alone.",
+      good: "A hacked dispatcher alone can no longer send a robot anywhere.", gap: "The fleet server in the middle is still trusted."},
+    I: {name: "Sealed envelope, courier cannot open it", group: "Combine them", like: "Everything in H, sent in a sealed envelope. The courier in the middle carries it and cannot open it.", short: "Everything above. Nothing in the middle is trusted.",
+      good: "Every attack in our main list. The fleet server cannot read, reroute or call the lift.", gap: "Message timing is visible, the courier can refuse to deliver, and a flood from the wired network still hurts."}
+  };
+  // What number one is made of, piece by piece, and where each piece comes from.
+  const recipe = [
+    {piece: "Encrypted, proven connections", from: "E", why: "Nobody on the network can read or change a message"},
+    {piece: "A grant for one robot, one floor, ten minutes", from: "F", why: "A genuine robot cannot ask for the wrong floor"},
+    {piece: "Only the fields a lift needs", from: "Teammate's gate", why: "Patient data never reaches the lift side"},
+    {piece: "A breaker for each robot", from: "Teammate's gate", why: "One flooding robot cannot starve the others"},
+    {piece: "A check of the lift itself", from: "Ward safety", why: "Patient transfers first, no decisions on old information"},
+    {piece: "A second signature on every order", from: "H", why: "A hacked dispatcher cannot act alone"},
+    {piece: "A sealed session past the fleet server", from: "I", why: "The server in the middle cannot read or invent calls"},
+    {piece: "Missions the robot checks before it moves", from: "I", why: "A hacked server cannot send the robot to the basement"}
+  ];
+  for (const id of Object.keys(info)) info[id].plain = plain[id];
+  Object.defineProperty(info, "recipe", {value: recipe, enumerable: false});
+  return info;
 });
 
 </script>
@@ -2778,12 +2862,42 @@ module.exports = {Gate, makeWorld, issueToken, PATIENT_NAMES, LIMITS};
       }
       results = fresh;
       $("matrix-source").textContent = "run in this browser just now";
-      renderMatrix(); renderPipes();
+      renderMatrix(); renderPipes(); renderLadder();
       $("rerun-status").textContent = differences.length ? "Finished. Different from the saved run: " + differences.join(", ") + "."
         : "Finished. All " + (cases.length * ids.length) + " outcomes match the saved run.";
     } catch (error) { $("rerun-status").textContent = "Could not run here: " + error.message; }
     $("rerun").disabled = false;
   });
+
+  // ---- the nine approaches in plain words, best first ----
+  function renderLadder() {
+    const score = id => results[id].summary.blocked * 100 + results[id].summary.limitsBlocked;
+    const ranked = [...ids].sort((a, b) => score(b) - score(a)), of = results[chosen].summary.of;
+    $("ladder-of").textContent = of;
+    $("ladder").replaceChildren(...ranked.map((id, i) => {
+      const p = SecureInfo[id].plain, s = results[id].summary, li = el("li", null, "rung" + (i === 0 ? " first" : i < 3 ? " podium" : ""));
+      const rank = el("div", null, "rank"); rank.append(el("b", String(i + 1)), el("span", i === 0 ? "Number one" : i < 3 ? "Runner-up" : ""));
+      const body = el("div", null, "rung-body"), head = el("h3");
+      head.append(el("span", id, "letter"), document.createTextNode(p.name));
+      const tag = el("span", id === "C" ? "Teammate's idea" : id === "F" ? "Our idea" : "GHI".includes(id) ? "Combination" : id === "A" ? "Starting point" : "Standard practice", "origin");
+      head.append(tag);
+      const facts = el("dl");
+      facts.append(el("dt", "Stops"), el("dd", p.good), el("dt", "Still open"), el("dd", p.gap));
+      body.append(head, el("p", p.like, "like"), facts);
+      const meter = el("div", null, "meter"), bar = el("div", null, "bar"), fill = el("i");
+      fill.style.width = Math.max(2, 100 * s.blocked / of) + "%";
+      bar.append(fill);
+      meter.append(el("strong", s.blocked + " of " + of), el("span", "attacks stopped"), bar);
+      meter.setAttribute("aria-label", s.blocked + " of " + of + " attacks stopped");
+      li.append(rank, body, meter);
+      return li;
+    }));
+    $("recipe").replaceChildren(...SecureInfo.recipe.map(r => {
+      const li = el("li");
+      li.append(el("b", r.piece), el("span", r.why), el("i", "from " + r.from));
+      return li;
+    }));
+  }
 
   // ---- who sees what ----
   function renderExposure() {
@@ -2802,7 +2916,7 @@ module.exports = {Gate, makeWorld, issueToken, PATIENT_NAMES, LIMITS};
   $("see-pipe").addEventListener("change", renderExposure);
 
   $("n-attacks").textContent = SecureAttacks.ATTACKS.length;
-  renderDecision(); renderMatrix(); renderPipes(); renderLimits(); renderExposure();
+  renderDecision(); renderLadder(); renderMatrix(); renderPipes(); renderLimits(); renderExposure();
   pick(chosen, "T25", false);
 })();
 
