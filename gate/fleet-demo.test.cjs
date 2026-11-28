@@ -23,10 +23,16 @@ test("the demo is injected into the unchanged fleet console page", () => {
   for (const marker of ["id=\"model-panel\"", "id=\"fleet-worker-source\"", "window.makeFleetScene"]) assert.ok(stripped.includes(marker), marker);
 });
 
-test("the injected scripts add exactly four balanced script blocks", () => {
+test("the injected scripts add exactly five balanced script blocks", () => {
   const count = (s, re) => (s.match(re) || []).length;
   assert.equal(count(page, /<script/gi), count(page, /<\/script/gi));
-  assert.equal(count(page, /<script/gi) - count(consoleHtml, /<script/gi), 4);   // hooks, gate, layer, app
+  assert.equal(count(page, /<script/gi) - count(consoleHtml, /<script/gi), 5);   // hooks, gate, layer, traffic, app
+  assert.ok(page.indexOf("const FleetTraffic") > page.indexOf("const DemoLayer") && page.indexOf("window.RWDemo") > page.indexOf("const FleetTraffic"));
+});
+
+test("this page's embedded fleet controller and map have ten robots; the original console page is unchanged", () => {
+  assert.ok(page.includes('home:"BAY-7"') && page.includes('fleetsize') && page.includes('"BAY-7":{"name":"Parking bay 7"'));
+  assert.ok(!consoleHtml.includes("fleetsize") && !consoleHtml.includes("BAY-1"));
 });
 
 test("the browser copy of the gate answers exactly like the Node gate", () => {

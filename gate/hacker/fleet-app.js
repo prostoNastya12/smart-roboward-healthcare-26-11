@@ -36,6 +36,8 @@
   const AUTHORIZER = {"Ward A": "N1", "Ward B": "N2"};          // who signs an authorization for that ward (a nurse of that ward)
   const HOME = {"RX-01": "PHARMACY", "LAB-02": "COLLECTION", "SUP-03": "STORES"};
   const ROUTINE = {"RX-01": ["WARD-B", "Medication round"], "LAB-02": ["LAB", "Specimen run"], "SUP-03": ["WARD-A", "Supply restock"]};
+  // The extra robots (4 to 10) park in their own bay and patrol their own checkpoint.
+  const homeOf = r => HOME[r.id] || r.home, routineOf = r => ROUTINE[r.id] || [String(r.home).replace("BAY", "CHK"), "Patrol"];
   const KNOWN = [["T1", "Room 12"], ["T2", "Pharmacy"], ["T3", "Lab"]];   // task and destination pairs that nurse N1 is allowed to order
   // Gate refusals that mean "this needs authorization" (identity or permission), in plain words.
   const AUTH_REASONS = {
@@ -49,10 +51,12 @@
   let hackerOn = false, hackTimer = null, autoOn = true, autoTimer = null, floodTimer = null, floodStats = null;
   let hackerSrc = "HACKER-1", srcN = 1, quarantinedAt = 0, containTimer = null, wasIso = false, shedSinceLog = 0;
   let jobs = {}, holds = [], idleSince = {}, arrivedAt = {}, exampleAt = {}, lastCmd = {}, ours = new Set(), toResume = new Set();
+  let traffic = null, planned = new Map(), plannedAt = new Map(), waitSince = {}, retireSince = {}, fleetWanted = 3, fleetTimer = null;
 
   const tick = () => { clock.t = T0 + (now() - startMs); };
   const elapsed = () => { const s = Math.floor((now() - startMs) / 1000); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
-  const snap = () => window.fleetConsole && window.fleetConsole.snapshot;
+  const rawSnap = () => window.fleetConsole && window.fleetConsole.snapshot;   // all ten robots, on duty or not
+  const snap = () => { const s = rawSnap(); return s && Object.assign({}, s, {robots: s.robots.filter(r => r.active !== false)}); };   // the robots on duty
   const stationName = k => (H.env && H.env.network.stations[k] && H.env.network.stations[k].name) || k;
   const esc = x => String(x).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
   function log(cls, text) {
@@ -68,14 +72,42 @@
   function throttled(robot, action, ms) { const k = robot + action; if (lastCmd[k] && now() - lastCmd[k] < ms) return false; lastCmd[k] = now(); return true; }
 
   // ---------- fleet helpers ----------
-  const isFree = r => !r.mission && !r.isolated && !r.alert && !r.example && !(jobs[r.id] && now() - jobs[r.id].at < 3000);
+  const isFree = r => !r.mission && !r.isolated && !r.alert && !r.example && !r.retire && !(jobs[r.id] && now() - jobs[r.id].at < 3000);
   function takenStations(s) { return new Set(s.robots.map(r => r.mission ? r.mission.dest : (jobs[r.id] && !r.mission ? jobs[r.id].dest : r.station)).filter(Boolean)); }
-  function freeRobotFor(s, station) { const f = s.robots.filter(r => isFree(r) && r.station !== station); return f.length ? pick(f).id : null; }
+  const shuffled = a => a.map(x => [Math.random(), x]).sort((p, q) => p[0] - q[0]).map(p => p[1]);
+
+  // ---------- traffic: never send a robot into a jam ----------
+  // The fleet controller cannot cancel a mission stuck waiting for lanes, and two robots that need each other's lane block each other
+  // for good. So a robot is only sent when a complete route is free right now (see fleet-traffic.js), counting routes ordered a moment ago.
+  function routeFor(robotId, station) {
+    const s = rawSnap(); if (!s || !H.env) return null;
+    traffic = traffic || FleetTraffic.make(H.env.network);
+    for (const [id, at] of [...plannedAt]) {                       // forget planned routes once the controller has reserved them
+      const r = s.robots.find(x => x.id === id);
+      if (!r || r.path.length || now() - at > 4000 || (!r.mission && now() - at > 3000)) { planned.delete(id); plannedAt.delete(id); }
+    }
+    return traffic.routeFree(s.robots, robotId, station, planned);
+  }
+  const claimRoute = (robotId, route) => { planned.set(robotId, new Set(route)); plannedAt.set(robotId, now()); };
+  function freeRobotFor(s, station) {
+    const options = s.robots.filter(r => isFree(r) && r.station !== station).map(r => [r, routeFor(r.id, station)]).filter(([, route]) => route);
+    if (!options.length) return null;
+    const [r, route] = pick(options); claimRoute(r.id, route); return r.id;
+  }
   const TAG_TEXT = {nurse: "Nurse", auto: "Auto", hacker: "Hacker!", operator: "Operator"};
   function dispatch(robot, station, job) {
+    const route = routeFor(robot, station);
+    if (!route) {   // the lanes changed during the short delay: do not send the robot
+      delete jobs[robot]; DemoLayer.setTask(robot, null);
+      if (job.kind === "nurse" || job.kind === "operator") { st.manual++; log("info", "The lanes to " + stationName(station) + " were busy, so that task is carried by hand."); DemoLayer.manualDeliver(station === "PHARMACY" ? "STORES" : "PHARMACY", station); }
+      else if (job.kind === "hacker") log("info", "Hacker: the hijacked robot had no free route, so nothing moved.");
+      return false;
+    }
+    claimRoute(robot, route);
     fleetSend({id: newId(job.kind[0].toUpperCase()), robot, action: "dispatch", destination: station});
     jobs[robot] = Object.assign({dest: station, at: now()}, job);
     DemoLayer.setTask(robot, TAG_TEXT[job.kind] + " · " + (job.label || stationName(station)), job.kind);
+    return true;
   }
 
   // ---------- breaker: automatic containment and recovery ----------
@@ -192,7 +224,7 @@
     }).join("");
   }
   function declineInConsole(c, reason) {   // tell the console's own panel why its Dispatch order did not go straight through
-    const w = H.worker, s = snap();
+    const w = H.worker, s = rawSnap();
     if (w && typeof w.onmessage === "function" && s) w.onmessage({data: Object.assign({}, s, {acks: [{id: c.id, robot: c.robot, ok: false, reason}], events: []})});
   }
   function consoleOrder(msg, forward) {    // orders from the console's own Dispatch button are gated too
@@ -230,10 +262,15 @@
   const WEIGHTED = ["noTicket", "forged", "expired", "replay", "wrongWard", "tamper", "leak", "unknown", "fired", "flood", "robot"];
   const lastHack = (cls, text) => { const e = $("last"); e.textContent = text; e.className = "hk-note " + cls; };
 
-  function hijackStation(preferred) {   // send a hijacked order to a station the console will accept, so it visibly moves a robot
-    const s = snap(); if (!s) return preferred;
-    const taken = takenStations(s), open = Object.keys(STATION_TO_DEST).filter(k => !taken.has(k));
-    return open.includes(preferred) || !open.length ? preferred : pick(open);
+  function hijackTarget(preferred) {   // a free robot and a station it can reach right now, so a hijacked order visibly moves a robot
+    const s = snap(); if (!s) return null;
+    const taken = takenStations(s), order = [preferred].concat(shuffled(Object.keys(STATION_TO_DEST)));
+    for (const r of shuffled(s.robots.filter(isFree))) for (const station of order) {
+      if (station === r.station || taken.has(station)) continue;
+      const route = routeFor(r.id, station);
+      if (route) return {robot: r.id, station, route};
+    }
+    return null;
   }
   function hack(kind) {
     if (!gate) return;
@@ -247,13 +284,16 @@
     tick();
     const req = a.build(), res = gate.handle(req);
     syncIso(); st.attempts++;
-    const authority = AUTHORITY[req.destination] || "Ward A", s = snap(), free = s ? s.robots.filter(isFree) : [], target = free.length ? pick(free).id : "RX-01";
+    const authority = AUTHORITY[req.destination] || "Ward A", s = snap();
+    const hij = res.ok && res.mode === "robot" ? hijackTarget(DEST_TO_STATION[req.destination] || "WARD-A") : null;
+    const free = s ? s.robots.filter(isFree) : [], target = hij ? hij.robot : (free.length ? pick(free).id : "RX-01");
     if (!res.ok) {
       st.stopped++;
       if (res.shed) { shedSinceLog++; lastHack("ok", a.name + ": dropped, the hacker's address is quarantined."); if (shedSinceLog === 1) log("good", "Quarantined address " + hackerSrc + " keeps trying. Its requests are dropped unchecked."); }
       else if (AUTH_REASONS[res.reason]) { lastHack("ok", a.name + ": needs " + authority + " authorization. None, so it is logged."); log("good", "Hacker: " + a.name + (a.name.toLowerCase() === AUTH_REASONS[res.reason] ? "" : " (" + AUTH_REASONS[res.reason] + ")") + ". Needs " + authority + " authorization; none presented. Saved to the log."); }
       else { lastHack("ok", a.name + ": stopped (" + res.reason + ")."); log("good", "Hacker: " + a.name + " stopped (" + res.reason + ")."); }
     } else if (res.mode === "manual") { st.through++; lastHack("bad", a.name + ": got through, but robots are cut off."); log("bad", "Hacker: " + a.name + " got through the gate, but the robots are cut off, so nothing moved."); }
+    else if (!hij) { st.through++; lastHack("bad", a.name + ": got through the gate, but no robot had a free route."); log("bad", "Hacker: " + a.name + " got through the gate, but no robot had a free route, so nothing moved."); }
     else { st.through++; lastHack("bad", a.name + ": got through! " + target + " obeys the hacker."); log("bad", "Hacker: " + a.name + " got through. " + target + " obeys the hacker."); }
     refresh();
     DemoLayer.request({
@@ -261,7 +301,7 @@
       text: res.ok ? "ACCEPTED" : res.shed ? "QUARANTINED" : AUTH_REASONS[res.reason] ? "NO " + authority.toUpperCase() + " AUTHORIZATION" : "BLOCKED",
       arrive() { if (!res.ok) DemoLayer.hackerRage(); }
     });
-    if (res.ok && res.mode === "robot" && free.length) { jobs[target] = {kind: "hacker", dest: null, at: now()}; ours.add(target); later(() => dispatch(target, hijackStation(DEST_TO_STATION[req.destination] || "WARD-A"), {kind: "hacker", label: "hijacked"})); }
+    if (hij) { claimRoute(hij.robot, hij.route); jobs[target] = {kind: "hacker", dest: hij.station, at: now()}; ours.add(target); later(() => dispatch(target, hij.station, {kind: "hacker", label: "hijacked"})); }
   }
   function rotateIfQuarantined() {
     if (gate.blocked.has(hackerSrc) && now() - quarantinedAt > 10000) {
@@ -309,8 +349,23 @@
   // ---------- automation: receipts, recovery after a hack, autonomous jobs ----------
   function maintain() {
     const s = snap(); if (!s || !gate) return;
-    const t = now(); let autoBusy = Object.values(jobs).some(j => j.kind === "auto" && j.routine);
+    const t = now(), routineCap = Math.max(1, Math.floor(s.robots.length / 3));   // more robots on duty, more routine runs at once
+    let routineRuns = Object.values(jobs).filter(j => j.kind === "auto" && j.routine).length;
+    // Fairness: the lift and its hub corridor are often claimed by routine runs. While a robot that is leaving duty has been unable to
+    // go home for 5 s, the other robots hold off on new routine runs and base returns, so a gap opens for it.
+    for (const r of s.robots) { if (r.retire && !r.mission && r.station !== r.home) retireSince[r.id] = retireSince[r.id] || t; else delete retireSince[r.id]; }
+    const retireStuck = s.robots.some(r => retireSince[r.id] && t - retireSince[r.id] > 5000);
     for (const r of s.robots) {
+      // a robot that joins while the robot zone is cut off is cut off too
+      if (gate.isolated && wasIso && !r.isolated && !ours.has(r.id) && throttled(r.id, "isolate", 2000)) { ours.add(r.id); fleetSend({id: newId("G"), robot: r.id, action: "isolate"}); }
+      // watchdog: the fleet cannot cancel a stuck mission by itself, so a task that waits 30 s for a lane is cancelled
+      if (r.state === "Waiting") {
+        if (!waitSince[r.id]) waitSince[r.id] = t;
+        else if (t - waitSince[r.id] > 30000 && throttled(r.id, "cancel", 8000)) {
+          fleetSend({id: newId("C"), robot: r.id, action: "cancel"}); delete waitSince[r.id]; delete jobs[r.id]; DemoLayer.setTask(r.id, null);
+          log("warn", r.id + " waited 30 s for a free lane. Its task was cancelled to clear the traffic jam.");
+        }
+      } else delete waitSince[r.id];
       if (r.mission && r.mission.stage === "arrived") {          // the ward scanner confirms the receipt automatically
         if (!arrivedAt[r.id]) arrivedAt[r.id] = t;
         if (t - arrivedAt[r.id] > 2500 && !r.isolated && !r.alert && throttled(r.id, "receipt", 3000)) {
@@ -331,10 +386,12 @@
         if (!idleSince[r.id]) idleSince[r.id] = t;
       }
       // autonomous jobs while idle: go back to base, and now and then a routine run
-      if (isFree(r) && !jobs[r.id] && !gate.isolated) {
-        const idle = t - idleSince[r.id], taken = takenStations(s), home = HOME[r.id], [rStation, rLabel] = ROUTINE[r.id];
-        if (r.station !== home && idle > 6000 && !taken.has(home)) dispatch(r.id, home, {kind: "auto", label: "Return to base"});
-        else if (r.station === home && idle > 14000 && !autoBusy && !taken.has(rStation)) { dispatch(r.id, rStation, {kind: "auto", label: rLabel, routine: true}); autoBusy = true; }
+      if (r.retire) {                                            // leaving duty: go back to the bay, the controller then takes the robot off duty
+        if (!r.mission && !r.isolated && !r.alert && !r.example && !gate.isolated && !jobs[r.id] && r.station !== r.home && throttled(r.id, "retire", 2500)) dispatch(r.id, r.home, {kind: "auto", label: "Back to bay"});
+      } else if (isFree(r) && !jobs[r.id] && !gate.isolated && !retireStuck) {
+        const idle = t - idleSince[r.id], taken = takenStations(s), home = homeOf(r), [rStation, rLabel] = routineOf(r);
+        if (r.station !== home && idle > 6000 && !taken.has(home) && throttled(r.id, "home", 3000)) dispatch(r.id, home, {kind: "auto", label: "Return to base"});
+        else if (r.station === home && idle > 14000 && routineRuns < routineCap && !taken.has(rStation) && throttled(r.id, "routine", 3000) && dispatch(r.id, rStation, {kind: "auto", label: rLabel, routine: true})) routineRuns++;
       }
     }
     for (const h of holds.slice()) if (t > h.until) reject(h.id, true);
@@ -400,6 +457,9 @@
         '<label for="hk-def">Defence</label><select id="hk-def">' +
         '<option value="M0">M0 · No protection</option><option value="M1">M1 · Signed tickets</option><option value="M2">M2 · Ward rules</option>' +
         '<option value="M3">M3 · Data minimisation</option><option value="M4">M4 · Containment</option><option value="ALL" selected>ALL · Full protection</option></select>' +
+        '<label for="hk-robots" class="hk-robots-label">Robots on duty: <output id="hk-robots-out" for="hk-robots">3</output></label>' +
+        '<input type="range" id="hk-robots" min="3" max="10" step="1" value="3" aria-valuetext="3 robots">' +
+        '<p id="hk-robots-note" class="hk-note" role="status"></p>' +
         '<button type="button" id="hk-restart" class="hk-restart">Restart demo</button>' +
       '</div>' +
       '<div class="hk-block hk-hacker" aria-labelledby="hk-hacker-h">' +
@@ -434,6 +494,25 @@
     panel.insertBefore(sec, panel.querySelector(".console-footer"));
   }
 
+  // ---------- fleet size (3 to 10 robots) ----------
+  function setFleet(n) {
+    fleetWanted = n; fleetSend({id: newId("Z"), robot: "", action: "fleetsize", value: n});
+    const s = rawSnap(), on = s ? s.robots.filter(r => r.active !== false).length : 3, diff = Math.abs(n - on), robots = diff === 1 ? " robot" : " robots";
+    note("robots-note", n > on ? "Adding " + diff + robots + "." : n < on ? diff + robots + " finishing up, then back to the bay." : "");
+    log("info", "Fleet size set to " + n + " robots.");
+  }
+  // The console draws all ten robots from its first snapshot (so each gets its picture). Robots that are off duty are hidden here.
+  function applyFleetView(s) {
+    if (!s) return;
+    const on = new Map(s.robots.map(r => [r.id, r.active !== false])), duty = s.robots.filter(r => r.active !== false);
+    document.querySelectorAll("#fleet-roster .unit-row").forEach(b => { b.style.display = on.get(b.dataset.robot) === false ? "none" : ""; });
+    document.querySelectorAll("#robot-markers .unit-pin").forEach(p => { p.style.display = on.get(p.dataset.robot) === false ? "none" : ""; });
+    const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = String(v); };
+    set("count-fleet", duty.length); set("count-missions", duty.filter(r => r.mission).length); set("count-alerts", duty.filter(r => r.alert).length);
+    DemoLayer.setRobotsOn(on);
+    const sel = window.fleetConsole && window.fleetConsole.selected;
+    if (sel && on.get(sel) === false) window.dispatchEvent(new CustomEvent("clinicfleet:pick", {detail: "RX-01"}));
+  }
   function setView(name) {
     document.querySelectorAll("[data-hkview]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.hkview === name)));
     if (name === "clinic") { const r = document.getElementById("model-reset"); if (r) r.click(); } else DemoLayer.view(name);
@@ -451,6 +530,12 @@
     $("cross").onclick = () => nurseTask(true, true);
     $("auto").onchange = () => { autoOn = $("auto").checked; scheduleNurse(); if (autoOn) nurseTask(false, false); };
     $("restart").onclick = restart;
+    $("robots").oninput = () => {
+      const n = Number($("robots").value); $("robots-out").textContent = n; $("robots").setAttribute("aria-valuetext", n + " robots");
+      clearTimeout(fleetTimer); fleetTimer = setTimeout(() => setFleet(n), 250);
+    };
+    document.querySelectorAll("#mission-destination option").forEach(o => { if (/^(BAY|CHK)-/.test(o.value)) o.remove(); });   // bays and checkpoints are for the robots, not for operators
+    window.addEventListener("clinicfleet:state", e => applyFleetView(e.detail));
     $("holds").addEventListener("click", e => { const b = e.target.closest("button[data-act]"), h = e.target.closest("[data-hold]"); if (b && h) (b.dataset.act === "ok" ? authorize : reject)(Number(h.dataset.hold), false); });
     document.querySelectorAll("[data-hkview]").forEach(b => { b.onclick = () => setView(b.dataset.hkview); });
     $("tamper").onclick = () => {
@@ -477,6 +562,7 @@
   setInterval(maintain, 500);
   DemoLayer.setActive(true);
   restart(); scheduleNurse(); setTimeout(() => nurseTask(false, false), 1500);
-  window.RWDemo = {hack, nurseTask, authorize, reject, restart, holds: () => holds.slice(), jobs: () => Object.assign({}, jobs),
+  window.RWDemo = {hack, nurseTask, authorize, reject, restart, setFleet, holds: () => holds.slice(), jobs: () => Object.assign({}, jobs),
+    fleet: () => { const s = rawSnap(); return {wanted: fleetWanted, onDuty: s ? s.robots.filter(r => r.active !== false).length : 0, retiring: s ? s.robots.filter(r => r.retire).length : 0}; },
     state: () => ({st, isolated: gate.isolated, cfgKey, tampered, layer: DemoLayer.ready, hackerSrc}), setConfig(k) { $("def").value = k; cfgKey = k; restart(); }};
 })();

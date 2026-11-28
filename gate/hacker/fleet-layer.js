@@ -16,6 +16,7 @@ const DemoLayer = (function () {
   const AMBER = 0xf0a020, TAG = {nurse: "rgba(23,103,76,.95)", auto: "rgba(74,98,92,.92)", hacker: "rgba(170,30,45,.95)", operator: "rgba(40,95,145,.95)"};
   let env, root, hacker, nurse, gateObj, zone, zoneLabel, cable, ready = false, isolated = false, hackerTyping = false, hackerBubble = null, nurseBubble = null;
   const tags = new Map();   // robot id -> {sprite, key}: the job tag floating above each robot
+  const robotRoots = new Map();   // robot id -> the console's 3D object for that robot
   let hackerGlass = null, shake = 0;   // shared glasses material, and the head shake while the hacker rages
   let labels = [], tweens = [], runners = 0, active = false, camTween = null, last = 0, time = 0, frame = 0, adjacency = null, glassFloor = false;
 
@@ -249,6 +250,18 @@ const DemoLayer = (function () {
       if (!text) return;
       const s = label(text, {size: 40, color: "#ffffff", bg: TAG[kind] || TAG.auto, pad: 14, overlay: true, scale: 0.016}); root.add(s);
       tags.set(id, {sprite: s, key});
+    },
+    // Robots that are off duty are hidden in the 3D scene. The console draws all ten from its first snapshot (so every robot gets
+    // its roster picture); the ones off duty are shrunk to nothing here. on: Map(robot id -> on duty?)
+    setRobotsOn(on) {
+      if (!ready) return;
+      if (robotRoots.size < on.size) env.scene.traverse(o => { const id = o.userData && o.userData.robot; if (id && !robotRoots.has(id)) robotRoots.set(id, o); });
+      let changed = false;
+      for (const [id, root3d] of robotRoots) {
+        const v = on.get(id) === false ? 0.0001 : 1;
+        if (root3d.scale.x !== v) { root3d.scale.setScalar(v); changed = true; }
+      }
+      if (changed) env.schedule();
     },
     nurseSay(text) {
       if (!ready) return;

@@ -11,6 +11,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const root = path.join(__dirname, "..");
 const read = p => fs.readFileSync(path.join(root, p), "utf8");
+const fleetExtra = require("./hacker/fleet-extra.cjs");
 
 // gate.cjs wrapped so it runs without Node: it receives a fake require() and Buffer.
 function gateBrowserSource() {
@@ -30,12 +31,16 @@ function exactlyOne(html, needle) {
 function assemble(consoleHtml) {
   const safe = s => s.replace(/<\/script/gi, "<\\/script");
   const title = "<title>Smart RoboWard | 3D Fleet Control</title>";
-  for (const needle of [title, "<body>", "</body>", "</head>"]) exactlyOne(consoleHtml, needle);
+  const workerTag = /(<script id="fleet-worker-source" type="text\/plain">\n)([\s\S]*?)(\n<\/script>)/, networkTag = /(<script id="fleet-network" type="application\/json">)([\s\S]*?)(<\/script>)/;
+  for (const needle of [title, "<body>", "</body>", "</head>", '<script id="fleet-worker-source"', '<script id="fleet-network"']) exactlyOne(consoleHtml, needle);
   let html = consoleHtml.replace(title, "<title>Smart RoboWard | Live hack demo</title>");
+  // Up to ten robots: this page's copy of the fleet controller and map gets seven extra robots, bays and checkpoints (the console itself is not changed).
+  html = html.replace(workerTag, (m, open, body, close) => open + fleetExtra.patchWorkerSource(body) + close);
+  html = html.replace(networkTag, (m, open, body, close) => open + JSON.stringify(fleetExtra.patchNetwork(JSON.parse(body))) + close);
   html = html.replace("</head>", () => "<style>\n" + read("gate/hacker/fleet-demo.css") + "\n</style>\n</head>");
   html = html.replace("<body>", () => "<body>\n<script>\n" + safe(read("gate/hacker/fleet-hooks.js")) + "\n</script>");   // before the console scripts
   html = html.replace("</body>", () => "<script>\n" + safe(gateBrowserSource()) + "\n</script>\n<script>\n" + safe(read("gate/hacker/fleet-layer.js")) +
-    "\n</script>\n<script>\n" + safe(read("gate/hacker/fleet-app.js")) + "\n</script>\n</body>");                              // after them
+    "\n</script>\n<script>\n" + safe(read("gate/hacker/fleet-traffic.js")) + "\n</script>\n<script>\n" + safe(read("gate/hacker/fleet-app.js")) + "\n</script>\n</body>");   // after them
   return html;
 }
 
