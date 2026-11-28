@@ -16,7 +16,7 @@
 
   function renderDecision() {
     const s = results[chosen].summary, w = results[ruleWinner].summary, runner = saved.decision.eligible[1];
-    $("n-chosen").textContent = chosen; $("n-pipes").textContent = ids.length;
+    $("n-pipes").textContent = ids.length; $("n-win").textContent = s.blocked + " of " + s.of;
     $("decision").replaceChildren(el("div", chosen, "big"),
       el("h2", "Adopted: " + saved.pipelines[chosen].name + ". It blocked " + s.blocked + " of " + s.of + " attacks, " + s.limitsBlocked + " of " + s.limits + " known limits, and passed " + s.legitPassed + " of " + s.legitOf + " legitimate cases."),
       el("p", "A to G are the seven candidates we compared under a rule fixed before the first run: fail a legitimate case and you are out, then most attacks blocked wins. " +
@@ -74,15 +74,12 @@
     }));
   }
   function renderLimits() {
+    const say = {T21: ["Watching the timing", "Someone on the network can see when a robot talks, though not what it says."],
+      T27: ["The fleet server goes silent", "Robot deliveries pause and porters take over. The lift stays free for people."],
+      T28: ["A flood from inside the wired network", "It can overload the lift's adapter. This needs a network fix, not a message fix."]};
     const open = cases.filter(c => c.kind === "attack" && !outcome(chosen, c).blocked);
-    const closed = cases.filter(c => c.limit && outcome(chosen, c).blocked);
-    const items = open.map(c => "Still gets through " + chosen + ": " + c.id + " · " + c.name + ". " + outcome(chosen, c).detail + ".");
-    if (closed.length) items.push("Limits of the seven candidates that " + chosen + " closes: " + closed.map(c => c.id + " " + c.name.charAt(0).toLowerCase() + c.name.slice(1)).join("; ") + ".");
-    items.push("A compromised lift adapter or hospital certificate authority. Both are trusted by every design above.",
-      "Radio jamming and physical tampering with a robot. These need physical and operational measures.",
-      "The network admission step in B and the adapter's capacity in the flood are models. Everything else executes.",
-      "Timing was measured once on one laptop. Treat it as an order of magnitude.");
-    $("limits").replaceChildren(...items.map(t => el("li", t)));
+    $("limits").replaceChildren(...open.map(c => { const li = el("li"); li.append(el("b", (say[c.id] ?? [c.name])[0]), el("span", (say[c.id] ?? ["", outcome(chosen, c).detail + "."])[1])); return li; }),
+      (() => { const li = el("li", null, "also"); li.append(el("b", "Not tested at all"), el("span", "A hacked lift adapter or certificate authority, radio jamming, and someone physically taking a robot.")); return li; })());
   }
 
   // ---- live wire ----
@@ -152,30 +149,58 @@
   function renderLadder() {
     const score = id => results[id].summary.blocked * 100 + results[id].summary.limitsBlocked;
     const ranked = [...ids].sort((a, b) => score(b) - score(a)), of = results[chosen].summary.of;
-    $("ladder-of").textContent = of;
+    const origin = id => id === "C" ? "Teammate's idea" : id === "F" ? "Our idea" : "GHI".includes(id) ? "Combination" : id === "A" ? "Starting point" : "Standard practice";
     $("ladder").replaceChildren(...ranked.map((id, i) => {
-      const p = SecureInfo[id].plain, s = results[id].summary, li = el("li", null, "rung" + (i === 0 ? " first" : i < 3 ? " podium" : ""));
-      const rank = el("div", null, "rank"); rank.append(el("b", String(i + 1)), el("span", i === 0 ? "Number one" : i < 3 ? "Runner-up" : ""));
-      const body = el("div", null, "rung-body"), head = el("h3");
-      head.append(el("span", id, "letter"), document.createTextNode(p.name));
-      const tag = el("span", id === "C" ? "Teammate's idea" : id === "F" ? "Our idea" : "GHI".includes(id) ? "Combination" : id === "A" ? "Starting point" : "Standard practice", "origin");
-      head.append(tag);
-      const facts = el("dl");
-      facts.append(el("dt", "Stops"), el("dd", p.good), el("dt", "Still open"), el("dd", p.gap));
-      body.append(head, el("p", p.like, "like"), facts);
-      const meter = el("div", null, "meter"), bar = el("div", null, "bar"), fill = el("i");
-      fill.style.width = Math.max(2, 100 * s.blocked / of) + "%";
-      bar.append(fill);
-      meter.append(el("strong", s.blocked + " of " + of), el("span", "attacks stopped"), bar);
-      meter.setAttribute("aria-label", s.blocked + " of " + of + " attacks stopped");
-      li.append(rank, body, meter);
+      const p = SecureInfo[id].plain, n = results[id].summary.blocked, li = el("li"), d = el("details", null, "rung" + (i === 0 ? " first" : "")), sum = el("summary");
+      if (i === 0) d.open = true;
+      const name = el("span", null, "name"); name.append(el("b", p.name), el("small", p.short));
+      const bar = el("span", null, "bar"), fill = el("i"); fill.style.width = Math.max(2, 100 * n / of) + "%"; bar.append(fill);
+      sum.append(el("span", String(i + 1), "rank"), name, bar, el("span", n + " of " + of, "count"));
+      sum.setAttribute("aria-label", "Rank " + (i + 1) + ", " + p.name + ", " + n + " of " + of + " attacks stopped");
+      const more = el("div", null, "more"), facts = el("dl");
+      facts.append(el("dt", "Think of it as"), el("dd", p.like), el("dt", "Stops"), el("dd", p.good), el("dt", "Still open"), el("dd", p.gap));
+      more.append(facts, el("span", origin(id) + " · letter " + id + " in the detail table", "origin"));
+      d.append(sum, more); li.append(d);
       return li;
     }));
+    $("pillars").replaceChildren(...SecureInfo.pillars.map(x => { const li = el("li"); li.append(el("b", x.rule), el("span", x.how)); return li; }));
     $("recipe").replaceChildren(...SecureInfo.recipe.map(r => {
       const li = el("li");
       li.append(el("b", r.piece), el("span", r.why), el("i", "from " + r.from));
       return li;
     }));
+  }
+
+  // ---- side by side: one attack against an encrypted connection alone and against number one ----
+  const plainResult = (attack, r) => (r.blocked ? "Stopped. " : "The attack works. ") + r.detail + ".";
+  async function duel(sceneId) {
+    const scene = SecureInfo.scenes.find(x => x.id === sceneId), attack = cases.find(c => c.id === sceneId);
+    document.querySelectorAll("#scenes button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.id === sceneId)));
+    const side = (id, label) => { const box = el("div", null, "side"); box.append(el("span", label, "who"), el("strong", "Running…"), el("p", scene.story)); box.dataset.id = id; return box; };
+    const left = side("E", "Encrypted connection alone"), right = side(chosen, "Number one");
+    $("duel").replaceChildren(left, right);
+    for (const box of [left, right]) {
+      try {
+        const r = await attack.run(box.dataset.id);
+        box.classList.add(r.blocked ? "ok" : "bad");
+        box.querySelector("strong").textContent = r.blocked ? "Stopped" : "The attack works";
+        box.querySelector("p").textContent = r.blocked ? scene.stopped : scene.works;
+        box.title = "Measured just now: " + r.detail;
+      } catch (error) {
+        const savedResult = saved.results[box.dataset.id].attacks[sceneId];
+        box.classList.add(savedResult.blocked ? "ok" : "bad");
+        box.querySelector("strong").textContent = savedResult.blocked ? "Stopped" : "The attack works";
+        box.querySelector("p").textContent = (savedResult.blocked ? scene.stopped : scene.works) + " (Saved result. This browser could not run it live.)";
+      }
+    }
+  }
+  function renderScenes() {
+    $("scenes").replaceChildren(...SecureInfo.scenes.map(sc => {
+      const b = el("button", sc.title); b.type = "button"; b.dataset.id = sc.id; b.setAttribute("aria-pressed", "false");
+      b.addEventListener("click", () => duel(sc.id));
+      return b;
+    }));
+    duel(SecureInfo.scenes[0].id);
   }
 
   // ---- who sees what ----
@@ -195,6 +220,6 @@
   $("see-pipe").addEventListener("change", renderExposure);
 
   $("n-attacks").textContent = SecureAttacks.ATTACKS.length;
-  renderDecision(); renderLadder(); renderMatrix(); renderPipes(); renderLimits(); renderExposure();
+  renderDecision(); renderLadder(); renderMatrix(); renderPipes(); renderLimits(); renderExposure(); renderScenes();
   pick(chosen, "T25", false);
 })();

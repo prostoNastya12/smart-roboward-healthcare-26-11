@@ -1,29 +1,51 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Smart RoboWard | Secure pipelines</title>
+<title>Smart RoboWard | Nine approaches, one winner</title>
 <style>
 /*__THEME__*/
 /*__PAGE_CSS__*/
 </style></head><body><main>
 <!--__HEADER__-->
-<div class="ops-heading">
-  <div><h1>Secure communication pipelines</h1><p class="lede">Seven ways for a robot to ask a hospital lift for a floor, the same attacks against each, and two stronger designs built on the winner.</p></div>
-  <dl class="ops-counts"><div><dt>Pipelines</dt><dd id="n-pipes">8</dd></div><div><dt>Attacks</dt><dd id="n-attacks">21</dd></div><div><dt>Adopted</dt><dd id="n-chosen">–</dd></div></dl>
-</div>
-<p class="note"><strong>Simulated devices, real cryptography.</strong> Every device, trip and key is fictional and created when the test runs. Signatures, key agreement and encryption are the real algorithms from the browser's standard library. The team wrote the attacks, so this is our own measurement, not an independent audit. A second reviewer attacked an earlier version and its findings are fixed or listed as limits below.</p>
+<header class="hero">
+  <p class="eyebrow">Smart RoboWard · secure robot communication</p>
+  <h1>Which protection keeps hospital robots safe?</h1>
+  <p class="hero-lede">We built nine and attacked each one the same way. One stopped everything.</p>
+  <dl class="hero-facts">
+    <div><dd id="n-pipes">9</dd><dt>approaches built</dt></div>
+    <div><dd id="n-attacks">29</dd><dt>attacks on each</dt></div>
+    <div class="win"><dd id="n-win">–</dd><dt>stopped by number one</dt></div>
+  </dl>
+  <p class="hero-note">Simulated devices, real cryptography. We wrote the attacks ourselves, and a second reviewer attacked our code.</p>
+</header>
 
-<section class="ops-card decision" id="decision"></section>
-
-<div class="section-title"><h2>Nine approaches, ranked</h2><span class="device-ref">best first · attacks stopped out of <span id="ladder-of"></span></span></div>
-<p class="ladder-intro">We tried every approach we could find, from doing nothing to combining everything. Each one was attacked in exactly the same way. Here they are in order, in everyday words.</p>
-<ol class="ladder" id="ladder"></ol>
-
-<section class="ops-card recipe-card">
-  <div class="card-heading"><h2>How number one is built</h2><span class="device-ref">the best parts of the others, combined</span></div>
-  <p class="section-note">No single idea was enough. Number one takes the piece each approach is good at and adds two of its own.</p>
-  <ol class="recipe" id="recipe"></ol>
+<section class="block">
+  <h2><span class="step">1</span>The nine approaches, best first</h2>
+  <p class="block-lede">Select any row to see what it stops and what it leaves open.</p>
+  <ol class="ladder" id="ladder"></ol>
 </section>
 
+<section class="block">
+  <h2><span class="step">2</span>How number one works</h2>
+  <p class="block-lede">It combines the best part of every other approach into four rules.</p>
+  <ol class="pillars" id="pillars"></ol>
+</section>
+
+<section class="block">
+  <h2><span class="step">3</span>See it happen</h2>
+  <p class="block-lede">Pick an attack. It runs live in your browser, once against an encrypted connection alone and once against number one.</p>
+  <div class="scenes" id="scenes" role="group" aria-label="Attack to run"></div>
+  <div class="duel" id="duel" aria-live="polite"></div>
+</section>
+
+<section class="block">
+  <h2><span class="step">4</span>What still gets through</h2>
+  <p class="block-lede">No design stops everything. These attacks still work against number one.</p>
+  <ul class="open-list" id="limits"></ul>
+</section>
+
+<details class="expert">
+  <summary><span class="step">5</span>All the detail<small>every attack against every approach, who sees what, supplier requirements</small></summary>
+  <section class="ops-card decision" id="decision"></section>
 <section class="ops-card" style="margin-top:14px">
   <div class="card-heading"><h2>Every attack against every pipeline</h2><span class="device-ref" id="matrix-source">saved run</span></div>
   <p class="section-note">A to G are the seven candidates. H and I were built on the winner afterwards. A tick means the attack had no effect. A cross means the design has no defence against it, or its defence failed. Select a cell to see what happened and to run it again in this browser.</p>
@@ -50,7 +72,7 @@
   <div class="tablewrap"><table class="data see" id="see"><thead></thead><tbody></tbody></table></div>
 </section>
 
-<div class="section-title"><h2>The pipelines</h2><span class="device-ref">source · idea · what it needs</span></div>
+<div class="section-title"><h2>The approaches in technical terms</h2><span class="device-ref">source · idea · what it needs</span></div>
 <div class="card-grid pipes" id="pipes"></div>
 
 <section class="ops-card" style="margin-top:14px">
@@ -70,10 +92,12 @@
   </tbody></table></div>
 </section>
 
-<section class="ops-card" style="margin-top:14px">
-  <div class="card-heading"><h2>What this does not cover</h2><span class="device-ref">limits</span></div>
-  <ul class="limits" id="limits"></ul>
-</section>
+
+  <section class="ops-card recipe-card">
+    <div class="card-heading"><h2>Where each part of number one comes from</h2><span class="device-ref">piece by piece</span></div>
+    <ol class="recipe" id="recipe"></ol>
+  </section>
+</details>
 
 <footer class="console-footer"><span>Pipeline C runs the teammate's request gate unchanged. Pipeline G runs the ward safety controller's admission check unchanged. Reproduce with <code>node secure-comms/run.cjs</code>.</span><a href="https://github.com/prostoNastya12/smart-roboward-healthcare-26-11">Source code and results (GitHub)</a></footer>
 </main>

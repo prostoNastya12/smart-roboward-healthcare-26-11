@@ -52,9 +52,9 @@
       good: "Only the right robot gets the right floor, and only for this delivery.", gap: "It travels in the open, and nothing stops a flood."},
     G: {name: "Van, boarding pass and a guard", group: "Combine them", like: "The armoured van, the boarding pass, and a guard who checks the lift is really free.", short: "Encryption, trip grant and a check of the lift itself.",
       good: "Almost everything, including floods and acting on old information.", gap: "It still trusts the fleet server to read calls and to hand robots their missions."},
-    H: {name: "Two signatures", group: "Combine them", like: "Everything in G, and two signatures on the cheque.", short: "G, and no single system can order a trip alone.",
+    H: {name: "Two signatures", group: "Combine them", like: "Two signatures on the cheque, on top of the van, the boarding pass and the guard.", short: "The same, and no single system can order a trip alone.",
       good: "A hacked dispatcher alone can no longer send a robot anywhere.", gap: "The fleet server in the middle is still trusted."},
-    I: {name: "Sealed envelope, courier cannot open it", group: "Combine them", like: "Everything in H, sent in a sealed envelope. The courier in the middle carries it and cannot open it.", short: "Everything above. Nothing in the middle is trusted.",
+    I: {name: "Sealed envelope, courier cannot open it", group: "Combine them", like: "A sealed envelope. The courier in the middle carries it and cannot open it. Inside is everything the other approaches do well.", short: "All the others combined. Nothing in the middle is trusted.",
       good: "Every attack in our main list. The fleet server cannot read, reroute or call the lift.", gap: "Message timing is visible, the courier can refuse to deliver, and a flood from the wired network still hurts."}
   };
   // What number one is made of, piece by piece, and where each piece comes from.
@@ -68,6 +68,24 @@
     {piece: "A sealed session past the fleet server", from: "I", why: "The server in the middle cannot read or invent calls"},
     {piece: "Missions the robot checks before it moves", from: "I", why: "A hacked server cannot send the robot to the basement"}
   ];
+  // Number one in four rules, for the simple overview.
+  const pillars = [
+    {rule: "Nothing moves without a signed order", how: "The hospital signs every mission and every lift call. A second system countersigns. The robot checks before it drives."},
+    {rule: "Nobody in the middle can read or change it", how: "Robot and lift talk in a sealed session. The fleet server only carries it, like a courier with a sealed envelope."},
+    {rule: "The lift checks the situation", how: "Patient transfers go first. The lift's status must be fresh, and a sensor must see the robot at the door."},
+    {rule: "One robot is cut off, the hospital keeps working", how: "A hacked or flooding robot is isolated alone. Every decision goes into a signed log."}
+  ];
+  // Three attacks for the side-by-side demo, in everyday words.
+  const scenes = [
+    {id: "T25", title: "Send the robot to the basement", story: "A hacked fleet server tries to redirect a robot carrying medication.",
+      works: "The robot accepts the false mission and drives to the basement.", stopped: "The robot checks the hospital's signature and refuses every false mission."},
+    {id: "T26", title: "Hold the lift hostage", story: "A hacked fleet server calls the lift fifty times so nobody else can use it.",
+      works: "The lift answers the forged calls. Patients and staff wait.", stopped: "Not one of the fifty calls reaches the lift."},
+    {id: "T08", title: "Ask for the wrong floor", story: "A genuine robot, on a delivery to floor 2, asks the lift for floor 1.",
+      works: "The lift goes to floor 1. Being a genuine robot was enough.", stopped: "Refused. This delivery is for floor 2 only."}
+  ];
+  Object.defineProperty(info, "pillars", {value: pillars, enumerable: false});
+  Object.defineProperty(info, "scenes", {value: scenes, enumerable: false});
   for (const id of Object.keys(info)) info[id].plain = plain[id];
   Object.defineProperty(info, "recipe", {value: recipe, enumerable: false});
   return info;
