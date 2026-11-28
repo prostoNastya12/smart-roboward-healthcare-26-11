@@ -74,10 +74,10 @@
     }));
   }
   function renderLimits() {
-    const items = cases.filter(c => c.limit).map(c => {
-      const stops = ids.filter(id => outcome(id, c).blocked);
-      return c.id + " · " + c.name + ". In " + chosen + ": " + outcome(chosen, c).detail + ". " + (stops.length ? "Stopped only by " + stops.join(", ") + "." : "No pipeline here stops it.");
-    });
+    const open = cases.filter(c => c.kind === "attack" && !outcome(chosen, c).blocked);
+    const closed = cases.filter(c => c.limit && outcome(chosen, c).blocked);
+    const items = open.map(c => "Still gets through " + chosen + ": " + c.id + " · " + c.name + ". " + outcome(chosen, c).detail + ".");
+    if (closed.length) items.push("Limits of the seven candidates that " + chosen + " closes: " + closed.map(c => c.id + " " + c.name.charAt(0).toLowerCase() + c.name.slice(1)).join("; ") + ".");
     items.push("A compromised lift adapter or hospital certificate authority. Both are trusted by every design above.",
       "Radio jamming and physical tampering with a robot. These need physical and operational measures.",
       "The network admission step in B and the adapter's capacity in the flood are models. Everything else executes.",

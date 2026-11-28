@@ -228,7 +228,7 @@ Rules for the code:
 | 20 | Adopt the strongest pipeline | Page, control room, slides and documents use it | Done, pipeline I |
 | 21 | Submission materials | README in the challenge's structure, slides as PDF in `presentation/`, video linked | Done |
 | 22 | Tests, commit, push to `feature/ward-safety-console` | All tests pass. Nothing pushed to any `main` or `master` | Done |
-| 23 | Demo video showing everything end to end | Recorded from the real pages, checked frame by frame | See section 11 |
+| 23 | Demo video showing everything end to end | Recorded from the real pages, checked frame by frame | Done, `presentation/media/smart-roboward-demo-v2.mp4`, 91.5 seconds. Nobody has listened to it yet |
 
 ## 10. Results and decision
 
