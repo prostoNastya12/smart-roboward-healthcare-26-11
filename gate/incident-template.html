@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smart RoboWard | Incident review</title>
+<style>
+/*__THEME__*/
+.ops-grid.review{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr)}
+.req-select{display:grid;gap:5px;padding:0 15px 10px;font-size:12px;color:var(--muted);font-weight:600}
+.req-select select{width:100%;font-size:14px;padding:9px 10px}
+.facts{display:grid;gap:0;margin:0;padding:0 15px 14px}
+.facts div{display:grid;grid-template-columns:128px minmax(0,1fr);gap:10px;font-size:14px;border-top:1px solid #e4e9e2;padding:8px 0}
+.facts dt{color:var(--muted);font-size:12px;font-weight:600;padding-top:2px}
+.facts dd{margin:0}
+.badge{display:inline-block;padding:1px 9px;border-radius:999px;font-size:12px;font-weight:650;border:1px solid}
+.badge.no{color:#8e3b22;background:#fff3e8;border-color:#e0c3ae}.badge.yes{color:#225640;background:#e8f2e8;border-color:#a9c5af}
+.clinic-shot{aspect-ratio:840/338;background:#e1e8e3 url("Clinic-World-3D.png") no-repeat;background-size:161.9% auto;background-position:8.08% 35.7%}
+.decisions{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;padding:0 15px 15px}
+.dec{border:1px solid var(--line);border-radius:9px;padding:12px 13px;background:#fbfdfa;display:grid;gap:6px;align-content:start}
+.dec h3{margin:0;font:600 13px var(--mono);color:var(--muted)}
+.dec .verdict{font-size:22px;font-weight:650;letter-spacing:-.035em;line-height:1.1}
+.dec.pass{border-color:#b9d2bf}.dec.pass .verdict{color:#225640}
+.dec.fail{border-color:#e3b4ad;background:#fff7f5}.dec.fail .verdict{color:var(--bad)}
+.dec.na .verdict{color:var(--muted);font-size:17px}
+.dec p{margin:0;font-size:13px;color:var(--muted);line-height:1.45}
+.flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;list-style:none;margin:0;padding:0 15px 12px}
+.flow li{border:1px solid var(--line);border-radius:7px;padding:10px 12px;font-size:13px;color:var(--muted);line-height:1.45;background:#fbfdfa}
+.flow li b{display:block;color:var(--ink);font-size:14px;margin-bottom:2px}
+.section-note{font-size:13px;color:var(--muted);padding:0 15px 14px;margin:0}
+@media(max-width:860px){.ops-grid.review{grid-template-columns:1fr}.flow{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){.flow{grid-template-columns:1fr}.facts div{grid-template-columns:1fr;gap:2px}}
+</style></head><body><main>
+<!--__HEADER__-->
+<div class="ops-heading">
+  <div><h1>Incident review</h1><p class="lede">Pick one request and compare what each defence decided for it, as recorded in our benchmark run, next to the 3D clinic where it happens.</p></div>
+  <a class="btn primary" href="live-simulation.html">Open the live simulation</a>
+</div>
+
+<div class="ops-grid review">
+  <section class="ops-card" aria-labelledby="req-h">
+    <div class="card-heading"><h2 id="req-h">Request</h2><span class="device-ref" id="rid">U01</span></div>
+    <label class="req-select">Choose a request<select id="sel"></select></label>
+    <dl class="facts" id="facts"></dl>
+  </section>
+  <aside class="ops-card" aria-label="The 3D clinic">
+    <div class="clinic-shot" role="img" aria-label="3D view of the clinic with the three robots RX-01, LAB-02 and SUP-03"></div>
+    <div class="card-foot"><span>Clinic World · Open-RMF geometry · two floors</span><a href="live-simulation.html">Watch it in the live simulation</a></div>
+  </aside>
+</div>
+
+<section class="ops-card" style="margin-top:14px" aria-labelledby="dec-h">
+  <div class="card-heading"><h2 id="dec-h">What each defence decided</h2><span class="device-ref" id="summary">–</span></div>
+  <div class="decisions" id="decisions"></div>
+  <p class="section-note">Recorded from <code>node gate/run.cjs</code> (seed <span id="seed"></span>). M0 is the starting point, M1 to M4 each add one defence, and ALL uses M1 to M4 together. The requests were written by the team, so this shows that the implementation matches its design, not how it would fare against new attacks.</p>
+</section>
+
+<section class="ops-card" style="margin-top:14px" aria-labelledby="flow-h">
+  <div class="card-heading"><h2 id="flow-h">How one incident runs in the live simulation</h2><a class="btn" href="live-simulation.html">Try it</a></div>
+  <ol class="flow">
+    <li><b>1 · Detected</b>The gate counts refusals per sender. Five bad requests, or more than five in a second, trip the breaker.</li>
+    <li><b>2 · Alert sent</b>An alert is written to the audit chain. It names the Security duty lead and carries the evidence.</li>
+    <li><b>3 · Robots isolated</b>All robots stay cut off. Nothing resets by itself, and nurse tasks go by hand.</li>
+    <li><b>4 · Supervisor restores</b>Only a supervisor can restore the robots. Then the next task goes by robot again.</li>
+  </ol>
+  <p class="section-note">The vendor-lift case (a vendor account asking for the lift with no delivery) and this alert and restore flow are checked by tests and shown in the live simulation. They are not part of the 20-request benchmark above.</p>
+</section>
+
+<script id="data" type="application/json">/*__DATA__*/null</script>
+<script>
+const D=JSON.parse(document.getElementById("data").textContent),R=D.results,META=/*__META__*/null;
+const $=id=>document.getElementById(id),esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const ORDER=["M0","M1","M2","M3","M4","ALL"],LABEL={M0:"M0 · no protection",M1:"M1 · signed tickets",M2:"M2 · ward rules",M3:"M3 · data minimisation",M4:"M4 · containment",ALL:"ALL · M1 + M2 + M3 + M4"};
+const YN=b=>b==="true"?"yes":"no";
+function nice(d){
+ const s=String(d);let m;
+ if((m=s.match(/^tripped=(\w+), forwards after trip=(\d+)$/)))return "Robot cut off: "+YN(m[1])+". Requests still forwarded to the robot afterwards: "+m[2]+".";
+ if((m=s.match(/^ward actions ok (\d)\/4 while isolated=(\w+)$/)))return m[1]+" of 4 nurse actions worked while the robot was cut off.";
+ if((m=s.match(/^ward data unchanged=(\w+), audit stayed small=(\w+)$/)))return "Ward data unchanged: "+YN(m[1])+". Log stayed small: "+YN(m[2])+".";
+ if((m=s.match(/^nurse reset=(\w+), supervisor reset=(\w+), next task (\w+)$/)))return "Nurse could switch the robot back on: "+YN(m[1])+". Supervisor could: "+YN(m[2])+". Next task went to: "+m[3]+".";
+ const map={"status minimal":"Status shown, no patient data","both delivered":"Both delivered","cancelled and logged":"Cancelled and logged","delivered":"Delivered"};
+ if(map[s])return map[s];
+ return s.replace(/^blocked: /,"Blocked: ").replace(/(\d+) robot action\(s\)/,"The robot obeyed ($1 action)").replace(/^(\d+)\/20 reached the robot/,"$1 of 20 requests reached the robot");}
+function verdict(id,v){
+ if(v.pass===null)return["na","Not applicable"];
+ if(id[0]==="U")return v.pass?["pass","Blocked"]:["fail","Got through"];
+ if(id[0]==="A")return v.pass?["pass","Done"]:["fail","Refused"];
+ return v.pass?["pass","Pass"]:["fail","Fail"];}
+const decide=(method,id)=>R[method].rows[id]||R[method].containment[id];
+$("seed").textContent=D.meta.seed;
+const groups=[["Attacks: requests that must be stopped","U"],["Real work: requests from authorized staff","A"],["Containment: what happens during an attack","C"]];
+$("sel").innerHTML=groups.map(([t,p])=>'<optgroup label="'+t+'">'+Object.keys(META).filter(k=>k[0]===p).map(k=>'<option value="'+k+'">'+k+" · "+esc(META[k][0].length>58?META[k][0].slice(0,56)+"…":META[k][0])+"</option>").join("")+"</optgroup>").join("");
+function show(){
+ const id=$("sel").value,m=META[id];
+ $("rid").textContent=id;
+ const yes=m[2].indexOf("Yes")===0;
+ $("facts").innerHTML=[["What was sent",esc(m[0])],["Sent by",esc(m[1])],["Authorized?",'<span class="badge '+(yes?"yes":"no")+'">'+esc(m[2])+"</span>"],["What should happen",esc(m[3])]].map(([k,v])=>"<div><dt>"+k+"</dt><dd>"+v+"</dd></div>").join("");
+ let good=0,applicable=0;
+ $("decisions").innerHTML=ORDER.map(method=>{
+  const v=decide(method,id),[cls,text]=verdict(id,v);
+  if(v.pass!==null){applicable++;if(v.pass)good++;}
+  return '<article class="dec '+cls+'"><h3>'+LABEL[method]+'</h3><div class="verdict">'+text+"</div><p>"+esc(nice(v.detail))+"</p></article>";}).join("");
+ const word=id[0]==="U"?"stopped it":id[0]==="A"?"completed it":"passed";
+ $("summary").textContent=good+" of "+applicable+" setups "+word;
+ history.replaceState(null,"","#"+id);}
+$("sel").onchange=show;
+const start=location.hash.slice(1);$("sel").value=META[start]?start:"U02";show();
+</script>
+</main></body></html>

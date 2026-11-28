@@ -12,7 +12,9 @@ const consoleHtml = fs.readFileSync(path.join(__dirname, "..", "output", "visual
 const page = assemble(consoleHtml);
 
 test("the demo is injected into the unchanged fleet console page", () => {
-  assert.ok(page.includes("<title>Smart RoboWard | Live hack demo</title>"));
+  assert.ok(page.includes("<title>Smart RoboWard | Live simulation</title>"));
+  assert.ok(page.includes('aria-pressed="true">Live simulation</button>') && page.includes('aria-pressed="false">View the route</button>') && page.includes("<h1>Live simulation</h1>"));
+  assert.ok(!page.includes(">Fleet console</button>") && !page.includes(">Case replay</button>"));
   const hooks = page.indexOf("window.RWHooks"), consoleScripts = page.indexOf("clinic-3d-assets:start");
   const layer = page.indexOf("const DemoLayer"), app = page.indexOf("window.RWDemo");
   assert.ok(hooks > 0 && hooks < consoleScripts, "hooks must run before the console scripts");

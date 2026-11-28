@@ -1,5 +1,5 @@
 "use strict";
-// Builds site/hacker-demo.html (the Live hack demo): a copy of the 3D fleet console page
+// Builds site/live-simulation.html (the Live simulation page): a copy of the 3D fleet console page
 // (output/visualizations/Clinic-World.html, left unchanged) with the demo injected:
 //  - fleet-hooks.js runs first and captures the console's controller worker and Three.js scene (no console code is edited),
 //  - the real gate code (gate/gate.cjs with a browser-safe crypto shim) sits in front of every dispatch order,
@@ -32,8 +32,15 @@ function assemble(consoleHtml) {
   const safe = s => s.replace(/<\/script/gi, "<\\/script");
   const title = "<title>Smart RoboWard | 3D Fleet Control</title>";
   const workerTag = /(<script id="fleet-worker-source" type="text\/plain">\n)([\s\S]*?)(\n<\/script>)/, networkTag = /(<script id="fleet-network" type="application\/json">)([\s\S]*?)(<\/script>)/;
-  for (const needle of [title, "<body>", "</body>", "</head>", '<script id="fleet-worker-source"', '<script id="fleet-network"']) exactlyOne(consoleHtml, needle);
-  let html = consoleHtml.replace(title, "<title>Smart RoboWard | Live hack demo</title>");
+  // The page is called "Live simulation"; its tabs are "Live simulation", "View the route" (the route map) and "Open-RMF demo".
+  const renames = [
+    [title, "<title>Smart RoboWard | Live simulation</title>"],
+    ['aria-pressed="true">Fleet console</button>', 'aria-pressed="true">Live simulation</button>'],
+    ['aria-pressed="false">Case replay</button>', 'aria-pressed="false">View the route</button>'],
+    ["<h1>Fleet control</h1>", "<h1>Live simulation</h1>"]];
+  for (const needle of [title, "<body>", "</body>", "</head>", '<script id="fleet-worker-source"', '<script id="fleet-network"', ...renames.map(r => r[0])]) exactlyOne(consoleHtml, needle);
+  let html = consoleHtml;
+  for (const [from, to] of renames) html = html.replace(from, () => to);
   // Up to ten robots: this page's copy of the fleet controller and map gets seven extra robots, bays and checkpoints (the console itself is not changed).
   html = html.replace(workerTag, (m, open, body, close) => open + fleetExtra.patchWorkerSource(body) + close);
   html = html.replace(networkTag, (m, open, body, close) => open + JSON.stringify(fleetExtra.patchNetwork(JSON.parse(body))) + close);
@@ -46,8 +53,8 @@ function assemble(consoleHtml) {
 
 function build() {
   const html = assemble(read("output/visualizations/Clinic-World.html"));
-  fs.writeFileSync(path.join(root, "site", "hacker-demo.html"), html);
-  console.log("wrote site/hacker-demo.html", html.length, "bytes");
+  fs.writeFileSync(path.join(root, "site", "live-simulation.html"), html);
+  console.log("wrote site/live-simulation.html", html.length, "bytes");
 }
 if (require.main === module) build();
 module.exports = {gateBrowserSource, assemble, build};

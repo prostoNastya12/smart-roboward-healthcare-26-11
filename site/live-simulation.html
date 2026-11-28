@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Smart RoboWard | Live hack demo</title>
+<title>Smart RoboWard | Live simulation</title>
 <style>
   :root{color-scheme:light;--ink:#17292d;--muted:#496066;--line:#c6d2ce;--green:#006a5a;--paper:#f2f5f1}
   *{box-sizing:border-box}
@@ -194,15 +194,15 @@
 </script><main>
 <header class="app-head"><div class="brand"><i class="brand-mark" aria-hidden="true"></i>Smart RoboWard</div>
   <nav class="mode" aria-label="Visualization">
-    <button type="button" id="model-mode" aria-controls="model-panel" aria-pressed="true">Fleet console</button>
-    <button type="button" id="route-mode" aria-controls="route" aria-pressed="false">Case replay</button>
+    <button type="button" id="model-mode" aria-controls="model-panel" aria-pressed="true">Live simulation</button>
+    <button type="button" id="route-mode" aria-controls="route" aria-pressed="false">View the route</button>
     <button type="button" id="demo-mode" aria-controls="demo" aria-pressed="false">Open-RMF demo</button>
   </nav>
   <div class="sim-bar"><span><i class="sim-ind" aria-hidden="true"></i>Local simulation</span><time class="mono" id="fleet-clock">00:00</time><label class="sr-only" for="fleet-speed">Simulation speed</label><select id="fleet-speed"><option value="1">1×</option><option value="2" selected>2×</option><option value="4">4×</option></select></div>
 </header>
 <section id="model-panel" aria-label="Clinic World fleet console">
   <div class="ops-heading">
-    <h1>Fleet control</h1>
+    <h1>Live simulation</h1>
     <dl class="ops-counts"><div><dt>Robots</dt><dd id="count-fleet">3</dd></div><div><dt>Active missions</dt><dd id="count-missions">0</dd></div><div><dt>Open alerts</dt><dd id="count-alerts">0</dd></div></dl>
   </div>
   <div class="ops-grid">
@@ -4738,7 +4738,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = FleetTraff
   // ---------- page elements ----------
   function buildUI() {
     const panel = document.getElementById("model-panel"), frame = document.getElementById("model-frame");
-    const bar = document.createElement("section"); bar.className = "hk-bar"; bar.setAttribute("aria-label", "Live hack demo controls");
+    const bar = document.createElement("section"); bar.className = "hk-bar"; bar.setAttribute("aria-label", "Live simulation controls");
     bar.innerHTML =
       '<div class="hk-block hk-nurse" aria-labelledby="hk-nurse-h">' +
         '<div class="hk-head"><span class="hk-dot" aria-hidden="true"></span><h2 id="hk-nurse-h">Nurse station</h2>' +
@@ -4777,7 +4777,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = FleetTraff
     frame.appendChild(views);
     const head = document.querySelector(".app-head .brand");   // the console header has no way back to the overview page
     if (head) { const back = document.createElement("a"); back.href = "index.html"; back.className = "hk-back"; back.textContent = "← All pages"; head.after(back); }
-    const sec = document.createElement("section"); sec.className = "ops-card hk-panel"; sec.id = "hk-panel"; sec.setAttribute("aria-label", "Live hack demo: robots, security log and system check");
+    const sec = document.createElement("section"); sec.className = "ops-card hk-panel"; sec.id = "hk-panel"; sec.setAttribute("aria-label", "Live simulation: robots, security log and system check");
     sec.innerHTML =
       '<div class="card-heading"><h2>Live system</h2><span class="device-ref" id="hk-defname">ALL</span></div>' +
       '<p id="hk-defdesc" class="hk-desc"></p>' +
@@ -4861,6 +4861,9 @@ if (typeof module !== "undefined" && module.exports) module.exports = FleetTraff
     setTimeout(() => setView("overview"), 300);
   };
   window.addEventListener("rwdemo:scene", attach); attach();
+  // Deep links from the overview page: live-simulation.html#route opens "View the route", #openrmf opens the Open-RMF demo.
+  const tab = {"#route": "route-mode", "#openrmf": "demo-mode"}[location.hash];
+  if (tab) setTimeout(() => { const b = document.getElementById(tab); if (b) b.click(); }, 400);
   setInterval(() => { if (gate) gate.beginSecond(); }, 1000);
   setInterval(maintain, 500);
   DemoLayer.setActive(true);

@@ -9,7 +9,7 @@ const {withTheme} = require("./theme.cjs");
 const root = path.join(__dirname, "..");
 
 const pages = [
-  ["site/index-template.html", "site/index.html", "index", "Simulated data"],
+  ["site/index-template.html", "site/index.html", "index", "Local simulation"],
   ["site/replay-template.html", "output/visualizations/Smart-RoboWard-replay.html", "replay", "Fixture replay · offline"]
 ];
 for (const [src, out, active, status] of pages) {

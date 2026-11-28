@@ -6,48 +6,66 @@
 <title>Smart RoboWard | IFOHRA Challenge 9</title>
 <style>
 /*__THEME__*/
-.page-card{display:flex;flex-direction:column}
-.page-card .body{padding:0 15px 14px;flex:1}
-.page-card .body p{margin:0}
-.page-card .card-foot{justify-content:flex-end}
-.page-card .card-foot span{margin-right:auto}
+.hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.12fr);gap:clamp(24px,4vw,56px);align-items:center;padding:clamp(30px,5vw,60px) 0 clamp(30px,4vw,50px)}
+.hero h1{font-size:clamp(40px,6.2vw,76px);font-weight:650;letter-spacing:-.055em;line-height:1.02;margin:0 0 22px}
+.hero .lede{font-size:clamp(17px,1.7vw,21px);line-height:1.55;color:var(--muted);margin:0 0 30px;max-width:34em}
+.hero-actions{display:flex;flex-wrap:wrap;gap:12px}
+.btn.lg{font-size:clamp(15px,1.4vw,18px);padding:14px 20px;border-radius:7px;font-weight:600}
+.btn.lg.primary{box-shadow:0 1px 2px #0b3a2c33}
+.hero-card{margin:0;background:white;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.hero-card .shot{display:block;aspect-ratio:840/338;background:#e1e8e3 url("Clinic-World-3D.png") no-repeat;background-size:161.9% auto;background-position:8.08% 35.7%}   /* crops the console screenshot to just its 3D view */
+.hero-card figcaption{padding:20px 24px 22px}
+.hero-card .row{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.hero-card h2{font-size:clamp(22px,2.4vw,28px);font-weight:650;letter-spacing:-.03em}
+.route{display:flex;align-items:center;gap:12px;margin-top:14px;font-size:clamp(14px,1.4vw,17px);color:var(--muted)}
+.route i{flex:1;border-top:1px dashed #9db0a6;min-width:18px}
+.cases{border-top:1px solid var(--line);padding-top:clamp(24px,3vw,36px)}
+.section-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+.section-head h2{font-size:clamp(26px,3vw,36px);font-weight:620;letter-spacing:-.045em}
+.section-head a,.meta-row a,.fine a{font-weight:600;font-size:clamp(15px,1.4vw,18px)}
+.case-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}
+.case{display:block;background:white;border:1px solid var(--line);border-radius:14px;padding:clamp(20px,2.4vw,28px);color:inherit;text-decoration:none}
+.case:hover{border-color:#8db3a2;box-shadow:0 2px 10px #12392d14}
+.case:focus-visible{outline:3px solid #2565b1;outline-offset:3px}
+.case h3{display:flex;justify-content:space-between;gap:12px;font-size:clamp(20px,2.2vw,26px);font-weight:620;letter-spacing:-.035em;margin:0 0 12px;color:var(--ink)}
+.case h3 span{color:var(--green);font-weight:500}
+.case p{margin:0;font-size:clamp(15px,1.5vw,18px);line-height:1.55;color:var(--muted)}
+.meta-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid var(--line);margin-top:clamp(24px,3vw,36px);padding:18px 0;color:var(--muted);font-size:clamp(14px,1.4vw,17px)}
+.fine{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;border-top:1px solid var(--line);padding:18px 0 28px;color:var(--muted);font-size:clamp(13px,1.3vw,16px);line-height:1.55}
+.fine p{margin:0;max-width:52em}.fine b{color:var(--ink)}
+@media(max-width:860px){.hero{grid-template-columns:1fr}}
 </style>
 </head>
 <body><main>
 <!--__HEADER__-->
-<div class="ops-heading">
-  <div><h1>Project overview</h1><p class="lede">IFOHRA Challenge 9: secure robotics in clinical environments · Healthcare Hackathon Bayern 2026</p></div>
-  <dl class="ops-counts"><div><dt>Robots</dt><dd>3</dd></div><div><dt>Security methods</dt><dd>5</dd></div><div><dt>Test requests</dt><dd>20</dd></div></dl>
-</div>
-<p class="note"><strong>Simulation only.</strong> Robots, devices, scanner events and deliveries are simulated, and all ward data is fictional. Nothing here is clinical evidence. The gate results were measured by our own script on rows we wrote ourselves.</p>
-<div class="card-grid" style="margin-top:14px">
-  <section class="ops-card page-card">
-    <div class="card-heading"><h2>3D fleet console</h2><span class="device-ref">WebGL · offline</span></div>
-    <div class="body"><p>Dispatch a delivery, run a security alert, isolate and restore a robot.</p></div>
-    <div class="card-foot"><span>Imported, AI-generated</span><a class="btn primary" href="Clinic-World.html">Open console</a></div>
-  </section>
-  <section class="ops-card page-card">
-    <div class="card-heading"><h2>Shared-lift replay</h2><span class="device-ref">Offline</span></div>
-    <div class="body"><p>Step through the A01 and U02 cases event by event and see who holds the parcel at each handover.</p></div>
-    <div class="card-foot"><span>Fixture timeline</span><a class="btn primary" href="Smart-RoboWard-replay.html">Open replay</a></div>
-  </section>
-  <section class="ops-card page-card">
-    <div class="card-heading"><h2>Live hack demo</h2><span class="device-ref">WebGL · offline</span></div>
-    <div class="body"><p>Press a button and a hacker attacks the ward at random. Watch the gate block or miss each attack, and check the system live.</p></div>
-    <div class="card-foot"><span>Runs the real gate code</span><a class="btn primary" href="hacker-demo.html">Open demo</a></div>
-  </section>
-  <section class="ops-card page-card">
-    <div class="card-heading"><h2>Gate benchmark results</h2><span class="device-ref">Measured · synthetic</span></div>
-    <div class="body"><p>Five security methods compared on 20 test requests and an attack-flood test, with plain-English explanations.</p></div>
-    <div class="card-foot"><span>Measured by our own script</span><a class="btn primary" href="gate-results.html">Open results</a></div>
-  </section>
-  <section class="ops-card page-card">
-    <div class="card-heading"><h2>Clinic World 3D model</h2><span class="device-ref">GLB · 1.5 MB</span></div>
-    <div class="body"><p>Download the model for another 3D tool.</p></div>
-    <div class="card-foot"><span>Open-RMF geometry</span><a class="btn" href="Clinic-World.glb" download>Download .glb</a></div>
-  </section>
-</div>
-<footer class="console-footer"><span>The console, controller and fleet replay were generated with an AI coding assistant and imported into this project; their results are unverified. Third-party: Three.js (MIT) and Open-RMF clinic map (Apache-2.0).</span><a href="https://github.com/prostoNastya12/smart-roboward-healthcare-26-11">Source code, scenarios and licenses (GitHub)</a></footer>
+<section class="hero" aria-labelledby="hero-title">
+  <div>
+    <h1 id="hero-title">Hospital robots under attack</h1>
+    <p class="lede">Follow a simulated robot fleet through a two-floor clinic while a hacker attacks it. See the gate decide every request, and watch a supervisor restore the robots after an alert.</p>
+    <div class="hero-actions"><a class="btn primary lg" href="live-simulation.html">Open the live simulation</a><a class="btn lg" href="incident-review.html">Review the gate's decisions</a></div>
+  </div>
+  <figure class="hero-card">
+    <a href="live-simulation.html" aria-label="Open the live simulation"><span class="shot" role="img" aria-label="3D view of the clinic with the three robots RX-01, LAB-02 and SUP-03"></span></a>
+    <figcaption>
+      <div class="row"><h2>Clinic World</h2><span class="small-label">Floor 1</span></div>
+      <div class="route" aria-label="Route: pharmacy, shared lift, Ward B"><span>Pharmacy</span><i aria-hidden="true"></i><span>Shared lift</span><i aria-hidden="true"></i><span>Ward B</span></div>
+    </figcaption>
+  </figure>
+</section>
+
+<section class="cases" aria-labelledby="cases-title">
+  <div class="section-head"><h2 id="cases-title">Cases and results</h2><a href="live-simulation.html#route">View the route map</a></div>
+  <div class="case-grid">
+    <a class="case" href="lift-replay.html"><h3>Shared lift replay <span aria-hidden="true">→</span></h3><p>Step through a routine delivery or an urgent transfer and see who holds the parcel at each event.</p></a>
+    <a class="case" href="incident-review.html"><h3>Incident review <span aria-hidden="true">→</span></h3><p>Compare recorded gate decisions for the same request alongside the 3D clinic.</p></a>
+    <a class="case" href="gate-results.html"><h3>Gate benchmark results <span aria-hidden="true">→</span></h3><p>See how five methods handled 20 fictional requests, then compare their combined result.</p></a>
+  </div>
+  <div class="meta-row"><span>Clinic World · Open-RMF geometry · Two floors</span><a href="Clinic-World.glb" download>Download the 3D model (.glb)</a></div>
+  <div class="fine">
+    <p><b>IFOHRA Challenge 9 · Healthcare Hackathon Bayern 2026.</b> Devices, requests and deliveries are fictional. The team measured the benchmark on its own cases. The simulation and replay were developed with AI assistance, and their results are unverified. Third-party: Three.js (MIT) and the Open-RMF clinic map (Apache-2.0).</p>
+    <a href="https://github.com/prostoNastya12/smart-roboward-healthcare-26-11/blob/master/NOTICE.md">Source and licenses</a>
+  </div>
+</section>
 </main>
 </body>
 </html>

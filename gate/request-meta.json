@@ -1,0 +1,146 @@
+{
+ "U01": [
+  "Order with no login ticket",
+  "Hacker",
+  "No",
+  "Block"
+ ],
+ "U02": [
+  "Order with a forged ticket (fake signature)",
+  "Hacker",
+  "No",
+  "Block"
+ ],
+ "U03": [
+  "Order with an expired ticket",
+  "Hacker using an old ticket",
+  "No",
+  "Block"
+ ],
+ "U04": [
+  "The same ticket used a second time (replay)",
+  "Hacker who copied a ticket",
+  "No",
+  "Block"
+ ],
+ "U05": [
+  "Nurse N2 orders a delivery to Room 12, which is in Ward A. N2 works in Ward B.",
+  "Real nurse, outside their own ward",
+  "No (not allowed this action)",
+  "Block"
+ ],
+ "U06": [
+  "Valid ticket, but the destination was changed on the way",
+  "Hacker changing the order",
+  "No",
+  "Block"
+ ],
+ "U07": [
+  "Order with an extra hidden field containing a patient name",
+  "Hacker trying to leak data",
+  "No",
+  "Block"
+ ],
+ "U08": [
+  "Order for a task number that does not exist (T99)",
+  "Hacker guessing a task",
+  "No",
+  "Block"
+ ],
+ "U09": [
+  "Order from nurse N3, whose access was removed",
+  "Former employee",
+  "No",
+  "Block"
+ ],
+ "U10": [
+  "20 orders in one second from one sender, with no ticket",
+  "Hacker flooding the gate",
+  "No",
+  "Block and cut off"
+ ],
+ "A01": [
+  "Nurse N1 orders task T1 to Room 12",
+  "Nurse N1",
+  "Yes",
+  "Deliver"
+ ],
+ "A02": [
+  "Nurse N1 orders task T2 to Pharmacy",
+  "Nurse N1",
+  "Yes",
+  "Deliver"
+ ],
+ "A03": [
+  "Nurse N2 orders task T3 to Lab",
+  "Nurse N2",
+  "Yes",
+  "Deliver"
+ ],
+ "A04": [
+  "Nurse N2 orders task T4 to Room 7",
+  "Nurse N2",
+  "Yes",
+  "Deliver"
+ ],
+ "A05": [
+  "Porter P1 orders a linen task to Storage",
+  "Porter P1",
+  "Yes",
+  "Deliver"
+ ],
+ "A06": [
+  "Nurse N1 sends a new task with a new ticket (T6 to Room 12)",
+  "Nurse N1",
+  "Yes",
+  "Deliver"
+ ],
+ "A07": [
+  "Ticket that is almost expired but still valid",
+  "Nurse N1",
+  "Yes",
+  "Deliver"
+ ],
+ "A08": [
+  "Nurse N1 checks the status of their own task",
+  "Nurse N1",
+  "Yes",
+  "Show status, no patient data"
+ ],
+ "A09": [
+  "Two valid tasks back to back (T7 to Room 12, T8 to Pharmacy)",
+  "Nurse N1",
+  "Yes",
+  "Deliver both"
+ ],
+ "A10": [
+  "Nurse N1 cancels their own task T9",
+  "Nurse N1",
+  "Yes",
+  "Cancel and log it"
+ ],
+ "C01": [
+  "Attack burst of 20 bad orders",
+  "Hacker",
+  "No",
+  "Cut off the robot; no more robot moves"
+ ],
+ "C02": [
+  "Nurses work while the robot is cut off (view, order, status, cancel)",
+  "Nurses N1 and N2",
+  "Yes",
+  "All 4 still work, in manual mode"
+ ],
+ "C03": [
+  "A hacked robot sends oversized and forged messages back",
+  "Hacked robot (hacker)",
+  "No",
+  "Drop them; ward data unchanged"
+ ],
+ "C04": [
+  "A nurse tries to switch the robot back on, then a supervisor does",
+  "Nurse (no right), then supervisor",
+  "Nurse: No. Supervisor: Yes",
+  "Nurse refused; supervisor restores the robot"
+ ]
+}

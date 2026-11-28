@@ -18,7 +18,7 @@
 <!--__HEADER__-->
 <div class="ops-heading">
   <div><h1>Gate results</h1><p class="lede">Five security methods, the same 20 requests and the same attack flood. Synthetic rows written by the team, measured by our own script.</p></div>
-  <a class="btn primary" href="hacker-demo.html">Watch the hacker attack live</a>
+  <a class="btn primary" href="live-simulation.html">Open the live simulation</a>
 </div>
 
 <div class="card-grid" id="tiles"></div>
@@ -122,32 +122,7 @@ const CONT={C01:"Attack burst: does the system cut off the robot?",C02:"While cu
 $("cont").tHead.innerHTML='<tr><th>Test</th><th>What it checks</th>'+Object.keys(R).map(id=>'<th>'+id+'</th>').join("")+'</tr>';
 $("cont").tBodies[0].innerHTML=Object.keys(CONT).map(k=>'<tr><td><b>'+k+'</b></td><td>'+CONT[k]+'</td>'+Object.keys(R).map(id=>{const v=R[id].containment[k];return '<td class="'+(v.pass===null?"na":v.pass?"pass":"fail")+'">'+(v.pass===null?"n/a":v.pass?"pass":"fail")+'</td>';}).join("")+'</tr>').join("");
 
-const NO_H="No",YES="Yes";
-const META={
- U01:["Order with no login ticket","Hacker",NO_H,"Block"],
- U02:["Order with a forged ticket (fake signature)","Hacker",NO_H,"Block"],
- U03:["Order with an expired ticket","Hacker using an old ticket",NO_H,"Block"],
- U04:["The same ticket used a second time (replay)","Hacker who copied a ticket",NO_H,"Block"],
- U05:["Nurse N2 orders a delivery to Room 12, which is in Ward A. N2 works in Ward B.","Real nurse, outside their own ward","No (not allowed this action)","Block"],
- U06:["Valid ticket, but the destination was changed on the way","Hacker changing the order",NO_H,"Block"],
- U07:["Order with an extra hidden field containing a patient name","Hacker trying to leak data",NO_H,"Block"],
- U08:["Order for a task number that does not exist (T99)","Hacker guessing a task",NO_H,"Block"],
- U09:["Order from nurse N3, whose access was removed","Former employee",NO_H,"Block"],
- U10:["20 orders in one second from one sender, with no ticket","Hacker flooding the gate",NO_H,"Block and cut off"],
- A01:["Nurse N1 orders task T1 to Room 12","Nurse N1",YES,"Deliver"],
- A02:["Nurse N1 orders task T2 to Pharmacy","Nurse N1",YES,"Deliver"],
- A03:["Nurse N2 orders task T3 to Lab","Nurse N2",YES,"Deliver"],
- A04:["Nurse N2 orders task T4 to Room 7","Nurse N2",YES,"Deliver"],
- A05:["Porter P1 orders a linen task to Storage","Porter P1",YES,"Deliver"],
- A06:["Nurse N1 sends a new task with a new ticket (T6 to Room 12)","Nurse N1",YES,"Deliver"],
- A07:["Ticket that is almost expired but still valid","Nurse N1",YES,"Deliver"],
- A08:["Nurse N1 checks the status of their own task","Nurse N1",YES,"Show status, no patient data"],
- A09:["Two valid tasks back to back (T7 to Room 12, T8 to Pharmacy)","Nurse N1",YES,"Deliver both"],
- A10:["Nurse N1 cancels their own task T9","Nurse N1",YES,"Cancel and log it"],
- C01:["Attack burst of 20 bad orders","Hacker",NO_H,"Cut off the robot; no more robot moves"],
- C02:["Nurses work while the robot is cut off (view, order, status, cancel)","Nurses N1 and N2",YES,"All 4 still work, in manual mode"],
- C03:["A hacked robot sends oversized and forged messages back","Hacked robot (hacker)",NO_H,"Drop them; ward data unchanged"],
- C04:["A nurse tries to switch the robot back on, then a supervisor does","Nurse (no right), then supervisor","Nurse: No. Supervisor: Yes","Nurse refused; supervisor restores the robot"]};
+const META=/*__META__*/null;   // descriptions of each request, shared with the Incident review page (gate/request-meta.json)
 const YN=b=>b==="true"?"yes":"no";
 function nice(d){
  let s=String(d);

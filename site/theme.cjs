@@ -7,9 +7,9 @@ const path = require("node:path");
 // Links use the published (flat) layout of the GitHub Pages site, see .github/workflows/pages.yml.
 const PAGES = [
   ["index", "index.html", "Overview"],
-  ["fleet", "Clinic-World.html", "Fleet console"],
-  ["replay", "Smart-RoboWard-replay.html", "Lift replay"],
-  ["hack", "hacker-demo.html", "Live hack demo"],
+  ["sim", "live-simulation.html", "Live simulation"],
+  ["replay", "lift-replay.html", "Lift replay"],
+  ["incident", "incident-review.html", "Incident review"],
   ["results", "gate-results.html", "Gate results"]
 ];
 
@@ -18,7 +18,7 @@ function header(active, status) {
     '<a href="' + href + '"' + (id === active ? ' aria-current="page"' : "") + ">" + label + "</a>").join("");
   return '<header class="app-head"><a class="brand" href="index.html"><i class="brand-mark" aria-hidden="true"></i>Smart RoboWard</a>\n' +
     '  <nav class="mode" aria-label="Pages">' + links + "</nav>\n" +
-    '  <div class="sim-bar"><span><i class="sim-ind" aria-hidden="true"></i>' + (status || "Simulated data") + "</span></div>\n</header>";
+    '  <div class="sim-bar"><span><i class="sim-ind" aria-hidden="true"></i>' + (status || "Local simulation") + "</span></div>\n</header>";
 }
 
 function withTheme(html, active, status) {

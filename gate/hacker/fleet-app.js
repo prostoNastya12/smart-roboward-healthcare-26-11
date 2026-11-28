@@ -495,7 +495,7 @@
   // ---------- page elements ----------
   function buildUI() {
     const panel = document.getElementById("model-panel"), frame = document.getElementById("model-frame");
-    const bar = document.createElement("section"); bar.className = "hk-bar"; bar.setAttribute("aria-label", "Live hack demo controls");
+    const bar = document.createElement("section"); bar.className = "hk-bar"; bar.setAttribute("aria-label", "Live simulation controls");
     bar.innerHTML =
       '<div class="hk-block hk-nurse" aria-labelledby="hk-nurse-h">' +
         '<div class="hk-head"><span class="hk-dot" aria-hidden="true"></span><h2 id="hk-nurse-h">Nurse station</h2>' +
@@ -534,7 +534,7 @@
     frame.appendChild(views);
     const head = document.querySelector(".app-head .brand");   // the console header has no way back to the overview page
     if (head) { const back = document.createElement("a"); back.href = "index.html"; back.className = "hk-back"; back.textContent = "← All pages"; head.after(back); }
-    const sec = document.createElement("section"); sec.className = "ops-card hk-panel"; sec.id = "hk-panel"; sec.setAttribute("aria-label", "Live hack demo: robots, security log and system check");
+    const sec = document.createElement("section"); sec.className = "ops-card hk-panel"; sec.id = "hk-panel"; sec.setAttribute("aria-label", "Live simulation: robots, security log and system check");
     sec.innerHTML =
       '<div class="card-heading"><h2>Live system</h2><span class="device-ref" id="hk-defname">ALL</span></div>' +
       '<p id="hk-defdesc" class="hk-desc"></p>' +
@@ -618,6 +618,9 @@
     setTimeout(() => setView("overview"), 300);
   };
   window.addEventListener("rwdemo:scene", attach); attach();
+  // Deep links from the overview page: live-simulation.html#route opens "View the route", #openrmf opens the Open-RMF demo.
+  const tab = {"#route": "route-mode", "#openrmf": "demo-mode"}[location.hash];
+  if (tab) setTimeout(() => { const b = document.getElementById(tab); if (b) b.click(); }, 400);
   setInterval(() => { if (gate) gate.beginSecond(); }, 1000);
   setInterval(maintain, 500);
   DemoLayer.setActive(true);
